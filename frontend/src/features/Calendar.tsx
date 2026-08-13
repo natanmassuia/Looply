@@ -39,11 +39,12 @@ export default function Calendar() {
   const monthLabel = `${MONTHS[cursor.m]} ${cursor.y}`;
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-7">
-      <PageHeader title="Calendário" crumbs={[{ label: "Calendário" }]} />
+    <div>
+      <PageHeader title="Calendário" subtitle="Planejamento editorial" crumbs={[{ label: "Calendário" }]} />
 
+      {/* Month navigation */}
       <div className="mb-4 flex items-center justify-between">
-        <div className="text-sm font-semibold text-slate-700">{monthLabel}</div>
+        <div className="text-base font-bold text-[var(--looply-foreground)]">{monthLabel}</div>
         <div className="flex items-center gap-2">
           <button
             className="btn-secondary text-xs"
@@ -51,10 +52,16 @@ export default function Calendar() {
           >
             Anterior
           </button>
-          <button className="btn-secondary text-xs" onClick={() => setCursor({ y: today.getFullYear(), m: today.getMonth() })}>
+          <button
+            className="btn-secondary text-xs"
+            onClick={() => setCursor({ y: today.getFullYear(), m: today.getMonth() })}
+          >
             Hoje
           </button>
-          <button className="btn-secondary text-xs" onClick={() => setCursor(nextMonth(cursor))}>
+          <button
+            className="btn-secondary text-xs"
+            onClick={() => setCursor(nextMonth(cursor))}
+          >
             Próximo
           </button>
         </div>
@@ -62,15 +69,19 @@ export default function Calendar() {
 
       {isLoading && <Spinner label="Carregando calendário…" />}
       {isError && <ErrorState message={(error as Error)?.message} />}
+
       {data && (
-        <Card className="p-0">
-          <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 text-center text-xs font-medium uppercase tracking-wide text-slate-500">
+        <Card className="p-0 overflow-hidden">
+          {/* Weekday headers */}
+          <div className="grid grid-cols-7 border-b border-[var(--looply-border)] bg-[var(--looply-surface-muted)] text-center text-xs font-semibold uppercase tracking-wide text-[var(--looply-muted-foreground)]">
             {WEEKDAYS.map((d) => (
-              <div key={d} className="px-2 py-2">
+              <div key={d} className="px-2 py-2.5">
                 {d}
               </div>
             ))}
           </div>
+
+          {/* Grid */}
           <div className="grid grid-cols-7">
             {cells.map((cell, i) => {
               const items = cell ? byDay.get(dateKey(cell)) ?? [] : [];
@@ -83,15 +94,17 @@ export default function Calendar() {
               return (
                 <div
                   key={i}
-                  className={`min-h-[112px] border-b border-r border-slate-100 p-1.5 ${
-                    inMonth ? "bg-white" : "bg-slate-50/60"
+                  className={`min-h-[100px] border-b border-r border-[var(--looply-border)] p-1.5 transition-colors ${
+                    inMonth ? "bg-[var(--looply-surface)]" : "bg-[var(--looply-surface-muted)]/50"
                   }`}
                 >
                   {cell && (
                     <>
                       <div
                         className={`mb-1 text-right text-xs font-medium ${
-                          isToday ? "inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-white" : "text-slate-400"
+                          isToday
+                            ? "inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-white font-bold"
+                            : "text-[var(--looply-faint-foreground)]"
                         }`}
                       >
                         {cell.getDate()}
@@ -101,7 +114,7 @@ export default function Calendar() {
                           <Link
                             key={p.id}
                             to={`/contents/${p.id}`}
-                            className="block truncate rounded px-1.5 py-1 text-[11px] font-medium text-white"
+                            className="block truncate rounded-md px-1.5 py-1 text-[11px] font-medium text-white transition-opacity hover:opacity-90"
                             style={{ backgroundColor: p.client?.brandColor ?? "#475569" }}
                             title={`${p.client?.name} — ${p.title}`}
                           >
@@ -117,6 +130,7 @@ export default function Calendar() {
           </div>
         </Card>
       )}
+
       {data && data.length === 0 && (
         <div className="mt-4">
           <EmptyState
@@ -126,12 +140,13 @@ export default function Calendar() {
         </div>
       )}
 
-      <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+      {/* Legend */}
+      <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-[var(--looply-muted-foreground)]">
         <Legend color="#2563eb" label="Agendado" />
         <Legend color="#0d9488" label="Publicado" />
-      </div>
-      <div className="mt-1 text-xs text-slate-400">
-        {STATUS_LABEL.SCHEDULED} / {STATUS_LABEL.PUBLISHED} e datas previstas aparecem no calendário.
+        <span className="text-[var(--looply-faint-foreground)]">
+          {STATUS_LABEL.SCHEDULED} / {STATUS_LABEL.PUBLISHED} e datas previstas aparecem no calendário.
+        </span>
       </div>
     </div>
   );

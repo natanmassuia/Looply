@@ -14,7 +14,7 @@ import {
 } from "../lib/format";
 import { Card, ErrorState, MediaPreview, PageHeader, Spinner } from "../components/common";
 import StatusPill from "../components/StatusPill";
-import { IconCheck, IconClock, IconLink, IconPlus } from "../components/Icons";
+import { IconCheck, IconClock, IconLink, IconPlus, IconSend, IconEye } from "../components/Icons";
 import type { ContentVersion } from "../lib/types";
 
 export default function ContentDetail() {
@@ -66,30 +66,35 @@ export default function ContentDetail() {
     (latestApproval?.token ? `${window.location.origin}/approve/${latestApproval.token}` : null);
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-7">
+    <div>
       <PageHeader
         title={content.title}
+        subtitle={`${FORMAT_LABEL[content.format]} · ${content.client?.name} · Versão ${currentVersion.versionNumber}`}
         crumbs={[{ label: "Conteúdos", to: "/contents" }, { label: content.title }]}
         actions={<StatusPill status={status} />}
       />
 
       {err && (
-        <div className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{err}</div>
+        <div className="mb-4 rounded-lg bg-[var(--looply-danger-bg)] px-3 py-2.5 text-sm text-[var(--looply-danger)]">
+          {err}
+        </div>
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Left: preview + content */}
-        <div className="space-y-6 lg:col-span-2">
+        <div className="space-y-5 lg:col-span-2">
+          {/* Metadata card */}
           <Card>
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-600">
+            <h3 className="mb-3 text-sm font-semibold text-[var(--looply-foreground)]">Detalhes</h3>
+            <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
               <Meta label="Cliente">
                 <span
-                  className="inline-flex items-center gap-1.5 font-medium text-slate-800"
+                  className="inline-flex items-center gap-1.5 font-medium text-[var(--looply-foreground)]"
                   style={{ color: content.client?.brandColor ?? undefined }}
                 >
                   <span
                     className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: content.client?.brandColor ?? "#64748b" }}
+                    style={{ backgroundColor: content.client?.brandColor ?? "var(--looply-faint-foreground)" }}
                   />
                   {content.client?.name}
                 </span>
@@ -102,39 +107,50 @@ export default function ContentDetail() {
                   ? ` · ${ROLE_LABEL[content.responsible.role]}`
                   : ""}
               </Meta>
-              <Meta label="Versão atual">v{currentVersion.versionNumber}</Meta>
+              <Meta label="Versão">v{currentVersion.versionNumber}</Meta>
               <Meta label="Publicação prevista">{formatDate(content.publicationTarget)}</Meta>
             </div>
           </Card>
 
+          {/* Content preview */}
           <Card>
+            <h3 className="mb-3 text-sm font-semibold text-[var(--looply-foreground)]">Pré-visualização</h3>
             <MediaPreview
               url={currentVersion.mediaUrl}
               alt={content.title}
               className="mb-4 aspect-video w-full rounded-lg"
             />
-            <h3 className="mb-1 text-sm font-semibold text-slate-700">Legenda</h3>
-            <p className="whitespace-pre-wrap text-sm text-slate-700">{currentVersion.caption}</p>
-            {currentVersion.changeNote && (
-              <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-                Nota da versão: {currentVersion.changeNote}
-              </p>
-            )}
+            <div className="space-y-3">
+              <div>
+                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--looply-muted-foreground)]">
+                  Legenda
+                </div>
+                <p className="whitespace-pre-wrap text-sm text-[var(--looply-foreground)]">
+                  {currentVersion.caption}
+                </p>
+              </div>
+              {currentVersion.changeNote && (
+                <div className="rounded-lg bg-[var(--looply-surface-muted)] px-3 py-2 text-xs text-[var(--looply-muted-foreground)]">
+                  <span className="font-medium">Nota da versão:</span> {currentVersion.changeNote}
+                </div>
+              )}
+            </div>
           </Card>
 
           <VersionHistory versions={content.versions} />
         </div>
 
         {/* Right: actions */}
-        <div className="space-y-6">
+        <div className="space-y-5">
           <Card>
-            <h3 className="mb-3 text-sm font-semibold text-slate-700">Ações</h3>
+            <h3 className="mb-4 text-sm font-semibold text-[var(--looply-foreground)]">Ações</h3>
 
             {status === "DRAFT" && (
               <ActionButton
                 loading={review.isPending}
                 onClick={() => run(review)}
                 label="Enviar para revisão"
+                icon={<IconSend className="h-4 w-4" />}
               />
             )}
 
@@ -143,6 +159,7 @@ export default function ContentDetail() {
                 loading={sendApproval.isPending}
                 onClick={onSendApproval}
                 label="Enviar para aprovação do cliente"
+                icon={<IconSend className="h-4 w-4" />}
               />
             )}
 
@@ -151,19 +168,20 @@ export default function ContentDetail() {
             )}
 
             {status === "AWAITING_CLIENT" && (
-              <p className="mt-3 text-xs text-slate-500">
-                Aguardando o cliente aprovar ou solicitar alterações pelo link público.
-              </p>
+              <div className="flex items-start gap-2 rounded-lg bg-[var(--looply-information-bg)] px-3 py-2.5 text-sm text-[var(--looply-information)]">
+                <IconClock className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>Aguardando o cliente aprovar ou solicitar alterações pelo link público.</span>
+              </div>
             )}
 
             {status === "CHANGES_REQUESTED" && latestApproval?.feedback && (
-              <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
-                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-rose-600">
+              <div className="rounded-lg border border-[var(--looply-danger)]/20 bg-[var(--looply-danger-bg)] p-3">
+                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--looply-danger)]">
                   Alteração solicitada
                 </div>
-                <p className="text-sm text-rose-800">{latestApproval.feedback}</p>
+                <p className="text-sm text-[var(--looply-danger)]/90">{latestApproval.feedback}</p>
                 {latestApproval.clientName && (
-                  <div className="mt-2 text-xs text-rose-500">
+                  <div className="mt-2 text-xs text-[var(--looply-danger)]/60">
                     — {latestApproval.clientName} · {formatDateTime(latestApproval.clientReviewedAt)}
                   </div>
                 )}
@@ -205,7 +223,7 @@ export default function ContentDetail() {
 
             {status === "SCHEDULED" && (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700">
+                <div className="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2.5 text-sm text-blue-700">
                   <IconClock className="h-4 w-4" />
                   Agendado para {formatDateTime(content.scheduledAt)}
                 </div>
@@ -219,7 +237,7 @@ export default function ContentDetail() {
             )}
 
             {status === "PUBLISHED" && (
-              <div className="flex items-center gap-2 rounded-lg bg-teal-50 px-3 py-2 text-sm text-teal-700">
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2.5 text-sm text-emerald-700">
                 <IconCheck className="h-4 w-4" />
                 Publicado em {formatDateTime(content.publishedAt)}
               </div>
@@ -234,8 +252,8 @@ export default function ContentDetail() {
 function Meta({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</div>
-      <div className="text-sm">{children}</div>
+      <div className="text-xs font-medium uppercase tracking-wide text-[var(--looply-muted-foreground)]">{label}</div>
+      <div className="mt-0.5 text-sm">{children}</div>
     </div>
   );
 }
@@ -271,16 +289,17 @@ function ApprovalLinkBox({ url }: { url: string }) {
     }
   };
   return (
-    <div className="mt-3 rounded-lg border border-violet-200 bg-violet-50 p-3">
-      <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-violet-700">
+    <div className="mt-3 rounded-lg border border-[var(--looply-information)]/20 bg-[var(--looply-information-bg)] p-3">
+      <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--looply-information)]">
         <IconLink className="h-3.5 w-3.5" />
         Link de aprovação
       </div>
-      <div className="truncate rounded bg-white px-2 py-1.5 font-mono text-xs text-slate-600">
+      <div className="truncate rounded bg-[var(--looply-surface)] px-2.5 py-2 font-mono text-xs text-[var(--looply-muted-foreground)]">
         {url}
       </div>
       <div className="mt-2 flex gap-2">
         <a href={url} target="_blank" rel="noreferrer" className="btn-secondary flex-1 text-xs">
+          <IconEye className="h-3.5 w-3.5" />
           Abrir
         </a>
         <button onClick={copy} className="btn-secondary flex-1 text-xs">
@@ -304,7 +323,8 @@ function NewVersionForm({
   const [mediaUrl, setMediaUrl] = useState("");
   const [changeNote, setChangeNote] = useState("");
   return (
-    <div className="mt-3 space-y-2 rounded-lg border border-slate-200 p-3">
+    <div className="mt-3 space-y-2.5 rounded-lg border border-[var(--looply-border)] bg-[var(--looply-surface-muted)] p-3">
+      <div className="text-xs font-semibold text-[var(--looply-foreground)]">Nova versão</div>
       <textarea
         className="input min-h-[90px]"
         placeholder="Nova legenda…"
@@ -332,7 +352,7 @@ function NewVersionForm({
           disabled={loading || !caption.trim()}
           onClick={() => onSubmit(caption.trim(), mediaUrl.trim(), changeNote.trim())}
         >
-          {loading ? "Salvando…" : "Salvar v" + ""}
+          {loading ? "Salvando…" : "Salvar nova versão"}
         </button>
       </div>
     </div>
@@ -348,7 +368,8 @@ function ScheduleForm({
 }) {
   const [dt, setDt] = useState("");
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
+      <div className="text-xs font-medium text-[var(--looply-muted-foreground)]">Data e hora de publicação</div>
       <input
         type="datetime-local"
         className="input"
@@ -369,38 +390,41 @@ function ScheduleForm({
 function VersionHistory({ versions }: { versions: ContentVersion[] }) {
   return (
     <Card>
-      <h3 className="mb-3 text-sm font-semibold text-slate-700">Histórico de versões</h3>
-      <ol className="space-y-3">
+      <h3 className="mb-4 text-sm font-semibold text-[var(--looply-foreground)]">Histórico de versões</h3>
+      <ol className="space-y-4">
         {versions.map((v) => {
           const ap = v.approvals?.[0];
           return (
             <li key={v.id} className="flex gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500">
-                v{v.versionNumber}
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--looply-surface-muted)] text-xs font-bold text-[var(--looply-muted-foreground)]">
+                {v.versionNumber}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
-                  <div className="text-sm font-medium text-slate-700">
+                  <div className="text-sm font-medium text-[var(--looply-foreground)]">
                     Versão {v.versionNumber}
                     {v.createdBy && (
-                      <span className="ml-1 text-xs font-normal text-slate-400">
+                      <span className="ml-1 text-xs font-normal text-[var(--looply-muted-foreground)]">
                         · {v.createdBy.name}
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-slate-400">{formatDateTime(v.createdAt)}</div>
+                  <div className="text-xs text-[var(--looply-muted-foreground)]">{formatDateTime(v.createdAt)}</div>
                 </div>
-                <p className="mt-0.5 line-clamp-2 text-sm text-slate-600">{v.caption}</p>
+                <p className="mt-1 line-clamp-2 text-sm text-[var(--looply-muted-foreground)]">{v.caption}</p>
                 {ap && (
                   <div
-                    className={`mt-1 inline-block rounded px-2 py-0.5 text-xs ${
+                    className={`mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
                       ap.status === "APPROVED"
                         ? "bg-emerald-50 text-emerald-700"
                         : ap.status === "CHANGES_REQUESTED"
                           ? "bg-rose-50 text-rose-700"
-                          : "bg-slate-100 text-slate-600"
+                          : "bg-[var(--looply-surface-muted)] text-[var(--looply-muted-foreground)]"
                     }`}
                   >
+                    <span className={`h-1.5 w-1.5 rounded-full ${
+                      ap.status === "APPROVED" ? "bg-emerald-500" : ap.status === "CHANGES_REQUESTED" ? "bg-rose-500" : "bg-slate-400"
+                    }`} />
                     {ap.status === "APPROVED"
                       ? "Aprovado pelo cliente"
                       : ap.status === "CHANGES_REQUESTED"

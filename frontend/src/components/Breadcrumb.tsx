@@ -14,15 +14,15 @@ export default function Breadcrumb({ items }: { items: Crumb[] }) {
         return (
           <span key={i} className="flex items-center">
             {item.to && !isLast ? (
-              <Link to={item.to} className="text-slate-500 hover:text-brand-600">
+              <Link to={item.to} className="text-[var(--looply-muted-foreground)] transition-colors hover:text-brand-600">
                 {item.label}
               </Link>
             ) : (
-              <span className={isLast ? "font-semibold text-slate-800" : "text-slate-500"}>
+              <span className={isLast ? "font-semibold text-[var(--looply-foreground)]" : "text-[var(--looply-muted-foreground)]"}>
                 {item.label}
               </span>
             )}
-            {!isLast && <IconChevronRight className="mx-1.5 h-4 w-4 text-slate-300" />}
+            {!isLast && <IconChevronRight className="mx-1.5 h-3.5 w-3.5 text-[var(--looply-border-strong)]" />}
           </span>
         );
       })}
