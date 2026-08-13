@@ -13,7 +13,7 @@
     "test:watch": "vitest",
     "seed": "dotenv -e ../.env -- tsx src/seed.ts",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
-    "prisma:validate": "prisma validate --schema prisma/schema.prisma",
+    "prisma:validate": "dotenv -e ../.env -- prisma validate --schema prisma/schema.prisma",
     "prisma:migrate": "dotenv -e ../.env -- prisma migrate dev --schema prisma/schema.prisma",
     "prisma:migrate:deploy": "dotenv -e ../.env -- prisma migrate deploy --schema prisma/schema.prisma",
     "prisma:migration:diff": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script"

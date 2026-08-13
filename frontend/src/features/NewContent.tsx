@@ -59,128 +59,150 @@ export default function NewContent() {
   if (cLoading || tLoading) return <Spinner label="Carregando…" />;
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-7">
+    <div>
       <PageHeader
         title="Novo conteúdo"
+        subtitle="Crie um conteúdo e envie para revisão interna"
         crumbs={[{ label: "Conteúdos", to: "/contents" }, { label: "Novo conteúdo" }]}
       />
 
-      {clients && clients.length === 0 && <ErrorState message="Cadastre um cliente primeiro." />}
+      {clients && clients.length === 0 && (
+        <Card className="mb-5">
+          <ErrorState message="Cadastre um cliente primeiro em Clientes." />
+        </Card>
+      )}
 
-      <Card>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label className="label">Título</label>
-            <input
-              className="input"
-              value={form.title}
-              onChange={(e) => set("title", e.target.value)}
-              placeholder="Ex.: Campanha Dia dos Pais"
-              autoFocus
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="space-y-5">
+        {/* Basic info */}
+        <Card>
+          <h3 className="mb-4 text-sm font-semibold text-[var(--looply-foreground)]">Informações básicas</h3>
+          <form onSubmit={onSubmit} className="space-y-4">
             <div>
-              <label className="label">Cliente</label>
-              <select
-                className="input"
-                value={form.clientId}
-                onChange={(e) => set("clientId", e.target.value)}
-              >
-                <option value="">Selecione…</option>
-                {clients?.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="label">Formato</label>
-              <select
-                className="input"
-                value={form.format}
-                onChange={(e) => set("format", e.target.value as ContentFormat)}
-              >
-                {Object.entries(FORMAT_LABEL).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="label">Rede / Canal</label>
+              <label className="label">Título do conteúdo</label>
               <input
                 className="input"
-                value={form.channel}
-                onChange={(e) => set("channel", e.target.value)}
-                placeholder="Instagram, TikTok…"
+                value={form.title}
+                onChange={(e) => set("title", e.target.value)}
+                placeholder="Ex.: Campanha Dia dos Pais"
+                autoFocus
               />
             </div>
-            <div>
-              <label className="label">Responsável</label>
-              <select
-                className="input"
-                value={form.responsibleId}
-                onChange={(e) => set("responsibleId", e.target.value)}
-              >
-                <option value="">Selecione…</option>
-                {team?.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name}
-                  </option>
-                ))}
-              </select>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="label">Cliente</label>
+                <select
+                  className="input"
+                  value={form.clientId}
+                  onChange={(e) => set("clientId", e.target.value)}
+                >
+                  <option value="">Selecione um cliente…</option>
+                  {clients?.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label">Formato</label>
+                <select
+                  className="input"
+                  value={form.format}
+                  onChange={(e) => set("format", e.target.value as ContentFormat)}
+                >
+                  {Object.entries(FORMAT_LABEL).map(([k, v]) => (
+                    <option key={k} value={k}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <label className="label">Data prevista de publicação</label>
-            <input
-              type="date"
-              className="input"
-              value={form.publicationTarget}
-              onChange={(e) => set("publicationTarget", e.target.value)}
-            />
-          </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="label">Rede / Canal</label>
+                <input
+                  className="input"
+                  value={form.channel}
+                  onChange={(e) => set("channel", e.target.value)}
+                  placeholder="Instagram, TikTok…"
+                />
+              </div>
+              <div>
+                <label className="label">Responsável</label>
+                <select
+                  className="input"
+                  value={form.responsibleId}
+                  onChange={(e) => set("responsibleId", e.target.value)}
+                >
+                  <option value="">Selecione…</option>
+                  {team?.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
-          <div>
-            <label className="label">Legenda</label>
-            <textarea
-              className="input min-h-[120px]"
-              value={form.caption}
-              onChange={(e) => set("caption", e.target.value)}
-              placeholder="Legenda do conteúdo…"
-            />
-          </div>
+            <div>
+              <label className="label">Data prevista de publicação</label>
+              <input
+                type="date"
+                className="input"
+                value={form.publicationTarget}
+                onChange={(e) => set("publicationTarget", e.target.value)}
+              />
+            </div>
+          </form>
+        </Card>
 
-          <div>
-            <label className="label">URL da mídia (demo)</label>
-            <input
-              className="input"
-              value={form.mediaUrl}
-              onChange={(e) => set("mediaUrl", e.target.value)}
-              placeholder="https://… (opcional)"
-            />
-          </div>
+        {/* Content */}
+        <Card>
+          <h3 className="mb-4 text-sm font-semibold text-[var(--looply-foreground)]">Conteúdo</h3>
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div>
+              <label className="label">Legenda</label>
+              <textarea
+                className="input min-h-[140px]"
+                value={form.caption}
+                onChange={(e) => set("caption", e.target.value)}
+                placeholder="Escreva a legenda do conteúdo…"
+              />
+            </div>
 
-          {formError && <div className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{formError}</div>}
+            <div>
+              <label className="label">URL da mídia (demo)</label>
+              <input
+                className="input"
+                value={form.mediaUrl}
+                onChange={(e) => set("mediaUrl", e.target.value)}
+                placeholder="https://… (opcional)"
+              />
+              <p className="mt-1 text-xs text-[var(--looply-muted-foreground)]">
+                Em produção, aqui seria o upload de imagem/vídeo.
+              </p>
+            </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" className="btn-secondary" onClick={() => navigate("/contents")}>
-              Cancelar
-            </button>
-            <button type="submit" className="btn-primary" disabled={create.isPending}>
-              {create.isPending ? "Criando…" : "Criar conteúdo"}
-            </button>
-          </div>
-        </form>
-      </Card>
+            {formError && (
+              <div className="rounded-lg bg-[var(--looply-danger-bg)] px-3 py-2.5 text-sm text-[var(--looply-danger)]">
+                {formError}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 border-t border-[var(--looply-border)] pt-4">
+              <button type="button" className="btn-secondary" onClick={() => navigate("/contents")}>
+                Cancelar
+              </button>
+              <button type="submit" className="btn-primary" disabled={create.isPending}>
+                {create.isPending ? "Criando…" : "Criar e ir para revisão"}
+              </button>
+            </div>
+          </form>
+        </Card>
+      </div>
     </div>
   );
 }

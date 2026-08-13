@@ -20,27 +20,35 @@ const ROLE_STYLE: Record<UserRole, string> = {
   DESIGNER: "bg-rose-50 text-rose-700 ring-rose-200",
 };
 
+const AVATAR_COLORS: Record<UserRole, string> = {
+  ADMIN: "bg-brand-600",
+  CONTENT_MANAGER: "bg-violet-600",
+  EDITOR: "bg-amber-600",
+  SOCIAL_MEDIA: "bg-blue-600",
+  DESIGNER: "bg-rose-600",
+};
+
 export default function Team() {
   const { data: team, isLoading, isError, error } = useTeam();
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-7">
-      <PageHeader title="Equipe" crumbs={[{ label: "Equipe" }]} />
+    <div>
+      <PageHeader title="Equipe" subtitle="Membros da agência" crumbs={[{ label: "Equipe" }]} />
 
       {isLoading && <Spinner label="Carregando equipe…" />}
       {isError && <ErrorState message={(error as Error)?.message} />}
-      {team && team.length === 0 && <EmptyState title="Sem membros" />}
+      {team && team.length === 0 && <EmptyState title="Sem membros" description="Nenhum membro cadastrado ainda." />}
       {team && team.length > 0 && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {team.map((u) => (
-            <Card key={u.id}>
+            <Card key={u.id} className="transition-shadow hover:shadow-looply-md">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-navy-800 text-sm font-bold text-white">
+                <div className={`flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold text-white ${AVATAR_COLORS[u.role]}`}>
                   {initials(u.name)}
                 </div>
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-slate-800">{u.name}</div>
-                  <div className="truncate text-xs text-slate-500">{u.email}</div>
+                  <div className="truncate text-sm font-semibold text-[var(--looply-foreground)]">{u.name}</div>
+                  <div className="truncate text-xs text-[var(--looply-muted-foreground)]">{u.email}</div>
                 </div>
               </div>
               <div className="mt-4 flex items-center justify-between">
@@ -50,12 +58,12 @@ export default function Team() {
                   {ROLE_LABEL[u.role]}
                 </span>
                 <span
-                  className={`flex items-center gap-1.5 text-xs ${
-                    u.active ? "text-emerald-600" : "text-slate-400"
+                  className={`inline-flex items-center gap-1.5 text-xs ${
+                    u.active ? "text-emerald-600" : "text-[var(--looply-faint-foreground)]"
                   }`}
                 >
                   <span
-                    className={`h-1.5 w-1.5 rounded-full ${u.active ? "bg-emerald-500" : "bg-slate-300"}`}
+                    className={`h-1.5 w-1.5 rounded-full ${u.active ? "bg-emerald-500" : "bg-[var(--looply-faint-foreground)]"}`}
                   />
                   {u.active ? "Ativo" : "Inativo"}
                 </span>
