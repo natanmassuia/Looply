@@ -1,0 +1,155 @@
+// Looply — Demo V1 schema (single-tenant)
+// Run: prisma validate / prisma generate (no DB needed)
+//       prisma migrate dev (needs DATABASE_URL)
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ──────────────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  CONTENT_MANAGER
+  EDITOR
+  SOCIAL_MEDIA
+  DESIGNER
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  PROSPECT
+}
+
+enum ContentFormat {
+  POST
+  REELS
+  STORY
+  CAROUSEL
+  VIDEO
+  IMAGE
+}
+
+enum ContentStatus {
+  DRAFT
+  IN_REVIEW
+  AWAITING_CLIENT
+  CHANGES_REQUESTED
+  APPROVED
+  SCHEDULED
+  PUBLISHED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  CHANGES_REQUESTED
+}
+
+// ── Models ─────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      UserRole @default(EDITOR)
+  avatarUrl String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // content this user is responsible for
+  responsibleFor Content[]   @relation("ContentResponsible")
+  createdBy      Content[]   @relation("ContentCreator")
+  versions       ContentVersion[]
+}
+
+model Client {
+  id                 String       @id @default(cuid())
+  name               String
+  brandColor         String?
+  status             ClientStatus @default(ACTIVE)
+  primaryContactName String?
+  primaryContactEmail String?
+  primaryContactPhone String?
+  channels           String[]     // e.g. ["Instagram","TikTok"]
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  content Content[]
+
+  @@unique([name])
+}
+
+model Content {
+  id             String        @id @default(cuid())
+  title          String
+  clientId       String
+  format         ContentFormat @default(POST)
+  channel        String?
+  responsibleId  String?
+  createdById    String?
+  status         ContentStatus @default(DRAFT)
+  publicationTarget DateTime?   // intended pub date (editorial plan)
+  scheduledAt    DateTime?      // set when SCHEDULED
+  publishedAt    DateTime?      // set when PUBLISHED
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  client      Client           @relation(fields: [clientId], references: [id])
+  responsible User?           @relation("ContentResponsible", fields: [responsibleId], references: [id])
+  createdBy   User?           @relation("ContentCreator", fields: [createdById], references: [id])
+  versions    ContentVersion[]
+  approvals   Approval[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([responsibleId])
+}
+
+model ContentVersion {
+  id          String   @id @default(cuid())
+  contentId   String
+  versionNumber Int
+  caption     String
+  mediaUrl    String?
+  mediaType   String?
+  changeNote  String?   // internal note describing what changed vs previous version
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  content    Content   @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  createdBy  User?     @relation(fields: [createdById], references: [id])
+  approvals  Approval[]
+
+  @@unique([contentId, versionNumber])
+  @@index([contentId])
+}
+
+// One row per "send for approval" round. Tied to a specific version so
+// history is preserved: v1 -> changes_requested, v2 -> approved.
+model Approval {
+  id               String         @id @default(cuid())
+  contentId        String
+  contentVersionId String
+  token            String         @unique // random, non-sequential (crypto)
+  status           ApprovalStatus @default(PENDING)
+  feedback         String?        // client change-request text
+  clientName       String?
+  clientReviewedAt DateTime?
+  createdAt        DateTime       @default(now())
+
+  content   Content        @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  version   ContentVersion @relation(fields: [contentVersionId], references: [id], onDelete: Cascade)
+
+  @@index([contentId])
+  @@index([contentVersionId])
+}

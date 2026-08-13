@@ -1,0 +1,49 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+
+# env / secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# prisma
+backend/prisma/*.db
+backend/prisma/*.db-journal
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# uploads (dev-only local media)
+backend/uploads/
+
+# test / coverage
+coverage/
+*.lcov
+
+# caches
+.cache/
+.eslintcache
+.vite/
+
+# local agent / tooling artifacts (not part of the project)
+.ai-jail
+.serena/
+
