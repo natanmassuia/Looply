@@ -16,6 +16,7 @@ export interface SessionUser {
   email: string;
   companyId: string | null;
   role: string;
+  mustChangePassword: boolean;
 }
 
 export interface MembershipInfo {
@@ -68,6 +69,7 @@ export async function login(
       email: user.email,
       companyId: memberships[0].companyId,
       role: memberships[0].role,
+      mustChangePassword: user.mustChangePassword,
     },
     memberships: memberships.map((m) => ({
       companyId: m.companyId,
@@ -84,7 +86,7 @@ export async function login(
 export async function resolveAuth(
   db: DB,
   token: string | undefined,
-): Promise<{ auth: AuthContext; userId: string } | null> {
+): Promise<{ auth: AuthContext; mustChangePassword: boolean } | null> {
   if (!token) return null;
   const session = await db.session.findUnique({ where: { id: hashToken(token) } });
   if (!session || session.revokedAt || session.expiresAt < new Date()) return null;
@@ -108,7 +110,7 @@ export async function resolveAuth(
 
   return {
     auth: { userId: user.id, companyId: membership.companyId, role: membership.role },
-    userId: user.id,
+    mustChangePassword: user.mustChangePassword,
   };
 }
 

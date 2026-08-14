@@ -8,6 +8,9 @@ import { login, logout, switchCompany } from "../services/authService";
 import { checkLoginRate } from "../lib/loginLimiter";
 import { requireAuth } from "../middleware/requireAuth";
 import { resolveWorkspaceContext } from "../domain/capabilities";
+import { assertNewPasswordOk } from "../services/onboardingService";
+import { hashPassword, newSessionToken, hashToken } from "../lib/password";
+import { SESSION_TTL_MS } from "../lib/session";
 
 const router = Router();
 
@@ -28,7 +31,17 @@ router.post(
     }
     const result = await login(prisma, input.email, input.password);
     setSessionCookie(res, result.token);
-    res.json({ user: result.user, memberships: result.memberships });
+    res.json({
+      user: {
+        id: result.user.id,
+        name: result.user.name,
+        email: result.user.email,
+        companyId: result.user.companyId,
+        role: result.user.role,
+      },
+      mustChangePassword: result.user.mustChangePassword,
+      memberships: result.memberships,
+    });
   }),
 );
 
@@ -37,6 +50,43 @@ router.post(
   asyncHandler(async (req, res) => {
     await logout(prisma, cookiesFromReq(req)[SESSION_COOKIE]);
     clearSessionCookie(res);
+    res.json({ ok: true });
+  }),
+);
+
+router.post(
+  "/change-password",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const { newPassword } = parse(
+      z.object({ newPassword: z.string().min(1).max(200) }),
+      req.body,
+    );
+    assertNewPasswordOk(newPassword);
+    const auth = req.auth!;
+    const userId = auth.userId;
+
+    const passwordHash = await hashPassword(newPassword);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash, mustChangePassword: false },
+    });
+    // Invalidate ALL sessions (old temp-password sessions die), then issue a
+    // fresh session for the current login.
+    await prisma.session.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    const token = newSessionToken();
+    await prisma.session.create({
+      data: {
+        id: hashToken(token),
+        userId,
+        companyId: auth.companyId,
+        expiresAt: new Date(Date.now() + SESSION_TTL_MS),
+      },
+    });
+    setSessionCookie(res, token);
     res.json({ ok: true });
   }),
 );
@@ -70,6 +120,7 @@ router.get(
     res.json({
       user: { id: user.id, name: user.name, email: user.email },
       activeCompanyId: auth.companyId,
+      mustChangePassword: req.mustChangePassword === true,
       memberships: memberships.map((m) => ({
         companyId: m.companyId,
         companyName: m.company.name,

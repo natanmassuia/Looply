@@ -12,11 +12,22 @@ export function makeRequireAuth(db: typeof prisma): RequestHandler {
       .then((result) => {
         if (!result) throw unauthorized();
         req.auth = result.auth;
+        req.mustChangePassword = result.mustChangePassword;
         next();
       })
       .catch(next);
   };
 }
+
+// Blocks normal operation until the forced password change is done.
+// Onboarding/auth endpoints stay reachable (mounted before this guard).
+export const requirePasswordChanged: RequestHandler = (req, _res, next) => {
+  if (req.mustChangePassword) {
+    next(forbidden("Troca de senha obrigatória pendente"));
+    return;
+  }
+  next();
+};
 
 export const requireAuth = makeRequireAuth(prisma);
 
@@ -36,6 +47,7 @@ declare global {
   namespace Express {
     interface Request {
       auth?: AuthContext;
+      mustChangePassword?: boolean;
     }
   }
 }
