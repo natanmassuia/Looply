@@ -7,9 +7,6 @@ validateEnv();
 
 const server = app.listen(env.PORT, () => {
   logger.info("server_started", { port: env.PORT, nodeEnv: env.NODE_ENV });
-  if (env.DEV_DEMO_USER) {
-    logger.warn("DEV_DEMO_USER=true — internal auth disabled (dev only)");
-  }
 });
 
 // Graceful shutdown: stop accepting connections, close HTTP, disconnect Prisma.

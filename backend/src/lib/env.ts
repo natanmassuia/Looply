@@ -19,7 +19,6 @@ export const env = {
   NODE_ENV: process.env.NODE_ENV ?? "development",
   PORT: Number(process.env.PORT ?? 4000),
   DATABASE_URL: process.env.DATABASE_URL,
-  DEV_DEMO_USER: (process.env.DEV_DEMO_USER ?? "true").toLowerCase() === "true",
   CORS_ORIGIN: process.env.CORS_ORIGIN ?? "http://localhost:5173",
   // Public frontend origin used to build client approval URLs (/approve/:token).
   PUBLIC_APP_URL: (process.env.PUBLIC_APP_URL ?? "http://localhost:5173").replace(/\/$/, ""),
@@ -40,12 +39,7 @@ export function validateEnv(): void {
   if (!Number.isFinite(port) || port <= 0 || port > 65535) {
     throw new Error(`Invalid PORT: ${process.env.PORT}`);
   }
-  const demoUser = (process.env.DEV_DEMO_USER ?? String(env.DEV_DEMO_USER)).toLowerCase() === "true";
-  const nodeEnv = process.env.NODE_ENV ?? env.NODE_ENV;
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
-  }
-  if (demoUser && nodeEnv === "production") {
-    throw new Error("DEV_DEMO_USER must not be enabled in production");
   }
 }

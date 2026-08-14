@@ -26,6 +26,7 @@ export class ApiError extends Error {
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
+    credentials: "include",
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     ...init,
   });
@@ -36,6 +37,43 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiError(res.status, msg, data?.error?.code);
   }
   return data as T;
+}
+
+// ── Auth ───────────────────────────────────────────────────────────────────
+export interface SessionMembership {
+  companyId: string;
+  companyName: string;
+  role: string;
+}
+
+export interface SessionInfo {
+  user: { id: string; name: string; email: string };
+  activeCompanyId: string;
+  memberships: SessionMembership[];
+}
+
+export function useLogin() {
+  return useMutation({
+    mutationFn: (body: { email: string; password: string }) =>
+      apiFetch<SessionInfo>("/api/auth/login", { method: "POST", body: JSON.stringify(body) }),
+  });
+}
+
+export function useLogout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch<{ ok: true }>("/api/auth/logout", { method: "POST" }),
+    onSuccess: () => qc.clear(),
+  });
+}
+
+export function useMe() {
+  return useQuery({
+    queryKey: ["me"],
+    queryFn: () => apiFetch<SessionInfo>("/api/auth/me"),
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
 }
 
 // ── Queries ────────────────────────────────────────────────────────────────

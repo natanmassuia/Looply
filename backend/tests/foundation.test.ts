@@ -23,7 +23,7 @@ describe("requestId middleware", () => {
 
 describe("error contract", () => {
   it("includes requestId in 404 error payload", async () => {
-    const res = await request(app).get("/api/does-not-exist");
+    const res = await request(app).get("/does-not-exist");
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("not_found");
     expect(res.body.error.requestId).toMatch(/^[A-Za-z0-9_-]{8,64}$/);

@@ -19,10 +19,9 @@ describe("validateEnv", () => {
     expect(() => validateEnv()).toThrow(/PORT/);
   });
 
-  it("throws when DEV_DEMO_USER is enabled in production", () => {
+  it("passes with valid env", () => {
     process.env.DATABASE_URL = "postgresql://x";
-    process.env.NODE_ENV = "production";
-    process.env.DEV_DEMO_USER = "true";
-    expect(() => validateEnv()).toThrow(/DEV_DEMO_USER/);
+    process.env.PORT = "4000";
+    expect(() => validateEnv()).not.toThrow();
   });
 });
