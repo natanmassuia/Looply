@@ -5,8 +5,12 @@ import { env } from "./lib/env";
 import { errorHandler, notFoundHandler } from "./lib/errors";
 import { requestId } from "./middleware/requestId";
 import { requestLogger } from "./middleware/requestLogger";
-import { requireAuth } from "./middleware/requireAuth";
+import { requireAuth, requirePasswordChanged } from "./middleware/requireAuth";
+import { requireWorkspaceActive } from "./middleware/requireWorkspaceActive";
 import authRouter from "./routes/auth";
+import onboardingRouter from "./routes/onboarding";
+import membersRouter from "./routes/members";
+import invitationsRouter from "./routes/invitations";
 import healthRouter from "./routes/health";
 import dashboardRouter from "./routes/dashboard";
 import clientsRouter from "./routes/clients";
@@ -25,13 +29,16 @@ app.use(requestLogger);
 
 app.use("/health", healthRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/onboarding", onboardingRouter);
+app.use("/api/invitations", invitationsRouter);
 
-// Everything below requires an authenticated session.
+// Everything below requires: session → password changed → workspace ACTIVE.
 // Public token endpoints (/api/public/*) stay open by design.
-app.use("/api", requireAuth);
+app.use("/api", requireAuth, requirePasswordChanged, requireWorkspaceActive);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/clients", clientsRouter);
 app.use("/api/team", teamRouter);
+app.use("/api/members", membersRouter);
 app.use("/api/contents", contentsRouter);
 app.use("/api/publications", publicationsRouter);
 app.use("/api/public/approvals", approvalsRouter);

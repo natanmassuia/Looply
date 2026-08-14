@@ -71,15 +71,16 @@ enum ApprovalStatus {
 // ── Models ─────────────────────────────────────────────────────────────
 
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  role         UserRole @default(EDITOR)
-  avatarUrl    String?
-  active       Boolean  @default(true)
-  passwordHash String?  // null until the user sets a password (demo users)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  name               String
+  email              String   @unique
+  role               UserRole @default(EDITOR)
+  avatarUrl          String?
+  active             Boolean  @default(true)
+  passwordHash       String?  // null until the user sets a password (demo users)
+  mustChangePassword Boolean  @default(false) // true after provisioning/invite temp credential
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   // content this user is responsible for
   responsibleFor Content[]   @relation("ContentResponsible")
@@ -87,6 +88,7 @@ model User {
   versions       ContentVersion[]
   memberships    CompanyMember[]
   sessions       Session[]
+  invitationsSent Invitation[] @relation("InvitationInviter")
 }
 
 // Tenant / workspace. Resources (Client, Content, ...) are NOT yet bound to
@@ -97,10 +99,20 @@ model Company {
   slug              String?          @unique
   workspaceTemplate WorkspaceTemplate?
   isActive          Boolean          @default(true)
+  // Onboarding data (B4). onboardedAt = null until guided onboarding completes.
+  legalName         String?
+  document          String?
+  email             String?
+  phone             String?
+  website           String?
+  timezone          String           @default("America/Sao_Paulo")
+  locale            String           @default("pt-BR")
+  onboardedAt       DateTime?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
-  members CompanyMember[]
+  members     CompanyMember[]
+  invitations Invitation[]
 }
 
 model CompanyMember {
@@ -134,6 +146,28 @@ model Session {
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
+}
+
+// Invitation to join a company. The token is random 256-bit; only its sha256
+// (id) is stored. Single-use, expiring, revocable. No public signup exists —
+// this is the only controlled path for new users besides Verbum provisioning.
+model Invitation {
+  id              String     @id @default(cuid()) // not the token; token is only in memory
+  companyId       String
+  email           String
+  role            MemberRole @default(MEMBER)
+  tokenHash       String     @unique // sha256(plaintext token)
+  invitedByUserId String
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime  @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+  invitedBy User  @relation("InvitationInviter", fields: [invitedByUserId], references: [id])
+
+  @@index([companyId])
+  @@index([email])
 }
 
 model Client {
