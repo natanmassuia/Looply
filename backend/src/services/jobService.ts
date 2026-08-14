@@ -1,8 +1,9 @@
 import type { DB } from "../lib/db";
 import { badRequest, conflict, notFound } from "../lib/errors";
 import { createActivity } from "./activityService";
-import { assertStageInWorkflow, ensureDefaultWorkflow } from "./workflowService";
+import { assertStageInWorkflow } from "./workflowService";
 import type { JobLifecycleStatus } from "@prisma/client";
+import { getWorkflow, ensureDefaultWorkflow } from "./workflowService";
 
 export interface CreateJobInput {
   title: string;
@@ -11,16 +12,101 @@ export interface CreateJobInput {
   format?: "POST" | "REELS" | "STORY" | "CAROUSEL" | "VIDEO" | "IMAGE";
 }
 
-export async function listJobs(db: DB, companyId: string) {
-  return db.job.findMany({
-    where: { companyId },
+export interface JobListQuery {
+  clientId?: string;
+  workflowId?: string;
+  stageId?: string;
+  lifecycleStatus?: JobLifecycleStatus;
+  search?: string;
+  sort?: "updatedAt" | "createdAt" | "title";
+  direction?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+}
+
+export async function listJobs(db: DB, companyId: string, query: JobListQuery = {}) {
+  const page = Math.max(1, query.page ?? 1);
+  const limit = Math.min(100, Math.max(1, query.limit ?? 50));
+  const where = {
+    companyId,
+    ...(query.clientId ? { clientId: query.clientId } : {}),
+    ...(query.workflowId ? { workflowId: query.workflowId } : {}),
+    ...(query.stageId ? { currentStageId: query.stageId } : {}),
+    ...(query.lifecycleStatus ? { lifecycleStatus: query.lifecycleStatus } : {}),
+    ...(query.search ? {
+      OR: [
+        { title: { contains: query.search, mode: "insensitive" as const } },
+        { client: { name: { contains: query.search, mode: "insensitive" as const } } },
+      ],
+    } : {}),
+  };
+  const orderBy = { [query.sort ?? "updatedAt"]: query.direction ?? "desc" } as const;
+  const [total, jobs] = await Promise.all([
+    db.job.count({ where }),
+    db.job.findMany({
+      where,
+      orderBy,
+      skip: (page - 1) * limit,
+      take: limit,
+      select: {
+        id: true,
+        title: true,
+        companyId: true,
+        client: { select: { id: true, name: true, brandColor: true } },
+        lifecycleStatus: true,
+        status: true,
+        workflow: { select: { id: true, name: true, template: true } },
+        currentStage: { select: { id: true, name: true, position: true, terminal: true } },
+        createdAt: true,
+        updatedAt: true,
+      },
+    }),
+  ]);
+  return { jobs, total, page, limit, pages: Math.ceil(total / limit) };
+}
+
+export async function getJobBoard(db: DB, companyId: string, workflowId?: string) {
+  const workflow = workflowId
+    ? await getWorkflow(db, companyId, workflowId)
+    : await ensureDefaultWorkflow(db, companyId);
+  const jobs = await db.job.findMany({
+    where: { companyId, workflowId: workflow.id },
     orderBy: { updatedAt: "desc" },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      companyId: true,
       client: { select: { id: true, name: true, brandColor: true } },
-      workflow: { select: { id: true, name: true, template: true } },
-      currentStage: { select: { id: true, name: true, position: true, terminal: true } },
+      lifecycleStatus: true,
+      status: true,
+      currentStageId: true,
+      updatedAt: true,
     },
   });
+  const grouped = workflow.stages.map((stage) => ({
+    id: stage.id,
+    name: stage.name,
+    position: stage.position,
+    terminal: stage.terminal,
+    count: jobs.filter((job) => job.currentStageId === stage.id).length,
+    jobs: jobs.filter((job) => job.currentStageId === stage.id),
+  }));
+  return {
+    workflow: { id: workflow.id, name: workflow.name, template: workflow.template },
+    stages: grouped,
+    unassignedCount: jobs.filter((job) => !job.currentStageId).length,
+  };
+}
+
+export async function getJobSummary(db: DB, companyId: string) {
+  const [byStage, byLifecycle] = await Promise.all([
+    db.job.groupBy({ by: ["currentStageId"], where: { companyId }, _count: { _all: true } }),
+    db.job.groupBy({ by: ["lifecycleStatus"], where: { companyId }, _count: { _all: true } }),
+  ]);
+  return {
+    byStage: byStage.map((row) => ({ stageId: row.currentStageId, count: row._count._all })),
+    byLifecycle: byLifecycle.map((row) => ({ lifecycleStatus: row.lifecycleStatus, count: row._count._all })),
+  };
 }
 
 export async function getJob(db: DB, companyId: string, jobId: string) {
