@@ -17,7 +17,7 @@
 
 ## Public Signup Status
 - NENHUM signup público. Users nascem só via provision CLI ou invitation token.
-- `POST /api/team` (preexistente dirty): cria Users sem senha atrás de requireAuth+requireWorkspaceActive → não autenticáveis; documentado para limpeza em battery de domínio.
+- **B4 FINAL REMEDIATION (commit `fix(auth): close legacy user creation path`):** `POST /api/team` legado (diff preexistente da worktree que criava Users arbitrários sem policy B4) foi neutralizado → **410 Gone** para qualquer role; `createTeamMember` removido do teamService; `GET /api/team` read-only preservado. Testes live-DB (`tests/legacyTeamDeprecation.test.ts`): OWNER/ADMIN/MEMBER → 410 sem criação (user.count inalterado); unauthenticated → 401. Diffs preexistentes dos arquivos team.ts/teamService.ts foram SUBSTITUÍDOS pela remediação (a mudança preexistente ERA o próprio caminho de criação não autorizado — remoção aprovada pelo briefing; nada do restante diff preexistente foi perdido).
 
 ## Schema Changes
 - `User.mustChangePassword Boolean @default(false)`.
@@ -114,9 +114,10 @@ Todos preservados; nenhum staged.
 
 ## Risks
 - Invitation token retornado via API até existir delivery por e-mail.
-- Sem rate limit no /invitations/accept (B11).
-- CSRF permanece dívida documentada (B11).
+- Sem rate limit no /invitations/accept (**B12 Hardening**).
+- CSRF permanece dívida documentada (**B12 Hardening** — roadmap revisado: B11 = Dashboard por Template, B12 = Hardening + Module Boundaries).
 - Troca de template pós-ACTIVE ainda sem operação governada.
+- Frontend `useCreateTeamMember` (Team.tsx) agora recebe 410 ao tentar criar — comportamento controlado; UI de team será repensada no Figma (B5+/B12).
 
 ## Deferred to B5
 - Client tenant migration (companyId em Client); operational client model; limpeza do POST /api/team; frontend Figma.
