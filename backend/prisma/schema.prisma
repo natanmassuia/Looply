@@ -62,6 +62,21 @@ enum ContentStatus {
   PUBLISHED
 }
 
+enum JobLifecycleStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ActivityType {
+  JOB_CREATED
+  JOB_UPDATED
+  JOB_STAGE_CHANGED
+  JOB_COMPLETED
+  JOB_CANCELLED
+}
+
 enum ApprovalStatus {
   PENDING
   APPROVED
@@ -83,9 +98,10 @@ model User {
   updatedAt          DateTime @updatedAt
 
   // content this user is responsible for
-  responsibleFor Content[]   @relation("ContentResponsible")
-  createdBy      Content[]   @relation("ContentCreator")
-  versions       ContentVersion[]
+  responsibleFor Job[]   @relation("JobResponsible")
+  createdBy      Job[]   @relation("JobCreator")
+  versions       JobVersion[]
+  activities     Activity[]
   memberships    CompanyMember[]
   sessions       Session[]
   invitationsSent Invitation[] @relation("InvitationInviter")
@@ -114,6 +130,9 @@ model Company {
   members     CompanyMember[]
   invitations Invitation[]
   clients     Client[]
+  jobs        Job[]
+  workflows   WorkflowDefinition[]
+  activities  Activity[]
 }
 
 model CompanyMember {
@@ -185,14 +204,15 @@ model Client {
   updatedAt          DateTime     @updatedAt
 
   company Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  content Content[]
+  jobs Job[]
 
   @@unique([companyId, name])
   @@index([companyId])
 }
 
-model Content {
+model Job {
   id             String        @id @default(cuid())
+  companyId      String
   title          String
   clientId       String
   parentId       String?
@@ -201,6 +221,9 @@ model Content {
   responsibleId  String?
   createdById    String?
   status         ContentStatus @default(DRAFT)
+  lifecycleStatus JobLifecycleStatus @default(OPEN)
+  workflowId     String?
+  currentStageId String?
   publicationTarget DateTime?   // intended pub date (editorial plan)
   scheduledAt    DateTime?      // set when SCHEDULED
   publishedAt    DateTime?      // set when PUBLISHED
@@ -208,21 +231,29 @@ model Content {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  client      Client           @relation(fields: [clientId], references: [id])
-  parent      Content?         @relation("ContentGroup", fields: [parentId], references: [id])
-  children    Content[]        @relation("ContentGroup")
-  responsible User?           @relation("ContentResponsible", fields: [responsibleId], references: [id])
-  createdBy   User?           @relation("ContentCreator", fields: [createdById], references: [id])
-  versions    ContentVersion[]
+  company     Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  client      Client           @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  parent      Job?             @relation("JobGroup", fields: [parentId], references: [id])
+  children    Job[]            @relation("JobGroup")
+  responsible User?            @relation("JobResponsible", fields: [responsibleId], references: [id])
+  createdBy   User?            @relation("JobCreator", fields: [createdById], references: [id])
+  versions    JobVersion[]
   approvals   Approval[]
+  workflow    WorkflowDefinition? @relation("WorkflowJobs", fields: [workflowId], references: [id])
+  currentStage WorkflowStage? @relation("JobCurrentStage", fields: [currentStageId], references: [id])
+  activities  Activity[]
 
+  @@index([companyId])
   @@index([clientId])
   @@index([status])
   @@index([responsibleId])
   @@index([parentId])
+  @@index([workflowId])
+  @@index([currentStageId])
+  @@map("Content")
 }
 
-model ContentVersion {
+model JobVersion {
   id          String   @id @default(cuid())
   contentId   String
   versionNumber Int
@@ -233,12 +264,64 @@ model ContentVersion {
   createdById String?
   createdAt   DateTime @default(now())
 
-  content    Content   @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  content    Job       @relation(fields: [contentId], references: [id], onDelete: Cascade)
   createdBy  User?     @relation(fields: [createdById], references: [id])
   approvals  Approval[]
 
   @@unique([contentId, versionNumber])
   @@index([contentId])
+  @@map("ContentVersion")
+}
+
+model WorkflowDefinition {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  template  WorkspaceTemplate
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  stages  WorkflowStage[]
+  jobs    Job[] @relation("WorkflowJobs")
+
+  @@unique([companyId])
+  @@index([companyId])
+}
+
+model WorkflowStage {
+  id         String   @id @default(cuid())
+  workflowId String
+  name       String
+  position   Int
+  terminal   Boolean  @default(false)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  workflow WorkflowDefinition @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  jobs     Job[] @relation("JobCurrentStage")
+
+  @@unique([workflowId, position])
+  @@index([workflowId])
+}
+
+model Activity {
+  id          String       @id @default(cuid())
+  companyId   String
+  jobId       String
+  actorUserId String?
+  type        ActivityType
+  metadata    Json?
+  createdAt   DateTime     @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  job     Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  actor   User?   @relation(fields: [actorUserId], references: [id])
+
+  @@index([companyId, jobId])
+  @@index([jobId, createdAt])
 }
 
 // One row per "send for approval" round. Tied to a specific version so
@@ -254,8 +337,8 @@ model Approval {
   clientReviewedAt DateTime?
   createdAt        DateTime       @default(now())
 
-  content   Content        @relation(fields: [contentId], references: [id], onDelete: Cascade)
-  version   ContentVersion @relation(fields: [contentVersionId], references: [id], onDelete: Cascade)
+  content   Job        @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  version   JobVersion @relation(fields: [contentVersionId], references: [id], onDelete: Cascade)
 
   @@index([contentId])
   @@index([contentVersionId])

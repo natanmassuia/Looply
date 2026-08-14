@@ -60,9 +60,9 @@ function makeFakeDB(seed: Array<Record<string, any>> = []) {
 
 function world() {
   return makeFakeDB([
-    { id: "a1", companyId: "cA", name: "Aurora A1", status: "ACTIVE", channels: [], _count: { content: 2 } },
-    { id: "a2", companyId: "cA", name: "Alfa A2", status: "INACTIVE", channels: [], _count: { content: 0 } },
-    { id: "b1", companyId: "cB", name: "Bravo B1", status: "ACTIVE", channels: [], _count: { content: 5 } },
+    { id: "a1", companyId: "cA", name: "Aurora A1", status: "ACTIVE", channels: [], _count: { jobs: 2 } },
+    { id: "a2", companyId: "cA", name: "Alfa A2", status: "INACTIVE", channels: [], _count: { jobs: 0 } },
+    { id: "b1", companyId: "cB", name: "Bravo B1", status: "ACTIVE", channels: [], _count: { jobs: 5 } },
   ]);
 }
 

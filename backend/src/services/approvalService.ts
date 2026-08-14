@@ -41,7 +41,7 @@ export async function approve(db: DB, token: string, input: ApproveInput) {
           clientReviewedAt: new Date(),
         },
       }),
-      tx.content.update({
+      tx.job.update({
         where: { id: approval.contentId },
         data: { status: "APPROVED" },
       }),
@@ -76,7 +76,7 @@ export async function requestChanges(
           clientReviewedAt: new Date(),
         },
       }),
-      tx.content.update({
+      tx.job.update({
         where: { id: approval.contentId },
         data: { status: "CHANGES_REQUESTED" },
       }),

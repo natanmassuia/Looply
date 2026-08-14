@@ -2,7 +2,7 @@ import type { DB } from "../lib/db";
 import { prisma } from "../lib/db";
 
 export async function getDashboard(db: DB = prisma) {
-  const grouped = await db.content.groupBy({
+  const grouped = await db.job.groupBy({
     by: ["status"],
     _count: { _all: true },
   });
@@ -13,10 +13,10 @@ export async function getDashboard(db: DB = prisma) {
 
   const [totalContents, totalClients, totalTeam, recentContents, awaiting, changes] =
     await Promise.all([
-      db.content.count(),
+      db.job.count(),
       db.client.count(),
       db.user.count(),
-      db.content.findMany({
+      db.job.findMany({
         take: 6,
         orderBy: { updatedAt: "desc" },
         include: {
@@ -24,8 +24,8 @@ export async function getDashboard(db: DB = prisma) {
           versions: { orderBy: { versionNumber: "desc" }, take: 1 },
         },
       }),
-      db.content.count({ where: { status: "AWAITING_CLIENT" } }),
-      db.content.count({ where: { status: "CHANGES_REQUESTED" } }),
+      db.job.count({ where: { status: "AWAITING_CLIENT" } }),
+      db.job.count({ where: { status: "CHANGES_REQUESTED" } }),
     ]);
 
   return {
