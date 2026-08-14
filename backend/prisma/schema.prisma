@@ -92,6 +92,7 @@ model Content {
   id             String        @id @default(cuid())
   title          String
   clientId       String
+  parentId       String?
   format         ContentFormat @default(POST)
   channel        String?
   responsibleId  String?
@@ -105,6 +106,8 @@ model Content {
   updatedAt      DateTime      @updatedAt
 
   client      Client           @relation(fields: [clientId], references: [id])
+  parent      Content?         @relation("ContentGroup", fields: [parentId], references: [id])
+  children    Content[]        @relation("ContentGroup")
   responsible User?           @relation("ContentResponsible", fields: [responsibleId], references: [id])
   createdBy   User?           @relation("ContentCreator", fields: [createdById], references: [id])
   versions    ContentVersion[]
@@ -113,6 +116,7 @@ model Content {
   @@index([clientId])
   @@index([status])
   @@index([responsibleId])
+  @@index([parentId])
 }
 
 model ContentVersion {
