@@ -1,4 +1,27 @@
 // Mirror of backend enums/types (kept as plain TS types — no runtime coupling).
+// Capability identifiers match backend registry (src/domain/capabilities.ts).
+// Frontend only models what the backend sends; never resolves template→matrix.
+export type Capability =
+  | "CLIENTS"
+  | "JOBS"
+  | "WORKFLOW"
+  | "KANBAN"
+  | "FILES"
+  | "APPROVAL"
+  | "CALENDAR"
+  | "ACTIVITY"
+  | "DASHBOARD";
+
+export type WorkspaceTemplate = "LOCAL_BUSINESS" | "HIGH_TICKET" | "MARKETING_AGENCY";
+
+export interface WorkspaceContext {
+  id: string;
+  name: string;
+  template: WorkspaceTemplate | null;
+  capabilities: Capability[];
+  status: "ACTIVE" | "UNCONFIGURED";
+}
+
 export type ContentStatus =
   | "DRAFT"
   | "IN_REVIEW"
