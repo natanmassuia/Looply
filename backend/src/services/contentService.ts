@@ -12,8 +12,13 @@ import {
 import type { CreateContentInput, CreateVersionInput, ScheduleInput } from "../lib/validation";
 import { randomToken } from "../lib/token";
 
-export async function createContent(db: DB, input: CreateContentInput, actorId?: string) {
-  const client = await db.client.findUnique({ where: { id: input.clientId } });
+export async function createContent(
+  db: DB,
+  input: CreateContentInput,
+  companyId: string,
+  actorId?: string,
+) {
+  const client = await db.client.findFirst({ where: { id: input.clientId, companyId } });
   if (!client) throw notFound("Cliente não encontrado");
 
   if (input.responsibleId) {

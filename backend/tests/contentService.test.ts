@@ -18,8 +18,8 @@ function makeFakeDB(): DB {
 
   const db: any = {
     client: {
-      findUnique: async ({ where }: any) =>
-        state.clients.find((c) => c.id === where.id || c.name === where.name) ?? null,
+      findFirst: async ({ where }: any) =>
+        state.clients.find((c) => c.id === where.id && c.companyId === where.companyId) ?? null,
     },
     user: {
       findUnique: async ({ where }: any) =>
@@ -87,10 +87,10 @@ const baseInput: CreateContentInput = {
 describe("contentService.createContent", () => {
   it("creates the content and an initial version #1 with status DRAFT", async () => {
     const db = makeFakeDB();
-    (db as any).__state.clients.push({ id: "client_1", name: "Restaurante Aurora" });
+    (db as any).__state.clients.push({ id: "client_1", companyId: "company_1", name: "Restaurante Aurora" });
     (db as any).__state.users.push({ id: "user_1", name: "Lucas" });
 
-    const created = (await createContent(db, baseInput)) as any;
+    const created = (await createContent(db, baseInput, "company_1")) as any;
     const versions = (db as any).__state.versions as any[];
 
     expect(created.status).toBe("DRAFT");
@@ -102,17 +102,17 @@ describe("contentService.createContent", () => {
 
   it("rejects when the client does not exist", async () => {
     const db = makeFakeDB();
-    await expect(createContent(db, baseInput)).rejects.toThrow();
+    await expect(createContent(db, baseInput, "company_1")).rejects.toThrow();
   });
 });
 
 describe("contentService.sendForApproval", () => {
   it("creates a PENDING approval bound to the LATEST version and moves to AWAITING_CLIENT", async () => {
     const db = makeFakeDB();
-    (db as any).__state.clients.push({ id: "client_1", name: "Aurora" });
+    (db as any).__state.clients.push({ id: "client_1", companyId: "company_1", name: "Aurora" });
     (db as any).__state.users.push({ id: "user_1", name: "Lucas" });
 
-    const created = (await createContent(db, baseInput)) as any;
+    const created = (await createContent(db, baseInput, "company_1")) as any;
     // bring to IN_REVIEW (legal prerequisite for send-approval)
     (db as any).__state.contents[0].status = "IN_REVIEW";
 

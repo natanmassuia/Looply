@@ -76,9 +76,10 @@ async function main() {
   // ── Clients ─────────────────────────────────────────────────────────
   const clients = {
     aurora: await db.client.upsert({
-      where: { name: "Restaurante Aurora" },
+      where: { companyId_name: { companyId: company.id, name: "Restaurante Aurora" } },
       update: {},
       create: {
+        companyId: company.id,
         name: "Restaurante Aurora",
         brandColor: "#c2410c",
         status: "ACTIVE",
@@ -89,9 +90,10 @@ async function main() {
       },
     }),
     move: await db.client.upsert({
-      where: { name: "Academia Move" },
+      where: { companyId_name: { companyId: company.id, name: "Academia Move" } },
       update: {},
       create: {
+        companyId: company.id,
         name: "Academia Move",
         brandColor: "#2563eb",
         status: "ACTIVE",
@@ -102,9 +104,10 @@ async function main() {
       },
     }),
     vitta: await db.client.upsert({
-      where: { name: "Clínica Vitta" },
+      where: { companyId_name: { companyId: company.id, name: "Clínica Vitta" } },
       update: {},
       create: {
+        companyId: company.id,
         name: "Clínica Vitta",
         brandColor: "#0d9488",
         status: "ACTIVE",
@@ -115,9 +118,10 @@ async function main() {
       },
     }),
     norte: await db.client.upsert({
-      where: { name: "Studio Norte" },
+      where: { companyId_name: { companyId: company.id, name: "Studio Norte" } },
       update: {},
       create: {
+        companyId: company.id,
         name: "Studio Norte",
         brandColor: "#7c3aed",
         status: "ACTIVE",
@@ -128,9 +132,10 @@ async function main() {
       },
     }),
     onze: await db.client.upsert({
-      where: { name: "Bistrô Onze" },
+      where: { companyId_name: { companyId: company.id, name: "Bistrô Onze" } },
       update: {},
       create: {
+        companyId: company.id,
         name: "Bistrô Onze",
         brandColor: "#db2777",
         status: "ACTIVE",

@@ -113,6 +113,7 @@ model Company {
 
   members     CompanyMember[]
   invitations Invitation[]
+  clients     Client[]
 }
 
 model CompanyMember {
@@ -172,6 +173,7 @@ model Invitation {
 
 model Client {
   id                 String       @id @default(cuid())
+  companyId          String
   name               String
   brandColor         String?
   status             ClientStatus @default(ACTIVE)
@@ -182,9 +184,11 @@ model Client {
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
   content Content[]
 
-  @@unique([name])
+  @@unique([companyId, name])
+  @@index([companyId])
 }
 
 model Content {
