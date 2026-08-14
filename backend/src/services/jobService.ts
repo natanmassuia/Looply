@@ -160,7 +160,14 @@ export async function updateJob(
   companyId: string,
   actorUserId: string,
   jobId: string,
-  input: { title?: string; notes?: string; clientId?: string; lifecycleStatus?: JobLifecycleStatus },
+  input: {
+    title?: string;
+    notes?: string;
+    clientId?: string;
+    lifecycleStatus?: JobLifecycleStatus;
+    publicationTarget?: string | null;
+    scheduledAt?: string | null;
+  },
 ) {
   const existing = await db.job.findFirst({ where: { id: jobId, companyId }, select: { id: true, clientId: true, lifecycleStatus: true } });
   if (!existing) throw notFound("Job não encontrado");
@@ -168,11 +175,19 @@ export async function updateJob(
     const client = await db.client.findFirst({ where: { id: input.clientId, companyId }, select: { id: true } });
     if (!client) throw notFound("Cliente não encontrado");
   }
+  const parseDate = (value: string | null | undefined) => {
+    if (value === undefined || value === null) return value;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) throw badRequest("Data inválida");
+    return date;
+  };
   const data = {
     ...(input.title === undefined ? {} : { title: input.title }),
     ...(input.notes === undefined ? {} : { notes: input.notes }),
     ...(input.clientId === undefined ? {} : { clientId: input.clientId }),
     ...(input.lifecycleStatus === undefined ? {} : { lifecycleStatus: input.lifecycleStatus }),
+    ...(input.publicationTarget === undefined ? {} : { publicationTarget: parseDate(input.publicationTarget) }),
+    ...(input.scheduledAt === undefined ? {} : { scheduledAt: parseDate(input.scheduledAt) }),
   };
   return db.$transaction(async (tx) => {
     const updated = await tx.job.updateMany({ where: { id: jobId, companyId }, data });
