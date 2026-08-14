@@ -20,6 +20,7 @@ import publicationsRouter from "./routes/publications";
 import approvalsRouter from "./routes/approvals";
 import jobsRouter from "./routes/jobs";
 import workflowsRouter from "./routes/workflows";
+import filesRouter from "./routes/files";
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use("/api/dashboard", dashboardRouter);
 app.use("/api/clients", clientsRouter);
 app.use("/api/jobs", jobsRouter);
 app.use("/api/workflows", workflowsRouter);
+app.use("/api", filesRouter);
 app.use("/api/team", teamRouter);
 app.use("/api/members", membersRouter);
 app.use("/api/contents", contentsRouter);

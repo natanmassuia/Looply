@@ -22,6 +22,13 @@ export const env = {
   CORS_ORIGIN: process.env.CORS_ORIGIN ?? "http://localhost:5173",
   // Public frontend origin used to build client approval URLs (/approve/:token).
   PUBLIC_APP_URL: (process.env.PUBLIC_APP_URL ?? "http://localhost:5173").replace(/\/$/, ""),
+  STORAGE_ENDPOINT: process.env.STORAGE_ENDPOINT,
+  STORAGE_REGION: process.env.STORAGE_REGION ?? "us-east-1",
+  STORAGE_BUCKET: process.env.STORAGE_BUCKET,
+  STORAGE_ACCESS_KEY: process.env.STORAGE_ACCESS_KEY,
+  STORAGE_SECRET_KEY: process.env.STORAGE_SECRET_KEY,
+  STORAGE_FORCE_PATH_STYLE: (process.env.STORAGE_FORCE_PATH_STYLE ?? "false").toLowerCase() === "true",
+  STORAGE_PRESIGN_TTL_SECONDS: Number(process.env.STORAGE_PRESIGN_TTL_SECONDS ?? 600),
 };
 
 export const isProd = env.NODE_ENV === "production";
