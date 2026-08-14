@@ -62,6 +62,11 @@ enum ContentStatus {
   PUBLISHED
 }
 
+enum AppointmentStatus {
+  SCHEDULED
+  CANCELLED
+}
+
 enum JobLifecycleStatus {
   OPEN
   IN_PROGRESS
@@ -125,6 +130,7 @@ model User {
   memberships    CompanyMember[]
   sessions       Session[]
   invitationsSent Invitation[] @relation("InvitationInviter")
+  createdAppointments Appointment[] @relation("AppointmentCreator")
 }
 
 // Tenant / workspace. Resources (Client, Content, ...) are NOT yet bound to
@@ -155,6 +161,7 @@ model Company {
   activities  Activity[]
   attachments JobAttachment[]
   approvals   Approval[]
+  appointments Appointment[]
 }
 
 model CompanyMember {
@@ -227,6 +234,7 @@ model Client {
 
   company Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
   jobs Job[]
+  appointments Appointment[]
 
   @@unique([companyId, name])
   @@index([companyId])
@@ -423,4 +431,24 @@ model ApprovalAttachment {
 
   @@id([approvalId, attachmentId])
   @@index([attachmentId])
+}
+
+model Appointment {
+  id              String            @id @default(cuid())
+  companyId       String
+  clientId        String?
+  title           String
+  description     String?
+  startsAt        DateTime
+  endsAt          DateTime?
+  status          AppointmentStatus @default(SCHEDULED)
+  createdByUserId String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  client    Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  createdBy User?   @relation("AppointmentCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, startsAt])
 }
