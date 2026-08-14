@@ -164,3 +164,13 @@ Zero mudanças. Não foram implementados month/week/agenda views, date picker, d
 - Sem Google/Outlook/ICS.
 - Dashboard pertence à B11.
 - CSRF/rate-limit hardening pertence à B12.
+
+## Appointment Projection (A1.2)
+
+O Calendar agora inclui a projeção de `Appointment` além de `Job`. 
+- **Event Type:** `APPOINTMENT`.
+- **Cancellation:** Somente status `SCHEDULED` são incluídos. `CANCELLED` são sumariamente ignorados do calendário.
+- **Interval Overlap:** O Calendar respeita interseção de intervalos de agendamentos (`startsAt < to && (endsAt == null || endsAt > from)`), tratando agendamentos com `endsAt` como blocos contínuos.
+- **Tenant Isolation:** Mantém total isolamento via `companyId`.
+- **Global Merge & Cap:** Consultas isoladas limitadas a 501 eventos por fonte garantem que a junção final, ordenada deterministicamente no backend, respeite com sucesso o teto inalterado de 500 eventos totais. O uso da flag `truncated` agora reflete estritamente se o total global ultrapassa 500 eventos.
+- **Performance bounds:** As consultas de origem (`Job` e `Appointment`) são independentes, com escopo e teto definidos, sem N+1. Tudo é integrado, ordenado e capado em memória limitada (máximo ~1000 elementos avaliados).

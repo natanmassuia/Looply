@@ -81,8 +81,79 @@ describe("Calendar pure range contract", () => {
       job: {
         findMany: async () => [{ id: "j1", title: "A", lifecycleStatus: "OPEN", publicationTarget: new Date("2026-08-20T00:00:00.000Z"), scheduledAt: new Date("2026-08-20T01:00:00.000Z"), client: { id: "c1", name: "C", brandColor: null }, currentStage: null }],
       },
+      appointment: {
+        findMany: async () => [{ id: "a1", title: "Appt 1", startsAt: new Date("2026-08-20T00:30:00.000Z"), client: { id: "c1", name: "C", brandColor: null } }],
+      },
     };
     const result = await getCalendar(db, "company-a", { from: "2026-08-20T00:00:00.000Z", to: "2026-08-20T01:00:00.000Z", clientId: "c1" });
-    expect(result.events.map((event) => event.type)).toEqual(["PUBLICATION_TARGET"]);
+    expect(result.events.map((event) => event.type)).toEqual(["PUBLICATION_TARGET", "APPOINTMENT"]);
+  });
+
+  it("limits globally to 500 events and sets truncated flag", async () => {
+    const jobsArr = Array.from({ length: 300 }).map((_, i) => ({ id: `j${i}`, title: `J${i}`, lifecycleStatus: "OPEN", publicationTarget: new Date("2026-08-20T00:00:00.000Z"), scheduledAt: null, client: null, currentStage: null }));
+    const apptsArr = Array.from({ length: 300 }).map((_, i) => ({ id: `a${i}`, title: `A${i}`, startsAt: new Date("2026-08-20T00:30:00.000Z"), client: null }));
+    
+    const db: any = {
+      company: { findUnique: async () => ({ timezone: "America/Sao_Paulo" }) },
+      job: { findMany: async () => jobsArr },
+      appointment: { findMany: async () => apptsArr },
+    };
+    const result = await getCalendar(db, "company-a", { from: "2026-08-20T00:00:00.000Z", to: "2026-08-20T01:00:00.000Z" });
+    expect(result.events.length).toBe(500);
+    expect(result.totalEvents).toBe(600);
+    expect(result.truncated).toBe(true);
+  });
+});
+
+describe.skipIf(!process.env.DATABASE_URL)("Calendar appointment integration", () => {
+  it("projects scheduled appointments respecting overlapping interval constraints", async () => {
+    const session = await login(prisma, "natan@looply.dev", "looply123");
+    
+    const client = await prisma.client.findFirst({ where: { companyId: session.user.companyId! } });
+    
+    // Create an appointment overlapping with the range
+    const appt = await prisma.appointment.create({
+      data: {
+        companyId: session.user.companyId!,
+        clientId: client?.id,
+        title: "Test Overlap Appointment",
+        startsAt: new Date("2026-08-20T09:00:00.000Z"),
+        endsAt: new Date("2026-08-20T11:00:00.000Z"),
+        status: "SCHEDULED"
+      }
+    });
+
+    const response = await request(app)
+      .get(`/api/calendar?from=2026-08-20T10:00:00.000Z&to=2026-08-20T12:00:00.000Z`)
+      .set("Cookie", `${SESSION_COOKIE}=${session.token}`);
+    
+    expect(response.status).toBe(200);
+    const event = response.body.events.find((e: any) => e.appointmentId === appt.id);
+    expect(event).toBeDefined();
+    expect(event.type).toBe("APPOINTMENT");
+    expect(event.title).toBe("Test Overlap Appointment");
+    
+    // Create a cancelled appointment
+    const cancelledAppt = await prisma.appointment.create({
+      data: {
+        companyId: session.user.companyId!,
+        title: "Test Cancelled",
+        startsAt: new Date("2026-08-20T10:30:00.000Z"),
+        status: "CANCELLED"
+      }
+    });
+    
+    const response2 = await request(app)
+      .get(`/api/calendar?from=2026-08-20T10:00:00.000Z&to=2026-08-20T12:00:00.000Z`)
+      .set("Cookie", `${SESSION_COOKIE}=${session.token}`);
+      
+    const cancelledEvent = response2.body.events.find((e: any) => e.appointmentId === cancelledAppt.id);
+    expect(cancelledEvent).toBeUndefined(); // Should not be returned
+
+    await logout(prisma, session.token);
+    
+    // cleanup
+    await prisma.appointment.delete({ where: { id: appt.id } });
+    await prisma.appointment.delete({ where: { id: cancelledAppt.id } });
   });
 });
