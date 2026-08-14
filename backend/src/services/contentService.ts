@@ -57,6 +57,7 @@ export async function listContents(db: DB, statusFilter?: ContentStatus) {
       client: { select: { id: true, name: true, brandColor: true } },
       responsible: { select: { id: true, name: true } },
       versions: { orderBy: { versionNumber: "desc" }, take: 1 },
+      children: { select: { id: true, title: true, status: true, format: true } },
     },
   });
 }
@@ -194,5 +195,40 @@ export async function listPublications(db: DB) {
       client: { select: { id: true, name: true, brandColor: true } },
       versions: { orderBy: { versionNumber: "desc" }, take: 1 },
     },
+  });
+}
+
+export async function groupContent(db: DB, childId: string, parentId: string) {
+  if (childId === parentId) throw badRequest("Um conteúdo não pode ser agrupado nele mesmo");
+
+  const child = await loadOr404(db, childId);
+  const parent = await loadOr404(db, parentId);
+
+  if (child.clientId !== parent.clientId) {
+    throw badRequest("Só é possível agrupar conteúdos da mesma empresa");
+  }
+
+  // Prevent circular grouping: parent cannot be a descendant of child
+  let current = parent;
+  while (current.parentId) {
+    if (current.parentId === childId) {
+      throw badRequest("Agrupamento circular não permitido");
+    }
+    current = await db.content.findUniqueOrThrow({ where: { id: current.parentId } });
+  }
+
+  return db.content.update({
+    where: { id: childId },
+    data: { parentId },
+  });
+}
+
+export async function ungroupContent(db: DB, childId: string) {
+  const child = await loadOr404(db, childId);
+  if (!child.parentId) throw badRequest("Este conteúdo não está agrupado");
+
+  return db.content.update({
+    where: { id: childId },
+    data: { parentId: null },
   });
 }

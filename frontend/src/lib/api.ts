@@ -178,6 +178,47 @@ export function useCreateVersion(id: string) {
   });
 }
 
+export function useGroupContent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ childId, parentId }: { childId: string; parentId: string }) =>
+      apiFetch(`/api/contents/${childId}/group`, {
+        method: "POST",
+        body: JSON.stringify({ parentId }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["contents"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useUngroupContent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (childId: string) =>
+      apiFetch(`/api/contents/${childId}/ungroup`, { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["contents"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export type UserRole = "ADMIN" | "CONTENT_MANAGER" | "EDITOR" | "SOCIAL_MEDIA" | "DESIGNER";
+
+export function useCreateTeamMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { name: string; email: string; role: UserRole; active?: boolean }) =>
+      apiFetch<User>("/api/team", { method: "POST", body: JSON.stringify(payload) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["team"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
 // ── Public approval actions ────────────────────────────────────────────────
 export function useApprovePublic(token: string) {
   const qc = useQueryClient();

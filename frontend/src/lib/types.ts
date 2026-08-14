@@ -67,6 +67,7 @@ export interface ContentListItem {
   id: string;
   title: string;
   clientId: string;
+  parentId?: string | null;
   format: ContentFormat;
   channel?: string | null;
   responsibleId?: string | null;
@@ -79,6 +80,7 @@ export interface ContentListItem {
   client?: { id: string; name: string; brandColor?: string | null };
   responsible?: { id: string; name: string } | null;
   versions?: ContentVersion[];
+  children?: { id: string; title: string; status: ContentStatus; format: ContentFormat }[];
 }
 
 export interface ContentDetail extends ContentListItem {
