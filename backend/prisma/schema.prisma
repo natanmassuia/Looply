@@ -75,6 +75,11 @@ enum ActivityType {
   JOB_STAGE_CHANGED
   JOB_COMPLETED
   JOB_CANCELLED
+  APPROVAL_REQUESTED
+  APPROVAL_APPROVED
+  APPROVAL_CHANGES_REQUESTED
+  APPROVAL_REJECTED
+  APPROVAL_REVOKED
 }
 
 enum FileStatus {
@@ -87,6 +92,14 @@ enum ApprovalStatus {
   PENDING
   APPROVED
   CHANGES_REQUESTED
+  REJECTED
+  REVOKED
+}
+
+enum ApprovalDecisionType {
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
 }
 
 // ── Models ─────────────────────────────────────────────────────────────
@@ -141,6 +154,7 @@ model Company {
   workflows   WorkflowDefinition[]
   activities  Activity[]
   attachments JobAttachment[]
+  approvals   Approval[]
 }
 
 model CompanyMember {
@@ -350,6 +364,7 @@ model JobAttachment {
   company    Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
   job        Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
   uploadedBy User?   @relation(fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  approvals  ApprovalAttachment[]
 
   @@index([companyId, jobId])
   @@index([jobId, status])
@@ -359,18 +374,53 @@ model JobAttachment {
 // history is preserved: v1 -> changes_requested, v2 -> approved.
 model Approval {
   id               String         @id @default(cuid())
+  companyId        String
   contentId        String
   contentVersionId String
-  token            String         @unique // random, non-sequential (crypto)
+  tokenHash        String         @unique
   status           ApprovalStatus @default(PENDING)
   feedback         String?        // client change-request text
   clientName       String?
   clientReviewedAt DateTime?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  decidedAt        DateTime?
   createdAt        DateTime       @default(now())
 
+  company   Company      @relation(fields: [companyId], references: [id], onDelete: Restrict)
   content   Job        @relation(fields: [contentId], references: [id], onDelete: Cascade)
   version   JobVersion @relation(fields: [contentVersionId], references: [id], onDelete: Cascade)
+  decisions ApprovalDecision[]
+  files     ApprovalAttachment[]
 
+  @@index([companyId, contentId])
   @@index([contentId])
   @@index([contentVersionId])
+}
+
+model ApprovalDecision {
+  id          String              @id @default(cuid())
+  approvalId  String
+  decision    ApprovalDecisionType
+  comment     String?
+  actorName   String?
+  actorEmail  String?
+  actorType   String              @default("PUBLIC")
+  createdAt   DateTime            @default(now())
+
+  approval Approval @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+
+  @@index([approvalId, createdAt])
+}
+
+model ApprovalAttachment {
+  approvalId   String
+  attachmentId String
+  createdAt    DateTime @default(now())
+
+  approval   Approval      @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+  attachment JobAttachment @relation(fields: [attachmentId], references: [id], onDelete: Restrict)
+
+  @@id([approvalId, attachmentId])
+  @@index([attachmentId])
 }
