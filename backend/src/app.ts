@@ -24,6 +24,7 @@ import filesRouter from "./routes/files";
 import approvalsInternalRouter from "./routes/approvalsInternal";
 import calendarRouter from "./routes/calendar";
 import appointmentsRouter from "./routes/appointments";
+import assistantRouter from "./routes/assistant";
 import { csrfOriginGuard } from "./middleware/csrf";
 
 const app = express();
@@ -54,6 +55,7 @@ app.use("/api", filesRouter);
 app.use("/api", approvalsInternalRouter);
 app.use("/api/calendar", calendarRouter);
 app.use("/api/appointments", appointmentsRouter);
+app.use("/api/assistant", assistantRouter);
 app.use("/api/team", teamRouter);
 app.use("/api/members", membersRouter);
 app.use("/api/contents", contentsRouter);
