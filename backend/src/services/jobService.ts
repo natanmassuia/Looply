@@ -24,6 +24,13 @@ export interface JobListQuery {
   limit?: number;
 }
 
+const LIFECYCLE_TRANSITIONS: Record<JobLifecycleStatus, readonly JobLifecycleStatus[]> = {
+  OPEN: ["IN_PROGRESS", "CANCELLED"],
+  IN_PROGRESS: ["COMPLETED", "CANCELLED"],
+  COMPLETED: [],
+  CANCELLED: [],
+};
+
 export async function listJobs(db: DB, companyId: string, query: JobListQuery = {}) {
   const page = Math.max(1, query.page ?? 1);
   const limit = Math.min(100, Math.max(1, query.limit ?? 50));
@@ -169,7 +176,7 @@ export async function updateJob(
     scheduledAt?: string | null;
   },
 ) {
-  const existing = await db.job.findFirst({ where: { id: jobId, companyId }, select: { id: true, clientId: true, lifecycleStatus: true } });
+  const existing = await db.job.findFirst({ where: { id: jobId, companyId }, select: { id: true, clientId: true } });
   if (!existing) throw notFound("Job não encontrado");
   if (input.clientId) {
     const client = await db.client.findFirst({ where: { id: input.clientId, companyId }, select: { id: true } });
@@ -185,7 +192,6 @@ export async function updateJob(
     ...(input.title === undefined ? {} : { title: input.title }),
     ...(input.notes === undefined ? {} : { notes: input.notes }),
     ...(input.clientId === undefined ? {} : { clientId: input.clientId }),
-    ...(input.lifecycleStatus === undefined ? {} : { lifecycleStatus: input.lifecycleStatus }),
     ...(input.publicationTarget === undefined ? {} : { publicationTarget: parseDate(input.publicationTarget) }),
     ...(input.scheduledAt === undefined ? {} : { scheduledAt: parseDate(input.scheduledAt) }),
   };
@@ -196,8 +202,45 @@ export async function updateJob(
       companyId,
       jobId,
       actorUserId,
-      type: input.lifecycleStatus === "COMPLETED" ? "JOB_COMPLETED" : input.lifecycleStatus === "CANCELLED" ? "JOB_CANCELLED" : "JOB_UPDATED",
+      type: "JOB_UPDATED",
       metadata: { fields: Object.keys(data) },
+    });
+    return tx.job.findFirst({ where: { id: jobId, companyId } });
+  });
+}
+
+export async function transitionJobLifecycle(
+  db: DB,
+  companyId: string,
+  actorUserId: string,
+  jobId: string,
+  targetStatus: JobLifecycleStatus,
+) {
+  const existing = await db.job.findFirst({
+    where: { id: jobId, companyId },
+    select: { id: true, companyId: true, lifecycleStatus: true },
+  });
+  if (!existing) throw notFound("Job não encontrado");
+  if (existing.lifecycleStatus === targetStatus) {
+    if (targetStatus === "CANCELLED") return existing;
+    throw conflict("Job já está neste lifecycle");
+  }
+  if (!LIFECYCLE_TRANSITIONS[existing.lifecycleStatus].includes(targetStatus)) {
+    throw conflict("Transição de lifecycle inválida");
+  }
+
+  return db.$transaction(async (tx) => {
+    const updated = await tx.job.updateMany({
+      where: { id: jobId, companyId, lifecycleStatus: existing.lifecycleStatus },
+      data: { lifecycleStatus: targetStatus },
+    });
+    if (updated.count === 0) throw notFound("Job não encontrado");
+    await createActivity(tx, {
+      companyId,
+      jobId,
+      actorUserId,
+      type: targetStatus === "COMPLETED" ? "JOB_COMPLETED" : targetStatus === "CANCELLED" ? "JOB_CANCELLED" : "JOB_UPDATED",
+      metadata: { fromLifecycleStatus: existing.lifecycleStatus, toLifecycleStatus: targetStatus },
     });
     return tx.job.findFirst({ where: { id: jobId, companyId } });
   });

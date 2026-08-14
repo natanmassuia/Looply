@@ -22,7 +22,6 @@ const updateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   notes: z.string().max(2000).optional(),
   clientId: z.string().min(1).max(64).optional(),
-  lifecycleStatus: z.enum(["OPEN", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).optional(),
   publicationTarget: z.string().datetime().nullable().optional(),
   scheduledAt: z.string().datetime().nullable().optional(),
 });
