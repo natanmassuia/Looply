@@ -163,10 +163,11 @@ async function main() {
   };
 
   async function makeContent(cfg: Cfg) {
-    const existing = await db.content.findFirst({ where: { title: cfg.title } });
+    const existing = await db.job.findFirst({ where: { title: cfg.title } });
     if (existing) return existing;
-    return db.content.create({
+    return db.job.create({
       data: {
+        companyId: company.id,
         title: cfg.title,
         clientId: cfg.client.id,
         format: cfg.format,
@@ -280,7 +281,7 @@ async function main() {
 
   // ── Approvals (public links) ────────────────────────────────────────
   const publicBase = (process.env.PUBLIC_APP_URL ?? "http://localhost:5173").replace(/\/$/, "");
-  const diaVersion = await db.contentVersion.findFirstOrThrow({
+  const diaVersion = await db.jobVersion.findFirstOrThrow({
     where: { contentId: diaDosPais.id },
     orderBy: { versionNumber: "desc" },
   });
@@ -299,7 +300,7 @@ async function main() {
   });
 
   // CHANGES_REQUESTED already decided on the tour content (history example).
-  const tourVersion = await db.contentVersion.findFirstOrThrow({
+  const tourVersion = await db.jobVersion.findFirstOrThrow({
     where: { contentId: tourUnidade.id },
     orderBy: { versionNumber: "desc" },
   });

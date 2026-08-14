@@ -22,8 +22,11 @@ import {
   ungroupContent,
 } from "../services/contentService";
 import { env } from "../lib/env";
+import { Capability } from "../domain/capabilities";
+import { requireCapability } from "../middleware/requireCapability";
 
 const router = Router();
+router.use(requireCapability(Capability.JOBS));
 
 router.get(
   "/",
@@ -32,7 +35,7 @@ router.get(
     if (status && !CONTENT_STATUSES.includes(status as ContentStatus)) {
       return res.status(400).json({ error: { code: "validation_error", message: "status inválido" } });
     }
-    const contents = await listContents(prisma, status as ContentStatus | undefined);
+    const contents = await listContents(prisma, req.auth!.companyId, status as ContentStatus | undefined);
     res.json({ contents });
   }),
 );
@@ -49,7 +52,7 @@ router.post(
 router.get(
   "/:id",
   asyncHandler(async (req, res) => {
-    const content = await getContent(prisma, req.params.id);
+    const content = await getContent(prisma, req.auth!.companyId, req.params.id);
     res.json(content);
   }),
 );
@@ -57,7 +60,7 @@ router.get(
 router.post(
   "/:id/review",
   asyncHandler(async (req, res) => {
-    const content = await moveToReview(prisma, req.params.id);
+    const content = await moveToReview(prisma, req.auth!.companyId, req.params.id);
     res.json(content);
   }),
 );
@@ -65,7 +68,7 @@ router.post(
 router.post(
   "/:id/send-approval",
   asyncHandler(async (req, res) => {
-    const { token } = await sendForApproval(prisma, req.params.id);
+    const { token } = await sendForApproval(prisma, req.auth!.companyId, req.params.id);
     res.json({
       token,
       approvalUrl: `${env.PUBLIC_APP_URL}/approve/${token}`,
@@ -77,7 +80,7 @@ router.post(
   "/:id/versions",
   asyncHandler(async (req, res) => {
     const input = parse(createVersionSchema, req.body);
-    const version = await createVersion(prisma, req.params.id, input);
+    const version = await createVersion(prisma, req.auth!.companyId, req.params.id, input, req.auth!.userId);
     res.status(201).json(version);
   }),
 );
@@ -86,7 +89,7 @@ router.post(
   "/:id/schedule",
   asyncHandler(async (req, res) => {
     const input = parse(scheduleSchema, req.body);
-    const content = await schedule(prisma, req.params.id, input);
+    const content = await schedule(prisma, req.auth!.companyId, req.params.id, input);
     res.json(content);
   }),
 );
@@ -94,7 +97,7 @@ router.post(
 router.post(
   "/:id/publish",
   asyncHandler(async (req, res) => {
-    const content = await publish(prisma, req.params.id);
+    const content = await publish(prisma, req.auth!.companyId, req.params.id);
     res.json(content);
   }),
 );
@@ -111,19 +114,19 @@ router.patch(
     if (!parsed.success) {
       throw badRequest("Status inválido");
     }
-    const content = await prisma.content.findUnique({ where: { id: req.params.id } });
+    const content = await prisma.job.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
     if (!content) throw badRequest("Conteúdo não encontrado");
 
     const newStatus = parsed.data.status as ContentStatus;
 
     // Move parent + all children to the same column (cards move together)
     await prisma.$transaction([
-      prisma.content.update({
-        where: { id: req.params.id },
+      prisma.job.update({
+        where: { id: req.params.id, companyId: req.auth!.companyId },
         data: { status: newStatus },
       }),
-      prisma.content.updateMany({
-        where: { parentId: req.params.id },
+      prisma.job.updateMany({
+        where: { parentId: req.params.id, companyId: req.auth!.companyId },
         data: { status: newStatus },
       }),
     ]);
@@ -139,7 +142,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const parsed = groupSchema.safeParse(req.body);
     if (!parsed.success) throw badRequest("parentId é obrigatório");
-    const result = await groupContent(prisma, req.params.id, parsed.data.parentId);
+    const result = await groupContent(prisma, req.auth!.companyId, req.params.id, parsed.data.parentId);
     res.json(result);
   }),
 );
@@ -148,7 +151,7 @@ router.post(
 router.post(
   "/:id/ungroup",
   asyncHandler(async (req, res) => {
-    const result = await ungroupContent(prisma, req.params.id);
+    const result = await ungroupContent(prisma, req.auth!.companyId, req.params.id);
     res.json(result);
   }),
 );

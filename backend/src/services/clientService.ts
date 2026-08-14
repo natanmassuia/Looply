@@ -19,7 +19,7 @@ export async function listClients(db: DB, companyId: string, opts?: { status?: s
     },
     orderBy: { name: "asc" },
     include: {
-      _count: { select: { content: { where: { status: { in: ACTIVE_CONTENT_STATUSES as never } } } } },
+      _count: { select: { jobs: { where: { status: { in: ACTIVE_CONTENT_STATUSES as never } } } } },
     },
   });
   return clients.map((c) => ({
@@ -31,7 +31,7 @@ export async function listClients(db: DB, companyId: string, opts?: { status?: s
     primaryContactEmail: c.primaryContactEmail,
     primaryContactPhone: c.primaryContactPhone,
     channels: c.channels,
-    activeContents: c._count.content,
+    activeContents: c._count.jobs,
     createdAt: c.createdAt,
   }));
 }
@@ -40,7 +40,7 @@ export async function getClient(db: DB, companyId: string, id: string) {
   const client = await db.client.findFirst({
     where: { id, companyId },
     include: {
-      content: {
+      jobs: {
         orderBy: { updatedAt: "desc" },
         include: { versions: { orderBy: { versionNumber: "desc" }, take: 1 } },
       },
@@ -108,10 +108,10 @@ export async function updateClient(db: DB, companyId: string, id: string, input:
 export async function deleteClient(db: DB, companyId: string, id: string) {
   const existing = await db.client.findFirst({
     where: { id, companyId },
-    select: { id: true, _count: { select: { content: true } } },
+    select: { id: true, _count: { select: { jobs: true } } },
   });
   if (!existing) throw notFound("Cliente não encontrado");
-  if (existing._count.content > 0) {
+  if (existing._count.jobs > 0) {
     throw new AppError(409, "Cliente possui conteúdos vinculados — desative-o em vez de excluir", "conflict");
   }
   const deleted = await db.client.deleteMany({ where: { id, companyId } });
