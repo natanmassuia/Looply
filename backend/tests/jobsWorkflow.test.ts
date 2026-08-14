@@ -113,10 +113,44 @@ describe.skipIf(!process.env.DATABASE_URL)("Jobs + Workflow + Activity", () => {
       request(app).get("/api/jobs").set("Cookie", `${SESSION_COOKIE}=${a.token}`),
       request(app).get("/api/jobs").set("Cookie", `${SESSION_COOKIE}=${b.token}`),
     ]);
-    expect(ra.body.jobs.every((j: any) => j.companyId === a.user.companyId)).toBe(true);
-    expect(rb.body.jobs.every((j: any) => j.companyId === b.user.companyId)).toBe(true);
-    expect(ra.body.jobs.map((j: any) => j.id).filter((id: string) => rb.body.jobs.some((j: any) => j.id === id))).toEqual([]);
+    expect(ra.body.jobs.jobs.every((j: any) => j.companyId === a.user.companyId)).toBe(true);
+    expect(rb.body.jobs.jobs.every((j: any) => j.companyId === b.user.companyId)).toBe(true);
+    expect(ra.body.jobs.jobs.map((j: any) => j.id).filter((id: string) => rb.body.jobs.jobs.some((j: any) => j.id === id))).toEqual([]);
     await Promise.all([logout(prisma, a.token), logout(prisma, b.token)]);
+  });
+
+  it("list supports bounded filters and summary counts stay tenant-scoped", async () => {
+    const a = await login(prisma, emailA, "looply123");
+    const filtered = await request(app)
+      .get("/api/jobs?lifecycleStatus=OPEN&sort=title&direction=asc&page=1&limit=2")
+      .set("Cookie", `${SESSION_COOKIE}=${a.token}`);
+    expect(filtered.status).toBe(200);
+    expect(filtered.body.jobs.limit).toBe(2);
+    expect(filtered.body.jobs.jobs.length).toBeLessThanOrEqual(2);
+    expect(filtered.body.jobs.jobs.every((job: any) => job.companyId === a.user.companyId)).toBe(true);
+
+    const summary = await request(app).get("/api/jobs/summary").set("Cookie", `${SESSION_COOKIE}=${a.token}`);
+    expect(summary.status).toBe(200);
+    expect(summary.body.byStage.reduce((sum: number, row: any) => sum + row.count, 0)).toBeGreaterThan(0);
+    await logout(prisma, a.token);
+  });
+
+  it("board is a read-only stage projection and respects KANBAN capability", async () => {
+    const a = await login(prisma, emailA, "looply123");
+    const boardA = await request(app).get("/api/jobs/board").set("Cookie", `${SESSION_COOKIE}=${a.token}`);
+    expect(boardA.status).toBe(200);
+    expect(boardA.body.stages.length).toBeGreaterThan(0);
+    const returnedJobs = boardA.body.stages.flatMap((stage: any) => stage.jobs);
+    expect(new Set(returnedJobs.map((job: any) => job.id)).size).toBe(returnedJobs.length);
+    for (const stage of boardA.body.stages) {
+      expect(stage.jobs.every((job: any) => job.currentStageId === stage.id)).toBe(true);
+    }
+    await logout(prisma, a.token);
+
+    const b = await login(prisma, emailB, "senha-definitiva-123");
+    const boardB = await request(app).get("/api/jobs/board").set("Cookie", `${SESSION_COOKIE}=${b.token}`);
+    expect(boardB.status).toBe(403); // HIGH_TICKET has JOBS/WORKFLOW, not KANBAN
+    await logout(prisma, b.token);
   });
 
   afterAll(async () => {
