@@ -77,6 +77,12 @@ enum ActivityType {
   JOB_CANCELLED
 }
 
+enum FileStatus {
+  PENDING
+  AVAILABLE
+  FAILED
+}
+
 enum ApprovalStatus {
   PENDING
   APPROVED
@@ -102,6 +108,7 @@ model User {
   createdBy      Job[]   @relation("JobCreator")
   versions       JobVersion[]
   activities     Activity[]
+  attachments    JobAttachment[]
   memberships    CompanyMember[]
   sessions       Session[]
   invitationsSent Invitation[] @relation("InvitationInviter")
@@ -133,6 +140,7 @@ model Company {
   jobs        Job[]
   workflows   WorkflowDefinition[]
   activities  Activity[]
+  attachments JobAttachment[]
 }
 
 model CompanyMember {
@@ -242,6 +250,7 @@ model Job {
   workflow    WorkflowDefinition? @relation("WorkflowJobs", fields: [workflowId], references: [id])
   currentStage WorkflowStage? @relation("JobCurrentStage", fields: [currentStageId], references: [id])
   activities  Activity[]
+  attachments JobAttachment[]
 
   @@index([companyId])
   @@index([clientId])
@@ -322,6 +331,28 @@ model Activity {
 
   @@index([companyId, jobId])
   @@index([jobId, createdAt])
+}
+
+model JobAttachment {
+  id               String     @id @default(cuid())
+  companyId        String
+  jobId            String
+  uploadedByUserId String?
+  storageKey       String     @unique
+  originalName     String
+  contentType      String
+  sizeBytes        Int
+  status           FileStatus @default(PENDING)
+  etag             String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  job        Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  uploadedBy User?   @relation(fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, jobId])
+  @@index([jobId, status])
 }
 
 // One row per "send for approval" round. Tied to a specific version so
