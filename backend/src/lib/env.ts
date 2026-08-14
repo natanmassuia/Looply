@@ -30,6 +30,9 @@ export const env = {
   STORAGE_FORCE_PATH_STYLE: (process.env.STORAGE_FORCE_PATH_STYLE ?? "false").toLowerCase() === "true",
   STORAGE_PRESIGN_TTL_SECONDS: Number(process.env.STORAGE_PRESIGN_TTL_SECONDS ?? 600),
   TRUST_PROXY: (process.env.TRUST_PROXY ?? "false").toLowerCase() === "true",
+  ASSISTANT_LLM_BASE_URL: process.env.ASSISTANT_LLM_BASE_URL,
+  ASSISTANT_LLM_API_KEY: process.env.ASSISTANT_LLM_API_KEY,
+  ASSISTANT_LLM_MODEL: process.env.ASSISTANT_LLM_MODEL,
 };
 
 export const isProd = env.NODE_ENV === "production";
