@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useContents, useClients, useGroupContent } from "../lib/api";
+import { useContents, useClients, useGroupContent, apiFetch } from "../lib/api";
 import { STATUS_LABEL, FORMAT_LABEL, relativeTime } from "../lib/format";
 import type { ContentStatus, ContentListItem } from "../lib/types";
 import { EmptyState, ErrorState, PageHeader, Spinner } from "../components/common";
@@ -152,17 +152,15 @@ export default function ContentsList() {
     const key = `${fromStatus}-${targetStatus}`;
     const endpoint = ENDPOINT_MAP[key];
     try {
-      let res;
       if (endpoint) {
-        res = await fetch(`/api/contents/${id}${endpoint}`, { method: "POST" });
+        await apiFetch(`/api/contents/${id}${endpoint}`, { method: "POST" });
       } else {
-        res = await fetch(`/api/contents/${id}/status`, {
+        await apiFetch(`/api/contents/${id}/status`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: targetStatus }),
+          body: { status: targetStatus },
         });
       }
-      if (res.ok) refetch();
+      refetch();
     } catch { /* */ }
   }, [draggedId, data, refetch, resetGroup, groupMutation]);
 

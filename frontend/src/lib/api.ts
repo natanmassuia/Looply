@@ -7,36 +7,95 @@ import {
 import type {
   Dashboard,
   Client,
-  User,
   ContentListItem,
   ContentDetail,
   ContentStatus,
   ContentVersion,
+  User,
+  WorkspaceContext,
 } from "./types";
 
 // Relative in dev (Vite proxies /api → backend). Override with VITE_API_URL.
 const BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string, public code?: string) {
+  constructor(
+    public status: number,
+    message: string,
+    public code?: string,
+    public retryAfterSeconds?: number,
+  ) {
     super(message);
     this.name = "ApiError";
   }
 }
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+// Backend sends Retry-After (seconds) on 429. Parse defensively.
+function parseRetryAfter(res: Response): number | undefined {
+  const raw = res.headers.get("retry-after");
+  if (raw === null) return undefined;
+  const seconds = Number(raw);
+  return Number.isFinite(seconds) && seconds >= 0 ? Math.floor(seconds) : undefined;
+}
+
+export interface ApiFetchOptions {
+  method?: string;
+  body?: unknown;
+  signal?: AbortSignal;
+  headers?: Record<string, string>;
+}
+
+export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+  // Shared client for every domain call — no direct fetch bypasses.
+  const { method, body, signal, headers } = options;
+  const init: RequestInit = {
+    method,
+    signal,
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-    ...init,
-  });
+    headers: {
+      // JSON content-type only when a JSON body is sent.
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...(headers ?? {}),
+    },
+  };
+  if (body !== undefined) init.body = JSON.stringify(body);
+
+  const res = await fetch(`${BASE}${path}`, init);
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+
   if (!res.ok) {
-    const msg = data?.error?.message ?? `Erro ${res.status}`;
-    throw new ApiError(res.status, msg, data?.error?.code);
+    let code: string | undefined;
+    let message = `Erro ${res.status}`;
+    if (text) {
+      try {
+        const parsed = JSON.parse(text) as { error?: { code?: string; message?: string } };
+        code = parsed.error?.code;
+        message = parsed.error?.message ?? message;
+      } catch {
+        // Non-JSON error body: keep generic message, never leak raw body.
+      }
+    }
+    throw new ApiError(res.status, message, code, parseRetryAfter(res));
   }
-  return data as T;
+
+  // 204 / empty body → null as T.
+  if (res.status === 204 || text === "") return null as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    // Non-JSON success body: return raw text.
+    return text as unknown as T;
+  }
+}
+
+// TanStack Query retry policy: never retry 4xx (client errors are deterministic);
+// allow one retry for transient server/network failures.
+const NO_RETRY_STATUSES = [400, 401, 403, 404, 409, 413, 429];
+
+export function shouldRetry(failureCount: number, error: unknown): boolean {
+  if (failureCount >= 1) return false;
+  if (error instanceof ApiError) return !NO_RETRY_STATUSES.includes(error.status);
+  return true; // network errors
 }
 
 // ── Auth ───────────────────────────────────────────────────────────────────
@@ -49,13 +108,15 @@ export interface SessionMembership {
 export interface SessionInfo {
   user: { id: string; name: string; email: string };
   activeCompanyId: string;
+  mustChangePassword: boolean;
   memberships: SessionMembership[];
+  workspace: WorkspaceContext | null;
 }
 
 export function useLogin() {
   return useMutation({
     mutationFn: (body: { email: string; password: string }) =>
-      apiFetch<SessionInfo>("/api/auth/login", { method: "POST", body: JSON.stringify(body) }),
+      apiFetch<SessionInfo>("/api/auth/login", { method: "POST", body }),
   });
 }
 
@@ -143,7 +204,7 @@ export function useWorkflowAction(pathBuilder: (id: string) => string) {
     mutationFn: ({ id, body }: { id: string; body?: unknown }) =>
       apiFetch(pathBuilder(id), {
         method: "POST",
-        body: body ? JSON.stringify(body) : undefined,
+        body: body ?? undefined,
       }),
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ["content", vars.id] });
@@ -173,7 +234,7 @@ export function useCreateContent() {
     mutationFn: (payload: CreateContentPayload) =>
       apiFetch<ContentListItem>("/api/contents", {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: payload,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contents"] });
@@ -192,7 +253,7 @@ export function useCreateClient() {
       primaryContactEmail?: string;
       primaryContactPhone?: string;
       channels?: string[];
-    }) => apiFetch<Client>("/api/clients", { method: "POST", body: JSON.stringify(payload) }),
+    }) => apiFetch<Client>("/api/clients", { method: "POST", body: payload }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["clients"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
@@ -206,7 +267,7 @@ export function useCreateVersion(id: string) {
     mutationFn: (body: { caption: string; mediaUrl?: string; mediaType?: string; changeNote?: string }) =>
       apiFetch<ContentVersion>(`/api/contents/${id}/versions`, {
         method: "POST",
-        body: JSON.stringify(body),
+        body,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["content", id] });
@@ -222,7 +283,7 @@ export function useGroupContent() {
     mutationFn: ({ childId, parentId }: { childId: string; parentId: string }) =>
       apiFetch(`/api/contents/${childId}/group`, {
         method: "POST",
-        body: JSON.stringify({ parentId }),
+        body: { parentId },
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contents"] });
@@ -249,7 +310,7 @@ export function useCreateTeamMember() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: { name: string; email: string; role: UserRole; active?: boolean }) =>
-      apiFetch<User>("/api/team", { method: "POST", body: JSON.stringify(payload) }),
+      apiFetch<User>("/api/team", { method: "POST", body: payload }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["team"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
@@ -264,7 +325,7 @@ export function useApprovePublic(token: string) {
     mutationFn: (body: { reviewerName?: string }) =>
       apiFetch(`/api/public/approvals/${token}/approve`, {
         method: "POST",
-        body: JSON.stringify(body),
+        body,
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["approval", token] }),
   });
@@ -276,7 +337,7 @@ export function useRequestChangesPublic(token: string) {
     mutationFn: (body: { feedback: string; reviewerName?: string }) =>
       apiFetch(`/api/public/approvals/${token}/request-changes`, {
         method: "POST",
-        body: JSON.stringify(body),
+        body,
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["approval", token] }),
   });
