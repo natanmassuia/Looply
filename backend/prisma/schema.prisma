@@ -29,6 +29,14 @@ enum MemberRole {
   MEMBER
 }
 
+// Workspace operational profile. Chosen during onboarding (B4);
+// null = workspace provisioned but not yet configured.
+enum WorkspaceTemplate {
+  LOCAL_BUSINESS
+  HIGH_TICKET
+  MARKETING_AGENCY
+}
+
 enum ClientStatus {
   ACTIVE
   INACTIVE
@@ -84,12 +92,13 @@ model User {
 // Tenant / workspace. Resources (Client, Content, ...) are NOT yet bound to
 // Company — that lands per domain battery (B4/B5+).
 model Company {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String?  @unique
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String           @id @default(cuid())
+  name              String
+  slug              String?          @unique
+  workspaceTemplate WorkspaceTemplate?
+  isActive          Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   members CompanyMember[]
 }
