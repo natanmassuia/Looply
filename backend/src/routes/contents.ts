@@ -41,7 +41,7 @@ router.post(
   "/",
   asyncHandler(async (req, res) => {
     const input = parse(createContentSchema, req.body);
-    const content = await createContent(prisma, input);
+    const content = await createContent(prisma, input, req.auth!.companyId, req.auth!.userId);
     res.status(201).json(content);
   }),
 );
