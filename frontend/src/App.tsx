@@ -8,12 +8,15 @@ import Calendar from "./features/Calendar";
 import Clients from "./features/Clients";
 import Team from "./features/Team";
 import PublicApproval from "./features/PublicApproval";
+import Login, { ProtectedRoute } from "./features/Login";
 
 export default function App() {
   return (
     <Routes>
-      {/* Internal application shell (sidebar + layout) */}
-      <Route element={<AppLayout />}>
+      <Route path="/login" element={<Login />} />
+
+      {/* Internal application shell (sidebar + layout), session required */}
+      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/contents" element={<ContentsList />} />
         <Route path="/contents/new" element={<NewContent />} />

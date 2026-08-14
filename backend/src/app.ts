@@ -5,6 +5,8 @@ import { env } from "./lib/env";
 import { errorHandler, notFoundHandler } from "./lib/errors";
 import { requestId } from "./middleware/requestId";
 import { requestLogger } from "./middleware/requestLogger";
+import { requireAuth } from "./middleware/requireAuth";
+import authRouter from "./routes/auth";
 import healthRouter from "./routes/health";
 import dashboardRouter from "./routes/dashboard";
 import clientsRouter from "./routes/clients";
@@ -22,6 +24,11 @@ app.use(requestId);
 app.use(requestLogger);
 
 app.use("/health", healthRouter);
+app.use("/api/auth", authRouter);
+
+// Everything below requires an authenticated session.
+// Public token endpoints (/api/public/*) stay open by design.
+app.use("/api", requireAuth);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/clients", clientsRouter);
 app.use("/api/team", teamRouter);

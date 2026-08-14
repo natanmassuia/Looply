@@ -11,9 +11,12 @@ describe("GET /health", () => {
     expect(res.body.time).toBeTruthy();
   });
 
-  it("returns 404 for unknown routes (json error, no leak)", async () => {
+  it("returns 401 for unknown /api routes without a session (auth wall), 404 elsewhere", async () => {
     const res = await request(app).get("/api/does-not-exist");
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
     expect(res.body.error).toBeDefined();
+    const res2 = await request(app).get("/does-not-exist");
+    expect(res2.status).toBe(404);
+    expect(res2.body.error).toBeDefined();
   });
 });

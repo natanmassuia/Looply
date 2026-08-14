@@ -4,6 +4,7 @@
 // dashboard, contents overview, calendar, clients and team are meaningful.
 import { PrismaClient, ContentStatus, ApprovalStatus } from "@prisma/client";
 import { randomBytes } from "node:crypto";
+import { hashPassword } from "./lib/password";
 
 const db = new PrismaClient();
 
@@ -17,34 +18,54 @@ function daysFromNow(days: number, hour = 12): Date {
 }
 
 async function main() {
+  // ── Company (tenant) ────────────────────────────────────────────────
+  const company = await db.company.upsert({
+    where: { slug: "looply-studio" },
+    update: {},
+    create: { name: "Looply Studio", slug: "looply-studio", isActive: true },
+  });
+
+  // Demo login password for ALL seeded users (dev only): looply123
+  const demoHash = await hashPassword("looply123");
+
   // ── Team ────────────────────────────────────────────────────────────
   const users = {
     natan: await db.user.upsert({
       where: { email: "natan@looply.dev" },
-      update: {},
-      create: { name: "Natan Massuia", email: "natan@looply.dev", role: "ADMIN", active: true },
+      update: { passwordHash: demoHash },
+      create: { name: "Natan Massuia", email: "natan@looply.dev", role: "ADMIN", active: true, passwordHash: demoHash },
     }),
     marina: await db.user.upsert({
       where: { email: "marina@looply.dev" },
-      update: {},
-      create: { name: "Marina Lopes", email: "marina@looply.dev", role: "CONTENT_MANAGER", active: true },
+      update: { passwordHash: demoHash },
+      create: { name: "Marina Lopes", email: "marina@looply.dev", role: "CONTENT_MANAGER", active: true, passwordHash: demoHash },
     }),
     joao: await db.user.upsert({
       where: { email: "joao@looply.dev" },
-      update: {},
-      create: { name: "João Silva", email: "joao@looply.dev", role: "EDITOR", active: true },
+      update: { passwordHash: demoHash },
+      create: { name: "João Silva", email: "joao@looply.dev", role: "EDITOR", active: true, passwordHash: demoHash },
     }),
     ana: await db.user.upsert({
       where: { email: "ana@looply.dev" },
-      update: {},
-      create: { name: "Ana Costa", email: "ana@looply.dev", role: "SOCIAL_MEDIA", active: true },
+      update: { passwordHash: demoHash },
+      create: { name: "Ana Costa", email: "ana@looply.dev", role: "SOCIAL_MEDIA", active: true, passwordHash: demoHash },
     }),
     lucas: await db.user.upsert({
       where: { email: "lucas@looply.dev" },
-      update: {},
-      create: { name: "Lucas Prado", email: "lucas@looply.dev", role: "DESIGNER", active: true },
+      update: { passwordHash: demoHash },
+      create: { name: "Lucas Prado", email: "lucas@looply.dev", role: "DESIGNER", active: true, passwordHash: demoHash },
     }),
   };
+
+  // ── Memberships (all demo users belong to the demo company) ─────────
+  for (const [key, u] of Object.entries(users)) {
+    const role = key === "natan" ? "OWNER" : "MEMBER";
+    await db.companyMember.upsert({
+      where: { userId_companyId: { userId: u.id, companyId: company.id } },
+      update: { role },
+      create: { userId: u.id, companyId: company.id, role, isActive: true },
+    });
+  }
 
   // ── Clients ─────────────────────────────────────────────────────────
   const clients = {
