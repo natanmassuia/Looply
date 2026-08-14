@@ -54,6 +54,7 @@ describe("Dashboard capability side-channel", () => {
       },
       workflowStage: { findMany: async () => [] },
       activity: { findMany: async () => [] },
+      appointment: { findMany: async () => [] },
       approval: { count: async () => { calls.push("approval"); throw new Error("should not query approval"); } },
     };
     const dashboard = await getDashboardForCompany(db, "c1", new Date("2026-08-14T00:00:00.000Z"));

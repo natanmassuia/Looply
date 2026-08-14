@@ -55,7 +55,28 @@ export async function getCalendar(db: DB, companyId: string, query: CalendarQuer
     },
   });
 
-  const events = jobs.flatMap((job) => {
+  const appointments = await db.appointment.findMany({
+    where: {
+      companyId,
+      status: "SCHEDULED",
+      ...(query.clientId ? { clientId: query.clientId } : {}),
+      startsAt: { lt: to },
+      OR: [
+        { endsAt: null },
+        { endsAt: { gt: from } },
+      ],
+    },
+    orderBy: { startsAt: "asc" },
+    take: MAX_EVENTS + 1,
+    select: {
+      id: true,
+      title: true,
+      startsAt: true,
+      client: { select: { id: true, name: true, brandColor: true } },
+    },
+  });
+
+  const events: any[] = jobs.flatMap((job) => {
     const projected = [];
     if (job.publicationTarget && job.publicationTarget >= from && job.publicationTarget < to) {
       projected.push({ id: `${job.id}:publication-target`, jobId: job.id, type: "PUBLICATION_TARGET" as const, at: job.publicationTarget, title: job.title, client: job.client, lifecycleStatus: job.lifecycleStatus, currentStage: job.currentStage });
@@ -64,7 +85,20 @@ export async function getCalendar(db: DB, companyId: string, query: CalendarQuer
       projected.push({ id: `${job.id}:scheduled`, jobId: job.id, type: "SCHEDULED" as const, at: job.scheduledAt, title: job.title, client: job.client, lifecycleStatus: job.lifecycleStatus, currentStage: job.currentStage });
     }
     return projected;
-  }).sort((a, b) => a.at.getTime() - b.at.getTime() || a.id.localeCompare(b.id));
+  });
+
+  appointments.forEach(appointment => {
+    events.push({
+      id: `${appointment.id}:appointment`,
+      appointmentId: appointment.id,
+      type: "APPOINTMENT" as const,
+      at: appointment.startsAt,
+      title: appointment.title,
+      client: appointment.client,
+    });
+  });
+
+  events.sort((a, b) => a.at.getTime() - b.at.getTime() || a.id.localeCompare(b.id));
 
   return {
     timezone: company.timezone,
