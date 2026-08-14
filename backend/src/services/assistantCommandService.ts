@@ -122,12 +122,32 @@ const ticketDeleteSchema = z.object({
 
 export const assistantCommandSchema = z.object({
   operation: operationSchema,
-  payload: z.unknown(),
+  payload: z.custom<unknown>(() => true),
 }).strict();
 
 export const assistantRequestSchema = assistantCommandSchema.extend({
   confirmed: z.boolean().optional(),
 }).strict();
+
+export interface AssistantCommand {
+  operation: AssistantOperation;
+  payload: unknown;
+}
+
+export function validateAssistantCommand(input: unknown): AssistantCommand {
+  const command = assistantCommandSchema.parse(input);
+  switch (command.operation) {
+    case "calendar.create": parsePayload(calendarCreateSchema, command.payload); break;
+    case "calendar.read": parsePayload(calendarReadSchema, command.payload); break;
+    case "calendar.update": parsePayload(calendarUpdateSchema, command.payload); break;
+    case "calendar.delete": parsePayload(calendarDeleteSchema, command.payload); break;
+    case "ticket.create": parsePayload(ticketCreateSchema, command.payload); break;
+    case "ticket.read": parsePayload(ticketReadSchema, command.payload); break;
+    case "ticket.update": parsePayload(ticketUpdateSchema, command.payload); break;
+    case "ticket.delete": parsePayload(ticketDeleteSchema, command.payload); break;
+  }
+  return { operation: command.operation, payload: command.payload };
+}
 
 export interface AssistantExecutionContext {
   companyId: string;
