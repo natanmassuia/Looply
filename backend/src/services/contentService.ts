@@ -10,9 +10,9 @@ import {
   notFound,
 } from "../lib/errors";
 import type { CreateContentInput, CreateVersionInput, ScheduleInput } from "../lib/validation";
-import { randomToken } from "../lib/token";
 import { ensureDefaultWorkflow } from "./workflowService";
 import { createActivity } from "./activityService";
+import { createApproval } from "./approvalService";
 
 export async function createContent(
   db: DB,
@@ -131,29 +131,9 @@ export async function moveToReview(db: DB, companyId: string, id: string) {
 export async function sendForApproval(db: DB, companyId: string, id: string) {
   const c = await loadOr404(db, companyId, id);
   assertCanTransition(c.status as ContentStatus, "AWAITING_CLIENT");
-
-  const maxVersion = await latestVersionNumber(db, id);
-  if (maxVersion === 0) throw badRequest("Conteúdo sem versão inicial");
-
-  const version = await db.jobVersion.findFirst({
-    where: { contentId: id, versionNumber: maxVersion },
-  });
-  if (!version) throw notFound("Versão não encontrada");
-
-  const token = randomToken(32);
-  const [approval] = await db.$transaction([
-    db.approval.create({
-      data: {
-        contentId: id,
-        contentVersionId: version.id,
-        token,
-        status: "PENDING",
-        clientName: null,
-      },
-    }),
-    db.job.updateMany({ where: { id, companyId }, data: { status: "AWAITING_CLIENT" } }),
-  ]);
-  return { approval, token };
+  const result = await createApproval(db, { companyId, jobId: id });
+  await db.job.updateMany({ where: { id, companyId }, data: { status: "AWAITING_CLIENT" } });
+  return result;
 }
 
 // Create the next version (CHANGES_REQUESTED → IN_REVIEW). History is preserved:

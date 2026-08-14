@@ -5,6 +5,7 @@
 import { PrismaClient, ContentStatus, ApprovalStatus } from "@prisma/client";
 import { randomBytes } from "node:crypto";
 import { hashPassword } from "./lib/password";
+import { hashToken } from "./lib/password";
 
 const db = new PrismaClient();
 
@@ -289,12 +290,14 @@ async function main() {
   // PENDING approval → reviewer can approve OR request changes on this one.
   const diaToken = token();
   await db.approval.upsert({
-    where: { token: diaToken },
+    where: { tokenHash: hashToken(diaToken) },
     update: {},
     create: {
       contentId: diaDosPais.id,
       contentVersionId: diaVersion.id,
-      token: diaToken,
+      companyId: company.id,
+      tokenHash: hashToken(diaToken),
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       status: "PENDING" as ApprovalStatus,
     },
   });
@@ -306,12 +309,14 @@ async function main() {
   });
   const tourToken = token();
   await db.approval.upsert({
-    where: { token: tourToken },
+    where: { tokenHash: hashToken(tourToken) },
     update: {},
     create: {
       contentId: tourUnidade.id,
       contentVersionId: tourVersion.id,
-      token: tourToken,
+      companyId: company.id,
+      tokenHash: hashToken(tourToken),
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       status: "CHANGES_REQUESTED" as ApprovalStatus,
       feedback: "Prefiro que a entrada comece mostrando a fachada da unidade e o endereço. O resto está ótimo!",
       clientName: "Patrícia Souza",

@@ -21,6 +21,7 @@ import approvalsRouter from "./routes/approvals";
 import jobsRouter from "./routes/jobs";
 import workflowsRouter from "./routes/workflows";
 import filesRouter from "./routes/files";
+import approvalsInternalRouter from "./routes/approvalsInternal";
 
 const app = express();
 
@@ -34,6 +35,8 @@ app.use("/health", healthRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/onboarding", onboardingRouter);
 app.use("/api/invitations", invitationsRouter);
+// Public approval is token-authenticated, not session-authenticated.
+app.use("/api/public/approvals", approvalsRouter);
 
 // Everything below requires: session → password changed → workspace ACTIVE.
 // Public token endpoints (/api/public/*) stay open by design.
@@ -43,11 +46,11 @@ app.use("/api/clients", clientsRouter);
 app.use("/api/jobs", jobsRouter);
 app.use("/api/workflows", workflowsRouter);
 app.use("/api", filesRouter);
+app.use("/api", approvalsInternalRouter);
 app.use("/api/team", teamRouter);
 app.use("/api/members", membersRouter);
 app.use("/api/contents", contentsRouter);
 app.use("/api/publications", publicationsRouter);
-app.use("/api/public/approvals", approvalsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
