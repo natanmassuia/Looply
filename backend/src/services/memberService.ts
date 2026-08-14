@@ -33,8 +33,8 @@ export async function updateMember(
   actorRole: string,
   patch: { role?: string; isActive?: boolean },
 ) {
-  const member = await db.companyMember.findUnique({ where: { id: memberRecordId } });
-  if (!member || member.companyId !== companyId) throw notFound("Membro não encontrado");
+  const member = await db.companyMember.findFirst({ where: { id: memberRecordId, companyId } });
+  if (!member) throw notFound("Membro não encontrado");
   if (actorRole !== "OWNER") throw forbidden("Apenas OWNER gerencia membros");
 
   const demotingSelf =
@@ -58,7 +58,9 @@ export async function updateMember(
   }
   if (patch.isActive !== undefined) data.isActive = patch.isActive;
 
-  return db.companyMember.update({ where: { id: memberRecordId }, data });
+  const updated = await db.companyMember.updateMany({ where: { id: memberRecordId, companyId }, data });
+  if (updated.count === 0) throw notFound("Membro não encontrado");
+  return db.companyMember.findFirst({ where: { id: memberRecordId, companyId } });
 }
 
 // ── Invitations ──────────────────────────────────────────────────────────
@@ -112,10 +114,10 @@ export async function createInvitation(
 
 export async function revokeInvitation(db: DB, companyId: string, actorRole: string, invitationId: string) {
   if (actorRole !== "OWNER" && actorRole !== "ADMIN") throw forbidden();
-  const invitation = await db.invitation.findUnique({ where: { id: invitationId } });
-  if (!invitation || invitation.companyId !== companyId) throw notFound("Convite não encontrado");
+  const invitation = await db.invitation.findFirst({ where: { id: invitationId, companyId } });
+  if (!invitation) throw notFound("Convite não encontrado");
   if (invitation.acceptedAt || invitation.revokedAt) throw conflict("Convite já finalizado");
-  await db.invitation.update({ where: { id: invitationId }, data: { revokedAt: new Date() } });
+  await db.invitation.updateMany({ where: { id: invitationId, companyId }, data: { revokedAt: new Date() } });
 }
 
 export async function listInvitations(db: DB, companyId: string, actorRole: string) {

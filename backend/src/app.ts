@@ -23,14 +23,17 @@ import workflowsRouter from "./routes/workflows";
 import filesRouter from "./routes/files";
 import approvalsInternalRouter from "./routes/approvalsInternal";
 import calendarRouter from "./routes/calendar";
+import { csrfOriginGuard } from "./middleware/csrf";
 
 const app = express();
 
 app.use(helmet());
-app.use(cors({ origin: env.CORS_ORIGIN }));
+app.set("trust proxy", env.TRUST_PROXY);
+app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
 app.use(requestId);
 app.use(requestLogger);
+app.use(csrfOriginGuard);
 
 app.use("/health", healthRouter);
 app.use("/api/auth", authRouter);

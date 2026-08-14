@@ -6,8 +6,14 @@ import { parse } from "../lib/parse";
 import { approveSchema, requestChangesSchema } from "../lib/validation";
 import { getPublicApproval, approve, requestChanges, reject, publicFileDownload } from "../services/approvalService";
 import { getObjectStorage } from "../lib/storage";
+import { PUBLIC_APPROVAL_READ_LIMIT, PUBLIC_APPROVAL_WRITE_LIMIT } from "../lib/rateLimit";
 
 const router = Router();
+router.use((req, _res, next) => {
+  if (req.method === "POST") return PUBLIC_APPROVAL_WRITE_LIMIT(req, _res, next);
+  if (req.method === "GET") return PUBLIC_APPROVAL_READ_LIMIT(req, _res, next);
+  next();
+});
 
 router.get(
   "/:token",

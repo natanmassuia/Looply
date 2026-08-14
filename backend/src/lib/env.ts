@@ -29,6 +29,7 @@ export const env = {
   STORAGE_SECRET_KEY: process.env.STORAGE_SECRET_KEY,
   STORAGE_FORCE_PATH_STYLE: (process.env.STORAGE_FORCE_PATH_STYLE ?? "false").toLowerCase() === "true",
   STORAGE_PRESIGN_TTL_SECONDS: Number(process.env.STORAGE_PRESIGN_TTL_SECONDS ?? 600),
+  TRUST_PROXY: (process.env.TRUST_PROXY ?? "false").toLowerCase() === "true",
 };
 
 export const isProd = env.NODE_ENV === "production";
@@ -45,6 +46,10 @@ export function validateEnv(): void {
   const port = Number(process.env.PORT ?? env.PORT);
   if (!Number.isFinite(port) || port <= 0 || port > 65535) {
     throw new Error(`Invalid PORT: ${process.env.PORT}`);
+  }
+  if (env.CORS_ORIGIN === "*") throw new Error("CORS_ORIGIN must not be wildcard");
+  if (!Number.isFinite(env.STORAGE_PRESIGN_TTL_SECONDS) || env.STORAGE_PRESIGN_TTL_SECONDS <= 0) {
+    throw new Error("Invalid STORAGE_PRESIGN_TTL_SECONDS");
   }
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(", ")}`);

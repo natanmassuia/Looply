@@ -22,6 +22,8 @@ export const forbidden = (msg = "Acesso negado") => new AppError(403, msg, "forb
 export const notFound = (msg = "Não encontrado") => new AppError(404, msg, "not_found");
 export const conflict = (msg: string, details?: unknown) =>
   new AppError(409, msg, "conflict", details);
+export const tooManyRequests = (msg = "Muitas tentativas") =>
+  new AppError(429, msg, "rate_limited");
 
 // Wrap async route handlers so thrown errors reach the error middleware.
 type AsyncFn = (req: Request, res: Response, next: NextFunction) => Promise<unknown>;
@@ -46,7 +48,9 @@ function toAppError(err: unknown): AppError {
 }
 
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
-  const appErr = toAppError(err);
+  const appErr = err instanceof Error && "status" in err && "code" in err
+    ? new AppError(Number((err as { status: number }).status), err.message, String((err as { code: string }).code))
+    : toAppError(err);
   if (appErr.status >= 500) {
     logger.error("unhandled_error", {
       requestId: res.locals.requestId,

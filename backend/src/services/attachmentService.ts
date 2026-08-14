@@ -97,6 +97,7 @@ export async function listJobAttachments(db: DB, companyId: string, jobId: strin
   const files = await db.jobAttachment.findMany({
     where: { companyId, jobId },
     orderBy: { createdAt: "desc" },
+    take: 100,
     select: { id: true, jobId: true, originalName: true, contentType: true, sizeBytes: true, status: true, etag: true, createdAt: true },
   });
   return files.map(publicAttachment);
