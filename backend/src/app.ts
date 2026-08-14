@@ -22,6 +22,7 @@ import jobsRouter from "./routes/jobs";
 import workflowsRouter from "./routes/workflows";
 import filesRouter from "./routes/files";
 import approvalsInternalRouter from "./routes/approvalsInternal";
+import calendarRouter from "./routes/calendar";
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use("/api/jobs", jobsRouter);
 app.use("/api/workflows", workflowsRouter);
 app.use("/api", filesRouter);
 app.use("/api", approvalsInternalRouter);
+app.use("/api/calendar", calendarRouter);
 app.use("/api/team", teamRouter);
 app.use("/api/members", membersRouter);
 app.use("/api/contents", contentsRouter);
