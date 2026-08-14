@@ -26,3 +26,26 @@ export const env = {
 };
 
 export const isProd = env.NODE_ENV === "production";
+
+// Fail fast on missing required runtime config. Called by server startup —
+// NOT at import time, so unit tests can run without a live DB configured.
+// Only vars the current code actually needs are required; future-battery
+// vars (Redis, S3, email...) stay optional until their code lands.
+// Read live from process.env so callers (and tests) can mutate the environment
+// and re-run validation without reloading modules.
+export function validateEnv(): void {
+  const missing: string[] = [];
+  if (!process.env.DATABASE_URL) missing.push("DATABASE_URL");
+  const port = Number(process.env.PORT ?? env.PORT);
+  if (!Number.isFinite(port) || port <= 0 || port > 65535) {
+    throw new Error(`Invalid PORT: ${process.env.PORT}`);
+  }
+  const demoUser = (process.env.DEV_DEMO_USER ?? String(env.DEV_DEMO_USER)).toLowerCase() === "true";
+  const nodeEnv = process.env.NODE_ENV ?? env.NODE_ENV;
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
+  }
+  if (demoUser && nodeEnv === "production") {
+    throw new Error("DEV_DEMO_USER must not be enabled in production");
+  }
+}

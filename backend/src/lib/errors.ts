@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction, RequestHandler } from "express";
 import { Prisma } from "@prisma/client";
+import { logger } from "./logger";
 
 export class AppError extends Error {
   constructor(
@@ -41,12 +42,20 @@ function toAppError(err: unknown): AppError {
   return new AppError(500, "Erro interno do servidor", "internal_error");
 }
 
-export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
+export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
   const appErr = toAppError(err);
+  if (appErr.status >= 500) {
+    logger.error("unhandled_error", {
+      requestId: res.locals.requestId,
+      path: req.path,
+      stack: err instanceof Error ? err.stack : String(err),
+    });
+  }
   const error: Record<string, unknown> = {
     code: appErr.code,
     message: appErr.message,
   };
+  if (res.locals.requestId) error.requestId = res.locals.requestId;
   if (appErr.details !== undefined) error.details = appErr.details;
   // Never leak stack traces / internals to clients.
   if (appErr.status >= 500 && process.env.NODE_ENV === "development") {
@@ -56,5 +65,11 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
 }
 
 export function notFoundHandler(_req: Request, res: Response) {
-  res.status(404).json({ error: { code: "not_found", message: "Rota não encontrada" } });
+  res.status(404).json({
+    error: {
+      code: "not_found",
+      message: "Rota não encontrada",
+      ...(res.locals.requestId ? { requestId: res.locals.requestId } : {}),
+    },
+  });
 }
