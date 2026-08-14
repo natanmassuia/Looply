@@ -21,8 +21,14 @@ async function main() {
   // ── Company (tenant) ────────────────────────────────────────────────
   const company = await db.company.upsert({
     where: { slug: "looply-studio" },
-    update: {},
-    create: { name: "Looply Studio", slug: "looply-studio", isActive: true },
+    update: { workspaceTemplate: "MARKETING_AGENCY" },
+      create: {
+        name: "Looply Studio",
+        slug: "looply-studio",
+        isActive: true,
+        // Demo data models an agency workspace (kanban, approvals, calendar).
+        workspaceTemplate: "MARKETING_AGENCY",
+      },
   });
 
   // Demo login password for ALL seeded users (dev only): looply123

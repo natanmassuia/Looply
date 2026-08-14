@@ -7,6 +7,7 @@ import { setSessionCookie, clearSessionCookie, cookiesFromReq, SESSION_COOKIE } 
 import { login, logout, switchCompany } from "../services/authService";
 import { checkLoginRate } from "../lib/loginLimiter";
 import { requireAuth } from "../middleware/requireAuth";
+import { resolveWorkspaceContext } from "../domain/capabilities";
 
 const router = Router();
 
@@ -47,7 +48,7 @@ router.get(
     const token = cookiesFromReq(req)[SESSION_COOKIE];
     const auth = req.auth;
     if (!auth || !token) throw unauthorized();
-    const [user, memberships] = await Promise.all([
+    const [user, memberships, company] = await Promise.all([
       prisma.user.findUnique({
         where: { id: auth.userId },
         select: { id: true, name: true, email: true, active: true },
@@ -60,6 +61,10 @@ router.get(
           company: { select: { name: true, isActive: true } },
         },
       }),
+      prisma.company.findUnique({
+        where: { id: auth.companyId },
+        select: { id: true, name: true, workspaceTemplate: true },
+      }),
     ]);
     if (!user || !user.active) throw unauthorized();
     res.json({
@@ -70,6 +75,7 @@ router.get(
         companyName: m.company.name,
         role: m.role,
       })),
+      workspace: company ? resolveWorkspaceContext(company) : null,
     });
   }),
 );
