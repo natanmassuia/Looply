@@ -14,7 +14,8 @@ flowchart TD
 ```
 
 ## Ausência de signup público
-Nenhuma rota cria User sem provisionamento (CLI operador) ou invitation token. `POST /api/team` (preexistente) cria Users sem senha (hash null → impossível autenticar) atrás de requireAuth+requireWorkspaceActive — não é signup público; limpeza agendada para battery de domínio.
+Nenhuma rota cria User sem provisionamento (CLI operador) ou invitation token.
+**B4 remediation final:** o legado `POST /api/team` (que criava Users arbitrários fora dos fluxos aprovados, adição preexistente da worktree) foi neutralizado — agora responde **410 Gone** com contrato claro ("Use convites (/api/invitations)") para QUALQUER role, e `createTeamMember` foi removido do service. `GET /api/team` (listagem read-only) permanece. Testes provam: OWNER/ADMIN/MEMBER não conseguem criar Users pela rota; `user.count()` inalterado; os únicos caminhos de criação de identidade em produção são o provision CLI e o `/api/invitations/accept`.
 
 ## Provisioning (Verbum Lab)
 - CLI: `backend/src/scripts/provision.ts` (`npx dotenv -e ../.env -- tsx src/scripts/provision.ts "Nome" email@x.com "Empresa"`).
@@ -70,7 +71,7 @@ OWNER: senha temporária + onboarding completo. Convidado: escolhe a própria se
 Aditiva (User.mustChangePassword, Company fields, Invitation). Backfill demo explícito: company onboardedAt=now (demo operacional completa desde B3), demo users mustChangePassword=false. Rollback não definido/testado.
 
 ## Segurança
-Ver `.dev-reports/security-audit-b4-2026-08-14.md`: 0 critical/high/medium; 3 low (accept-by-token by design, sem rate limit no accept, token no response até haver e-mail). CSRF reavaliado: mantenho SameSite=Lax+CORS+JSON como dívida V1 documentada (B2) — sem nova superfície.
+Ver `.dev-reports/security-audit-b4-2026-08-14.md`: 0 critical/high/medium; 3 low (accept-by-token by design, rate limit no accept, token no response até haver e-mail). CSRF reavaliado: mantenho SameSite=Lax+CORS+JSON como dívida V1 documentada (B2) — sem nova superfície. **Hardening de CSRF/rate-limit pertence à B12 (Hardening + Module Boundaries)** — roadmap revisado: B11 = Dashboard por Template.
 
 ## Limitações conhecidas
 - Sem envio de e-mail (token manual).
