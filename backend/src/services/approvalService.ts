@@ -17,8 +17,8 @@ async function loadPublicApproval(db: DB, token: string) {
     include: {
       content: { select: { id: true, title: true, client: { select: { name: true } } } },
       version: { select: { id: true, contentId: true, versionNumber: true, caption: true, mediaUrl: true, mediaType: true } },
-      decisions: { orderBy: { createdAt: "asc" }, select: { decision: true, comment: true, actorName: true, createdAt: true } },
-      files: { include: { attachment: { select: { id: true, originalName: true, contentType: true, sizeBytes: true, status: true } } } },
+      decisions: { orderBy: { createdAt: "asc" }, take: 100, select: { decision: true, comment: true, actorName: true, createdAt: true } },
+      files: { take: 100, include: { attachment: { select: { id: true, originalName: true, contentType: true, sizeBytes: true, status: true } } } },
     },
   });
   if (!approval || approval.revokedAt || approval.expiresAt < new Date()) invalidPublicApproval();
@@ -77,6 +77,7 @@ export async function listApprovals(db: DB, companyId: string, jobId: string) {
   return db.approval.findMany({
     where: { companyId, contentId: jobId },
     orderBy: { createdAt: "desc" },
+    take: 100,
     select: { id: true, contentId: true, contentVersionId: true, status: true, feedback: true, clientName: true, expiresAt: true, revokedAt: true, decidedAt: true, createdAt: true },
   });
 }
@@ -84,7 +85,7 @@ export async function listApprovals(db: DB, companyId: string, jobId: string) {
 export async function getInternalApproval(db: DB, companyId: string, approvalId: string) {
   const approval = await db.approval.findFirst({
     where: { id: approvalId, companyId },
-    select: { id: true, companyId: true, contentId: true, contentVersionId: true, status: true, feedback: true, clientName: true, expiresAt: true, revokedAt: true, decidedAt: true, createdAt: true, decisions: { orderBy: { createdAt: "asc" } } },
+    select: { id: true, companyId: true, contentId: true, contentVersionId: true, status: true, feedback: true, clientName: true, expiresAt: true, revokedAt: true, decidedAt: true, createdAt: true, decisions: { orderBy: { createdAt: "asc" }, take: 100 } },
   });
   if (!approval) throw notFound("Approval não encontrado");
   return approval;

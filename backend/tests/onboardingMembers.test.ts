@@ -79,6 +79,12 @@ function makeFakeDB() {
         Object.assign(m, data);
         return m;
       },
+      updateMany: async ({ where, data }: any) => {
+        const m = state.members.find((m) => m.id === where.id && m.companyId === where.companyId);
+        if (!m) return { count: 0 };
+        Object.assign(m, data);
+        return { count: 1 };
+      },
     },
     session: {
       findUnique: async ({ where }: any) => state.sessions.find((s) => s.id === where.id) ?? null,
@@ -105,6 +111,12 @@ function makeFakeDB() {
         const i = state.invitations.find((i) => i.id === where.id);
         Object.assign(i, data);
         return i;
+      },
+      updateMany: async ({ where, data }: any) => {
+        const i = state.invitations.find((i) => i.id === where.id && i.companyId === where.companyId);
+        if (!i) return { count: 0 };
+        Object.assign(i, data);
+        return { count: 1 };
       },
     },
   };

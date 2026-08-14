@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/db";
-import { asyncHandler, unauthorized, badRequest } from "../lib/errors";
+import { asyncHandler, unauthorized } from "../lib/errors";
+import { tooManyRequests } from "../lib/errors";
 import { z } from "zod";
 import { parse } from "../lib/parse";
 import { setSessionCookie, clearSessionCookie, cookiesFromReq, SESSION_COOKIE } from "../lib/session";
@@ -27,7 +28,7 @@ router.post(
     const input = parse(loginSchema, req.body);
     const key = `${req.ip ?? "?"}|${input.email.toLowerCase()}`;
     if (!checkLoginRate(key)) {
-      throw badRequest("Muitas tentativas. Tente novamente em alguns minutos.");
+      throw tooManyRequests("Muitas tentativas. Tente novamente em alguns minutos.");
     }
     const result = await login(prisma, input.email, input.password);
     setSessionCookie(res, result.token);

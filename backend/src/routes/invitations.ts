@@ -11,6 +11,7 @@ import {
   listInvitations,
   acceptInvitation,
 } from "../services/memberService";
+import { INVITATION_ACCEPT_LIMIT } from "../lib/rateLimit";
 
 const router = Router();
 
@@ -25,6 +26,7 @@ const acceptSchema = z.object({
 
 router.post(
   "/accept",
+  INVITATION_ACCEPT_LIMIT,
   asyncHandler(async (req: Request, res: Response) => {
     const input = parse(acceptSchema, req.body);
     // Optional authentication: resolveAuth via requireAuth when cookie exists.

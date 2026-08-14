@@ -121,7 +121,7 @@ router.patch(
 
     // Move parent + all children to the same column (cards move together)
     await prisma.$transaction([
-      prisma.job.update({
+      prisma.job.updateMany({
         where: { id: req.params.id, companyId: req.auth!.companyId },
         data: { status: newStatus },
       }),
