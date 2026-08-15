@@ -25,6 +25,7 @@ import approvalsInternalRouter from "./routes/approvalsInternal";
 import calendarRouter from "./routes/calendar";
 import appointmentsRouter from "./routes/appointments";
 import assistantRouter from "./routes/assistant";
+import whatsappIdentitiesRouter from "./routes/whatsappIdentities";
 import { csrfOriginGuard } from "./middleware/csrf";
 
 const app = express();
@@ -56,6 +57,7 @@ app.use("/api", approvalsInternalRouter);
 app.use("/api/calendar", calendarRouter);
 app.use("/api/appointments", appointmentsRouter);
 app.use("/api/assistant", assistantRouter);
+app.use("/api/whatsapp-identities", whatsappIdentitiesRouter);
 app.use("/api/team", teamRouter);
 app.use("/api/members", membersRouter);
 app.use("/api/contents", contentsRouter);

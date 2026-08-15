@@ -127,10 +127,11 @@ model User {
   versions       JobVersion[]
   activities     Activity[]
   attachments    JobAttachment[]
-  memberships    CompanyMember[]
+  memberships CompanyMember[]
   sessions       Session[]
   invitationsSent Invitation[] @relation("InvitationInviter")
   createdAppointments Appointment[] @relation("AppointmentCreator")
+  whatsappIdentities WhatsAppIdentity[]
 }
 
 // Tenant / workspace. Resources (Client, Content, ...) are NOT yet bound to
@@ -162,6 +163,7 @@ model Company {
   attachments JobAttachment[]
   approvals   Approval[]
   appointments Appointment[]
+  whatsappIdentities WhatsAppIdentity[]
 }
 
 model CompanyMember {
@@ -217,6 +219,29 @@ model Invitation {
 
   @@index([companyId])
   @@index([email])
+}
+
+// Explicit WhatsApp sender → (User, Company) authorization mapping. The row
+// itself grants nothing: runtime resolution must still prove User active +
+// active CompanyMember(userId, companyId) + Company active/template. Client
+// contact phones are NEVER actor identities.
+model WhatsAppIdentity {
+  id          String   @id @default(cuid())
+  userId      String
+  companyId   String
+  provider    String   @default("whatsapp")
+  phoneNumber String   // canonical E.164-like, see lib/phone.ts
+  enabled     Boolean  @default(true)
+  label       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, phoneNumber])
+  @@index([companyId])
+  @@index([userId])
 }
 
 model Client {
