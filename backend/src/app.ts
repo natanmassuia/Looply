@@ -27,6 +27,7 @@ import appointmentsRouter from "./routes/appointments";
 import assistantRouter from "./routes/assistant";
 import whatsappIdentitiesRouter from "./routes/whatsappIdentities";
 import whatsappWebhookRouter from "./routes/whatsappWebhook";
+import gupshupWebhookRouter from "./routes/whatsappGupshupWebhook";
 import { csrfOriginGuard } from "./middleware/csrf";
 
 const app = express();
@@ -35,7 +36,10 @@ app.use(helmet());
 app.set("trust proxy", env.TRUST_PROXY);
 app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
 // Provider webhook: needs the RAW body for signature verification, so it is
-// mounted before the JSON parser and outside the session chain (A3.1).
+// mounted before the JSON parser and outside the session chain (A3.1). The
+// Gupshup route is a longer prefix and is mounted first so its handler owns
+// /api/webhooks/whatsapp/gupshup while the Meta route keeps the root path.
+app.use("/api/webhooks/whatsapp/gupshup", gupshupWebhookRouter);
 app.use("/api/webhooks/whatsapp", whatsappWebhookRouter);
 app.use(express.json({ limit: "1mb" }));
 app.use(requestId);
