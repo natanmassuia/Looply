@@ -26,6 +26,7 @@ import calendarRouter from "./routes/calendar";
 import appointmentsRouter from "./routes/appointments";
 import assistantRouter from "./routes/assistant";
 import whatsappIdentitiesRouter from "./routes/whatsappIdentities";
+import whatsappWebhookRouter from "./routes/whatsappWebhook";
 import { csrfOriginGuard } from "./middleware/csrf";
 
 const app = express();
@@ -33,6 +34,9 @@ const app = express();
 app.use(helmet());
 app.set("trust proxy", env.TRUST_PROXY);
 app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
+// Provider webhook: needs the RAW body for signature verification, so it is
+// mounted before the JSON parser and outside the session chain (A3.1).
+app.use("/api/webhooks/whatsapp", whatsappWebhookRouter);
 app.use(express.json({ limit: "1mb" }));
 app.use(requestId);
 app.use(requestLogger);
