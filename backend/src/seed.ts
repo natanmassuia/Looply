@@ -4,6 +4,8 @@
 // dashboard, contents overview, calendar, clients and team are meaningful.
 import { PrismaClient, ContentStatus, ApprovalStatus } from "@prisma/client";
 import { randomBytes } from "node:crypto";
+import { hashPassword } from "./lib/password";
+import { hashToken } from "./lib/password";
 
 const db = new PrismaClient();
 
@@ -17,41 +19,68 @@ function daysFromNow(days: number, hour = 12): Date {
 }
 
 async function main() {
+  // ── Company (tenant) ────────────────────────────────────────────────
+  const company = await db.company.upsert({
+    where: { slug: "looply-studio" },
+    update: { workspaceTemplate: "MARKETING_AGENCY" },
+      create: {
+        name: "Looply Studio",
+        slug: "looply-studio",
+        isActive: true,
+        // Demo data models an agency workspace (kanban, approvals, calendar).
+        workspaceTemplate: "MARKETING_AGENCY",
+      },
+  });
+
+  // Demo login password for ALL seeded users (dev only): looply123
+  const demoHash = await hashPassword("looply123");
+
   // ── Team ────────────────────────────────────────────────────────────
   const users = {
     natan: await db.user.upsert({
       where: { email: "natan@looply.dev" },
-      update: {},
-      create: { name: "Natan Massuia", email: "natan@looply.dev", role: "ADMIN", active: true },
+      update: { passwordHash: demoHash },
+      create: { name: "Natan Massuia", email: "natan@looply.dev", role: "ADMIN", active: true, passwordHash: demoHash },
     }),
     marina: await db.user.upsert({
       where: { email: "marina@looply.dev" },
-      update: {},
-      create: { name: "Marina Lopes", email: "marina@looply.dev", role: "CONTENT_MANAGER", active: true },
+      update: { passwordHash: demoHash },
+      create: { name: "Marina Lopes", email: "marina@looply.dev", role: "CONTENT_MANAGER", active: true, passwordHash: demoHash },
     }),
     joao: await db.user.upsert({
       where: { email: "joao@looply.dev" },
-      update: {},
-      create: { name: "João Silva", email: "joao@looply.dev", role: "EDITOR", active: true },
+      update: { passwordHash: demoHash },
+      create: { name: "João Silva", email: "joao@looply.dev", role: "EDITOR", active: true, passwordHash: demoHash },
     }),
     ana: await db.user.upsert({
       where: { email: "ana@looply.dev" },
-      update: {},
-      create: { name: "Ana Costa", email: "ana@looply.dev", role: "SOCIAL_MEDIA", active: true },
+      update: { passwordHash: demoHash },
+      create: { name: "Ana Costa", email: "ana@looply.dev", role: "SOCIAL_MEDIA", active: true, passwordHash: demoHash },
     }),
     lucas: await db.user.upsert({
       where: { email: "lucas@looply.dev" },
-      update: {},
-      create: { name: "Lucas Prado", email: "lucas@looply.dev", role: "DESIGNER", active: true },
+      update: { passwordHash: demoHash },
+      create: { name: "Lucas Prado", email: "lucas@looply.dev", role: "DESIGNER", active: true, passwordHash: demoHash },
     }),
   };
+
+  // ── Memberships (all demo users belong to the demo company) ─────────
+  for (const [key, u] of Object.entries(users)) {
+    const role = key === "natan" ? "OWNER" : "MEMBER";
+    await db.companyMember.upsert({
+      where: { userId_companyId: { userId: u.id, companyId: company.id } },
+      update: { role },
+      create: { userId: u.id, companyId: company.id, role, isActive: true },
+    });
+  }
 
   // ── Clients ─────────────────────────────────────────────────────────
   const clients = {
     aurora: await db.client.upsert({
-      where: { name: "Restaurante Aurora" },
+      where: { companyId_name: { companyId: company.id, name: "Restaurante Aurora" } },
       update: {},
       create: {
+        companyId: company.id,
         name: "Restaurante Aurora",
         brandColor: "#c2410c",
         status: "ACTIVE",
@@ -62,9 +91,10 @@ async function main() {
       },
     }),
     move: await db.client.upsert({
-      where: { name: "Academia Move" },
+      where: { companyId_name: { companyId: company.id, name: "Academia Move" } },
       update: {},
       create: {
+        companyId: company.id,
         name: "Academia Move",
         brandColor: "#2563eb",
         status: "ACTIVE",
@@ -75,9 +105,10 @@ async function main() {
       },
     }),
     vitta: await db.client.upsert({
-      where: { name: "Clínica Vitta" },
+      where: { companyId_name: { companyId: company.id, name: "Clínica Vitta" } },
       update: {},
       create: {
+        companyId: company.id,
         name: "Clínica Vitta",
         brandColor: "#0d9488",
         status: "ACTIVE",
@@ -88,9 +119,10 @@ async function main() {
       },
     }),
     norte: await db.client.upsert({
-      where: { name: "Studio Norte" },
+      where: { companyId_name: { companyId: company.id, name: "Studio Norte" } },
       update: {},
       create: {
+        companyId: company.id,
         name: "Studio Norte",
         brandColor: "#7c3aed",
         status: "ACTIVE",
@@ -101,9 +133,10 @@ async function main() {
       },
     }),
     onze: await db.client.upsert({
-      where: { name: "Bistrô Onze" },
+      where: { companyId_name: { companyId: company.id, name: "Bistrô Onze" } },
       update: {},
       create: {
+        companyId: company.id,
         name: "Bistrô Onze",
         brandColor: "#db2777",
         status: "ACTIVE",
@@ -131,10 +164,11 @@ async function main() {
   };
 
   async function makeContent(cfg: Cfg) {
-    const existing = await db.content.findFirst({ where: { title: cfg.title } });
+    const existing = await db.job.findFirst({ where: { title: cfg.title } });
     if (existing) return existing;
-    return db.content.create({
+    return db.job.create({
       data: {
+        companyId: company.id,
         title: cfg.title,
         clientId: cfg.client.id,
         format: cfg.format,
@@ -248,7 +282,7 @@ async function main() {
 
   // ── Approvals (public links) ────────────────────────────────────────
   const publicBase = (process.env.PUBLIC_APP_URL ?? "http://localhost:5173").replace(/\/$/, "");
-  const diaVersion = await db.contentVersion.findFirstOrThrow({
+  const diaVersion = await db.jobVersion.findFirstOrThrow({
     where: { contentId: diaDosPais.id },
     orderBy: { versionNumber: "desc" },
   });
@@ -256,29 +290,33 @@ async function main() {
   // PENDING approval → reviewer can approve OR request changes on this one.
   const diaToken = token();
   await db.approval.upsert({
-    where: { token: diaToken },
+    where: { tokenHash: hashToken(diaToken) },
     update: {},
     create: {
       contentId: diaDosPais.id,
       contentVersionId: diaVersion.id,
-      token: diaToken,
+      companyId: company.id,
+      tokenHash: hashToken(diaToken),
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       status: "PENDING" as ApprovalStatus,
     },
   });
 
   // CHANGES_REQUESTED already decided on the tour content (history example).
-  const tourVersion = await db.contentVersion.findFirstOrThrow({
+  const tourVersion = await db.jobVersion.findFirstOrThrow({
     where: { contentId: tourUnidade.id },
     orderBy: { versionNumber: "desc" },
   });
   const tourToken = token();
   await db.approval.upsert({
-    where: { token: tourToken },
+    where: { tokenHash: hashToken(tourToken) },
     update: {},
     create: {
       contentId: tourUnidade.id,
       contentVersionId: tourVersion.id,
-      token: tourToken,
+      companyId: company.id,
+      tokenHash: hashToken(tourToken),
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       status: "CHANGES_REQUESTED" as ApprovalStatus,
       feedback: "Prefiro que a entrada comece mostrando a fachada da unidade e o endereço. O resto está ótimo!",
       clientName: "Patrícia Souza",

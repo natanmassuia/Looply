@@ -12,18 +12,22 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "seed": "dotenv -e ../.env -- tsx src/seed.ts",
+    "attachments:reconcile": "dotenv -e ../.env -- tsx src/scripts/reconcileAttachments.ts",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
-    "prisma:validate": "prisma validate --schema prisma/schema.prisma",
+    "prisma:validate": "dotenv -e ../.env -- prisma validate --schema prisma/schema.prisma",
     "prisma:migrate": "dotenv -e ../.env -- prisma migrate dev --schema prisma/schema.prisma",
     "prisma:migrate:deploy": "dotenv -e ../.env -- prisma migrate deploy --schema prisma/schema.prisma",
     "prisma:migration:diff": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1110.0",
+    "@aws-sdk/s3-request-presigner": "^3.1110.0",
     "@prisma/client": "^5.22.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
     "helmet": "^8.0.0",
+    "ioredis": "^6.0.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

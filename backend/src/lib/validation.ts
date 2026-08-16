@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { APPEARANCE_MODES, APPEARANCE_PRESETS, HEX_COLOR_RE } from "../domain/appearance";
 
 // Shared Zod schemas for request payloads. Keeps validation in one place.
 
@@ -53,3 +54,29 @@ export const createClientSchema = z.object({
   channels: z.array(z.string().max(60)).max(10).optional(),
 });
 export type CreateClientInput = z.infer<typeof createClientSchema>;
+
+// ── Workspace appearance (BP1) ───────────────────────────────────────────
+// .strict() rejects any extra key — including forged tenant fields (e.g.
+// companyId) and arbitrary color keys beyond the exact six base colors.
+
+const hexColor = z.string().regex(HEX_COLOR_RE);
+
+export const customColorsSchema = z
+  .object({
+    primary: hexColor,
+    secondary: hexColor,
+    accent: hexColor,
+    surface: hexColor,
+    text: hexColor,
+    border: hexColor,
+  })
+  .strict();
+
+export const updateAppearanceSchema = z
+  .object({
+    preset: z.enum(APPEARANCE_PRESETS).optional(),
+    mode: z.enum(APPEARANCE_MODES).optional(),
+    customColors: customColorsSchema.optional(),
+  })
+  .strict();
+export type UpdateAppearancePayload = z.infer<typeof updateAppearanceSchema>;
