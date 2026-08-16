@@ -417,6 +417,40 @@ describe("foundation tokens in index.css", () => {
   });
 });
 
+describe("semantic token contract in index.css", () => {
+  const REQUIRED_CONTRACT_VARS = [
+    "--looply-color-bg-canvas",
+    "--looply-color-bg-surface",
+    "--looply-color-bg-elevated",
+    "--looply-color-text-primary",
+    "--looply-color-text-secondary",
+    "--looply-color-text-muted",
+    "--looply-color-border-default",
+    "--looply-color-action-primary",
+    "--looply-color-action-secondary",
+    "--looply-color-accent",
+    "--looply-color-success",
+    "--looply-color-warning",
+    "--looply-color-danger",
+    "--looply-color-focus",
+  ];
+
+  it("declares every required contract token name", () => {
+    for (const varName of REQUIRED_CONTRACT_VARS) {
+      expect(CSS).toContain(varName);
+    }
+  });
+
+  it("contract aliases resolve to a canonical role at computed time", () => {
+    expect(CSS).toMatch(/--looply-color-bg-elevated:\s*var\(--looply-color-bg-surface\)/);
+    expect(CSS).toMatch(/--looply-color-accent:\s*var\(--looply-color-action-secondary\)/);
+    expect(CSS).toMatch(/--looply-color-success:\s*var\(--looply-color-status-success\)/);
+    expect(CSS).toMatch(/--looply-color-warning:\s*var\(--looply-color-status-warning\)/);
+    expect(CSS).toMatch(/--looply-color-danger:\s*var\(--looply-color-status-danger\)/);
+    expect(CSS).toMatch(/--looply-color-focus:\s*var\(--looply-color-focus-ring\)/);
+  });
+});
+
 describe("runtime integrity", () => {
   it("token vocabulary and CSS var mapping stay in lockstep", () => {
     expect(Object.keys(TOKEN_CSS_VARS).sort()).toEqual([...SEMANTIC_TOKEN_IDS].sort());
