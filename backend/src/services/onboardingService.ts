@@ -2,6 +2,7 @@ import type { DB } from "../lib/db";
 import { conflict, badRequest } from "../lib/errors";
 import { hashPassword } from "../lib/password";
 import { randomBytes } from "node:crypto";
+import { resolveAppearance, type WorkspaceAppearance } from "../domain/appearance";
 
 // ── Verbum Lab provisioning (no public signup, no HTTP endpoint) ──────────
 // Creates User (temp password), Company (UNCONFIGURED) and OWNER membership.
@@ -66,11 +67,13 @@ export interface OnboardingStatus {
   mustChangePassword: boolean;
   company: {
     name: string;
+    website: string | null;
     timezone: string;
     locale: string;
     template: string | null;
     onboardedAt: string | null;
   };
+  appearance: WorkspaceAppearance;
   readyToComplete: boolean;
   status: "PASSWORD_CHANGE_REQUIRED" | "ONBOARDING_REQUIRED" | "ACTIVE";
 }
@@ -83,7 +86,22 @@ export async function getOnboardingStatus(
     db.user.findUnique({ where: { id: auth.userId }, select: { mustChangePassword: true } }),
     db.company.findUnique({
       where: { id: auth.companyId },
-      select: { name: true, timezone: true, locale: true, workspaceTemplate: true, onboardedAt: true },
+      select: {
+        name: true,
+        website: true,
+        timezone: true,
+        locale: true,
+        workspaceTemplate: true,
+        onboardedAt: true,
+        appearancePreset: true,
+        appearanceMode: true,
+        appearanceCustomPrimary: true,
+        appearanceCustomSecondary: true,
+        appearanceCustomAccent: true,
+        appearanceCustomSurface: true,
+        appearanceCustomText: true,
+        appearanceCustomBorder: true,
+      },
     }),
   ]);
   if (!user || !company) throw badRequest("Workspace inválido");
@@ -102,11 +120,13 @@ export async function getOnboardingStatus(
     mustChangePassword: user.mustChangePassword,
     company: {
       name: company.name,
+      website: company.website,
       timezone: company.timezone,
       locale: company.locale,
       template: company.workspaceTemplate,
       onboardedAt: company.onboardedAt ? company.onboardedAt.toISOString() : null,
     },
+    appearance: resolveAppearance(company),
     readyToComplete,
     status,
   };

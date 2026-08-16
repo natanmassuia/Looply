@@ -18,6 +18,8 @@
     --looply-color-bg-canvas: #fff7f1;
     --looply-color-bg-surface: #ffffff;
     --looply-color-bg-subtle: #f8ece5;
+    --looply-color-bg-inverse: #2a171f;
+    --looply-color-bg-brand-soft: color-mix(in srgb, var(--looply-color-action-primary) 10%, var(--looply-color-bg-surface));
     --looply-color-text-primary: #2a171f;
     --looply-color-text-secondary: #514146;
     --looply-color-text-muted: #6d5a5d;
@@ -111,6 +113,8 @@
     --looply-color-bg-canvas: #2a171f;
     --looply-color-bg-surface: #34202a;
     --looply-color-bg-subtle: #3d2731;
+    --looply-color-bg-inverse: #fff7f1;
+    --looply-color-bg-brand-soft: color-mix(in srgb, var(--looply-color-action-primary) 14%, var(--looply-color-bg-surface));
     --looply-color-text-primary: #fffdfc;
     --looply-color-text-secondary: #e8d8d1;
     --looply-color-text-muted: #b7a4a9;
@@ -381,6 +385,13 @@
     padding-right: 2.25rem;
   }
 
+  /* F2 large control (auth/onboarding, 05.1): 48px */
+  .input-lg {
+    padding: 0.75rem 1rem;
+    font-size: 0.9375rem;
+    min-height: 48px;
+  }
+
   textarea.input {
     resize: vertical;
     min-height: 80px;
@@ -478,4 +489,19 @@
     line-height: 16px;
     font-weight: 400;
   }
+
+  /* ── Inverse foreground roles (05.1 Product Story, F4C-R1) ──
+     Tailwind v3 cannot apply opacity modifiers to var() colors
+     (text-[var(--x)]/70 silently compiles to nothing), so inverse
+     secondary/muted roles are explicit utilities over the semantic token. */
+  .text-inverse {
+    color: var(--looply-color-text-inverse);
+  }
+  .text-inverse-secondary {
+    color: color-mix(in srgb, var(--looply-color-text-inverse) 80%, transparent);
+  }
+  .text-inverse-muted {
+    color: color-mix(in srgb, var(--looply-color-text-inverse) 65%, transparent);
+  }
 }
+

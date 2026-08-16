@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useContents, useClients, useGroupContent, apiFetch } from "../lib/api";
+import { useContents, useClients, useGroupContent, useUngroupContent, apiFetch } from "../lib/api";
 import { STATUS_LABEL, FORMAT_LABEL, relativeTime } from "../lib/format";
 import type { ContentStatus, ContentListItem } from "../lib/types";
 import { EmptyState, ErrorState, PageHeader, Spinner } from "../components/common";
@@ -31,6 +31,7 @@ export default function ContentsList() {
   const { data, isLoading, isError, error, refetch } = useContents();
   const { data: clients } = useClients();
   const groupMutation = useGroupContent();
+  const ungroupMutation = useUngroupContent();
   const navigate = useNavigate();
   const [clientId, setClientId] = useState<string>("");
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -167,27 +168,27 @@ export default function ContentsList() {
   return (
     <div>
       <PageHeader
-        title="Conteúdos"
-        subtitle="Gerencie todo o ciclo de vida dos conteúdos"
+        title="Jobs"
+        subtitle="Fluxo operacional de jobs e aprovações"
         actions={
           <Link to="/contents/new" className="btn-primary">
             <IconPlus className="h-4 w-4" />
-            Novo conteúdo
+            Novo job
           </Link>
         }
       />
 
-      {isLoading && <Spinner label="Carregando conteúdos…" />}
+      {isLoading && <Spinner label="Carregando jobs…" />}
       {isError && <ErrorState message={(error as Error)?.message} />}
 
       {!isLoading && !isError && data && data.length === 0 && (
         <EmptyState
-          title="Nenhum conteúdo"
-          description="Crie seu primeiro conteúdo para começar."
+          title="Nenhum job cadastrado"
+          description="Crie seu primeiro job para começar."
           action={
             <Link to="/contents/new" className="btn-primary">
               <IconPlus className="h-4 w-4" />
-              Novo conteúdo
+              Novo job
             </Link>
           }
         />
@@ -200,64 +201,78 @@ export default function ContentsList() {
               className="input w-auto min-w-[200px]"
               value={clientId}
               onChange={(e) => setClientId(e.target.value)}
-              aria-label="Filtrar por empresa"
+              aria-label="Filtrar por cliente"
             >
-              <option value="">Todas as empresas</option>
+              <option value="">Todos os clientes</option>
               {clients?.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
           </div>
-          <div className="grid grid-cols-7 gap-3">
-            {COLUMNS.map(({ status, color, bg }) => {
-              const items = byStatus.get(status) ?? [];
-              const isTarget = dropTarget === status;
-              return (
-                <div
-                  key={status}
-                  className={`flex flex-col rounded-xl border border-[var(--looply-border)] bg-[var(--looply-surface-muted)]/40 transition-colors ${isTarget ? "border-brand-300 bg-brand-50/60" : ""}`}
-                  style={{ minHeight: "calc(100vh - 200px)" }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = "move";
-                    setDropTarget(status);
-                  }}
-                  onDragLeave={() => setDropTarget(null)}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    handleDropOnColumn(status);
-                  }}
-                >
-                  <div className={`flex items-center gap-2 border-b border-[var(--looply-border)] px-4 py-3 ${bg}`}>
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${color}`} />
-                    <span className="text-[0.75rem] font-semibold text-[var(--looply-foreground)]">{STATUS_LABEL[status]}</span>
-                    <span className="ml-auto flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-white/80 px-1 text-[0.625rem] font-semibold text-[var(--looply-faint-foreground)]">{items.length}</span>
+          {clientId && filtered.length === 0 && (
+            <div className="mb-4 rounded-xl border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)]/50 p-4 text-xs text-[var(--looply-color-text-muted)]">
+              Nenhum job encontrado para o cliente selecionado.
+            </div>
+          )}
+          <div className="overflow-x-auto min-w-0 pb-4">
+            <div className="grid grid-cols-7 gap-3 min-w-[980px] xl:min-w-0">
+              {COLUMNS.map(({ status, color, bg }) => {
+                const items = byStatus.get(status) ?? [];
+                const isTarget = dropTarget === status;
+                return (
+                  <div
+                    key={status}
+                    className={`flex flex-col rounded-xl border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)]/40 transition-colors ${isTarget ? "border-brand-300 bg-brand-50/60" : ""}`}
+                    style={{ minHeight: "calc(100vh - 200px)" }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      setDropTarget(status);
+                    }}
+                    onDragLeave={() => setDropTarget(null)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      handleDropOnColumn(status);
+                    }}
+                  >
+                    <div className={`flex items-center gap-2 border-b border-[var(--looply-color-border-default)] px-4 py-3 ${bg}`}>
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${color}`} />
+                      <span className="text-[0.75rem] font-semibold text-[var(--looply-color-text-primary)]">{STATUS_LABEL[status]}</span>
+                      <span className="ml-auto flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-white/80 px-1 text-[0.625rem] font-semibold text-[var(--looply-color-text-muted)]">{items.length}</span>
+                    </div>
+                    <div className="flex flex-col gap-2 overflow-y-auto px-3 py-3" style={{ maxHeight: "calc(100vh - 220px)" }}>
+                      {items.map((c) => (
+                        <CardStack
+                          key={c.id}
+                          parent={c}
+                          children_={childrenMap.get(c.id) ?? []}
+                          isDragging={draggedId === c.id}
+                          isGroupTarget={groupTargetId === c.id}
+                          groupReady={groupTargetId === c.id && groupReady}
+                          onDragStart={() => handleDragStart(c.id, c.clientId)}
+                          onDragEnd={handleDragEnd}
+                          onCardEnter={() => handleCardEnter(c.id, c.clientId)}
+                          onCardLeave={handleCardLeave}
+                          onNavigate={(id) => navigate(`/contents/${id}`)}
+                          onUngroup={async (childId) => {
+                            try {
+                              await ungroupMutation.mutateAsync(childId);
+                            } catch {
+                              // error handled by query error boundaries
+                            }
+                          }}
+                        />
+                      ))}
+                      {items.length === 0 && (
+                        <div className={`flex min-h-[60px] items-center justify-center rounded-lg border-2 border-dashed transition-colors ${isTarget ? "border-brand-300 bg-brand-50/40" : "border-[var(--looply-color-border-default)]/30"}`}>
+                          <span className="text-[0.625rem] text-[var(--looply-color-text-muted)]">{isTarget ? "Solte aqui" : "Vazio"}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-2 overflow-y-auto px-3 py-3" style={{ maxHeight: "calc(100vh - 220px)" }}>
-                    {items.map((c) => (
-                      <CardStack
-                        key={c.id}
-                        parent={c}
-                        children_={childrenMap.get(c.id) ?? []}
-                        isDragging={draggedId === c.id}
-                        isGroupTarget={groupTargetId === c.id}
-                        groupReady={groupTargetId === c.id && groupReady}
-                        onDragStart={() => handleDragStart(c.id, c.clientId)}
-                        onDragEnd={handleDragEnd}
-                        onCardEnter={() => handleCardEnter(c.id, c.clientId)}
-                        onCardLeave={handleCardLeave}
-                        onNavigate={(id) => navigate(`/contents/${id}`)}
-                      />
-                    ))}
-                    {items.length === 0 && (
-                      <div className={`flex min-h-[60px] items-center justify-center rounded-lg border-2 border-dashed transition-colors ${isTarget ? "border-brand-300 bg-brand-50/40" : "border-[var(--looply-border)]/30"}`}>
-                        <span className="text-[0.625rem] text-[var(--looply-faint-foreground)]">{isTarget ? "Solte aqui" : "Vazio"}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </>
       )}
@@ -276,6 +291,7 @@ function CardStack({
   onCardEnter,
   onCardLeave,
   onNavigate,
+  onUngroup,
 }: {
   parent: ContentListItem;
   children_: ContentListItem[];
@@ -287,6 +303,7 @@ function CardStack({
   onCardEnter: () => void;
   onCardLeave: () => void;
   onNavigate: (id: string) => void;
+  onUngroup: (id: string) => void;
 }) {
   const hasChildren = children_.length > 0;
 
@@ -302,53 +319,77 @@ function CardStack({
       onDragEnter={(e) => { e.stopPropagation(); e.preventDefault(); onCardEnter(); }}
       onDragLeave={(e) => { e.stopPropagation(); onCardLeave(); }}
       onClick={() => onNavigate(parent.id)}
-      className={`group relative cursor-grab rounded-lg border bg-[var(--looply-surface)] p-3 transition-all active:cursor-grabbing ${
-        groupReady ? "border-brand-500 ring-2 ring-brand-300 bg-brand-50/50 scale-[1.02]" :
-        isGroupTarget ? "border-brand-300 ring-1 ring-brand-100" :
-        "border-[var(--looply-border-subtle)] hover:border-[var(--looply-border)] hover:shadow-looply"
-      } ${isDragging ? "opacity-40" : ""} ${hasChildren ? "border-2 border-[var(--looply-border)]" : ""}`}
+      className={`group relative cursor-grab rounded-lg border bg-[var(--looply-color-bg-surface)] p-3 transition-all active:cursor-grabbing ${
+        isGroupTarget && groupReady
+          ? "border-brand-500 bg-brand-50/80 shadow-md ring-2 ring-brand-400"
+          : isGroupTarget
+          ? "border-brand-400 bg-brand-50/40"
+          : "border-[var(--looply-color-border-default)] hover:shadow-looply"
+      } ${isDragging ? "opacity-40" : ""} ${hasChildren ? "border-2 border-[var(--looply-color-border-default)]" : ""}`}
     >
-      {/* Parent card content */}
-      <div className="relative z-10">
-        <div className="mb-2 text-[0.75rem] font-medium leading-snug text-[var(--looply-foreground)] group-hover:text-brand-600">
+      {/* Parent content */}
+      <div>
+        <div className="mb-2 text-[0.75rem] font-medium leading-snug text-[var(--looply-color-text-primary)] group-hover:text-brand-600">
           {parent.title}
         </div>
-        <div className="mb-2 flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: parent.client?.brandColor ?? "var(--looply-faint-foreground)" }} />
-          <span className="truncate text-[0.6875rem] text-[var(--looply-muted-foreground)]">{parent.client?.name ?? "—"}</span>
-          <span className="text-[var(--looply-border)]">·</span>
-          <span className="text-[0.6875rem] text-[var(--looply-muted-foreground)]">{FORMAT_LABEL[parent.format]}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-[0.625rem] font-medium text-[var(--looply-faint-foreground)]">v{latestVersion(parent)}</span>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[0.625rem] text-[var(--looply-faint-foreground)]">{relativeTime(parent.updatedAt)}</span>
-            <StatusPill status={parent.status} />
-          </div>
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: parent.client?.brandColor ?? "var(--looply-color-text-muted)" }} />
+          <span className="truncate text-[0.6875rem] text-[var(--looply-color-text-muted)]">{parent.client?.name ?? "—"}</span>
+          <span className="text-[var(--looply-color-border-default)]">·</span>
+          <span className="text-[0.6875rem] text-[var(--looply-color-text-muted)]">{FORMAT_LABEL[parent.format]}</span>
+          {parent.versions?.length ? (
+            <>
+              <span className="text-[var(--looply-color-border-default)]">·</span>
+              <span className="text-[0.625rem] font-medium text-[var(--looply-color-text-muted)]">v{latestVersion(parent)}</span>
+            </>
+          ) : null}
+          <span className="ml-auto shrink-0 text-[0.625rem] text-[var(--looply-color-text-muted)]">{relativeTime(parent.updatedAt)}</span>
         </div>
       </div>
 
-      {/* Children stacked underneath — visual "caixa dentro da caixa" */}
+      {/* Grouped children */}
       {hasChildren && (
-        <div className="mt-2 ml-2 rounded-md border-l-2 border-[var(--looply-border)] bg-[var(--looply-surface-muted)]/30 p-2">
-          <div className="mb-1.5 flex items-center gap-1 text-[0.5625rem] font-semibold uppercase tracking-wider text-[var(--looply-faint-foreground)]">
-            <svg className="h-2.5 w-2.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 6v6m4-4v4m4-6v6" />
+        <div className="mt-2 ml-2 rounded-md border-l-2 border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)]/30 p-2">
+          <div className="mb-1.5 flex items-center gap-1 text-[0.5625rem] font-semibold uppercase tracking-wider text-[var(--looply-color-text-muted)]">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M4 6h16M4 12h10M4 18h6" />
             </svg>
-            Agrupado ({children_.length})
+            Agrupados ({children_.length})
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="space-y-1.5">
             {children_.map((child) => (
               <div
                 key={child.id}
-                onClick={(e) => { e.stopPropagation(); onNavigate(child.id); }}
-                className="rounded border border-[var(--looply-border-subtle)] bg-[var(--looply-surface)] px-2.5 py-2 transition-colors hover:border-[var(--looply-border)]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNavigate(child.id);
+                }}
+                className="flex items-center justify-between gap-2 rounded border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-2.5 py-2 transition-colors hover:border-brand-300"
               >
-                <div className="mb-1 text-[0.6875rem] font-medium leading-snug text-[var(--looply-foreground)]">{child.title}</div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[0.625rem] text-[var(--looply-muted-foreground)]">{FORMAT_LABEL[child.format]}</span>
-                  <StatusPill status={child.status} />
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 truncate text-[0.6875rem] font-medium leading-snug text-[var(--looply-color-text-primary)]">
+                    {child.title}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[0.625rem] text-[var(--looply-color-text-muted)]">
+                      {FORMAT_LABEL[child.format]}
+                    </span>
+                    <span className="text-[var(--looply-color-border-default)]">·</span>
+                    <StatusPill status={child.status} />
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  className="btn-ghost shrink-0 p-1 text-[10px] text-[var(--looply-color-text-muted)] hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
+                  title="Desagrupar job"
+                  aria-label={`Desagrupar ${child.title}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUngroup(child.id);
+                  }}
+                >
+                  Desagrupar
+                </button>
               </div>
             ))}
           </div>

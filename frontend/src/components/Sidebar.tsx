@@ -5,36 +5,75 @@ import {
   IconCalendar,
   IconClients,
   IconTeam,
+  IconSettings,
 } from "./Icons";
+import { Logo } from "./Logo";
 import { useUIStore } from "../lib/store";
 
-const NAV = [
-  { to: "/dashboard", label: "Dashboard", Icon: IconDashboard, end: true },
-  { to: "/contents", label: "Conteúdos", Icon: IconContents, end: false },
-  { to: "/calendar", label: "Calendário", Icon: IconCalendar, end: true },
-  { to: "/clients", label: "Clientes", Icon: IconClients, end: true },
-  { to: "/team", label: "Equipe", Icon: IconTeam, end: true },
+// Single canonical navigation registry: shared between desktop Sidebar and
+// mobile AppLayout (bottom nav + account menu).
+// Mobile derives primary and secondary destinations directly via `mobilePlacement`.
+export interface NavItem {
+  to: string;
+  label: string;
+  short: string;
+  Icon: React.ComponentType<{ className?: string }>;
+  end?: boolean;
+  mobilePlacement: "primary" | "secondary";
+}
+
+export const NAV: NavItem[] = [
+  { to: "/dashboard", label: "Visão geral", short: "Visão geral", Icon: IconDashboard, end: true, mobilePlacement: "primary" },
+  { to: "/clients", label: "Clientes", short: "Clientes", Icon: IconClients, end: true, mobilePlacement: "primary" },
+  { to: "/contents", label: "Jobs", short: "Jobs", Icon: IconContents, end: false, mobilePlacement: "primary" },
+  { to: "/calendar", label: "Agenda", short: "Agenda", Icon: IconCalendar, end: true, mobilePlacement: "primary" },
+  { to: "/team", label: "Equipe", short: "Equipe", Icon: IconTeam, end: true, mobilePlacement: "secondary" },
+  { to: "/settings", label: "Configurações", short: "Configurações", Icon: IconSettings, end: true, mobilePlacement: "secondary" },
 ];
 
-export default function Sidebar() {
+// Session identity comes from AppLayout's useMe cache via props — no
+// duplicate query, no hardcoded demo user.
+const ROLE_LABEL: Record<string, string> = {
+  OWNER: "Proprietário",
+  ADMIN: "Administrador",
+  CONTENT_MANAGER: "Gerente de conteúdo",
+  EDITOR: "Editor",
+  SOCIAL_MEDIA: "Social media",
+  DESIGNER: "Designer",
+};
+
+function initials(name: string): string {
+  return (
+    name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((w) => w[0] ?? "")
+      .join("")
+      .toUpperCase() || "·"
+  );
+}
+
+export default function Sidebar({
+  user,
+  role,
+}: {
+  user?: { name: string } | null;
+  role?: string;
+}) {
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
+  const name = user?.name ?? null;
 
   return (
     <aside
       aria-label="Menu principal"
-      className={`flex shrink-0 flex-col border-r border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] transition-all duration-200 ${
+      className={`hidden shrink-0 flex-col border-r border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] transition-all duration-200 md:flex ${
         sidebarCollapsed ? "w-[72px]" : "w-60"
       }`}
     >
-      {/* Brand */}
+      {/* Brand — canonical Human Relay symbol; visible text carries the name */}
       <div className={`flex items-center ${sidebarCollapsed ? "justify-center px-3" : "gap-2.5 px-5"} py-5`}>
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--looply-color-action-primary)] font-bold text-[var(--looply-color-text-inverse)] text-sm shadow-sm">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2L2 7l10 5 10-5-10-5z" />
-            <path d="M2 17l10 5 10-5" />
-            <path d="M2 12l10 5 10-5" />
-          </svg>
-        </div>
+        <Logo size={42} wordmark={false} />
         {!sidebarCollapsed && (
           <div className="flex-1">
             <div className="text-[14px] font-bold tracking-tight text-[var(--looply-color-text-primary)]">Looply</div>
@@ -96,15 +135,19 @@ export default function Sidebar() {
           </svg>
         </button>
 
-        {/* User area */}
+        {/* User area — real session identity (props from AppLayout) */}
         <div className={`flex items-center ${sidebarCollapsed ? "justify-center px-2" : "gap-2.5 px-2"} py-2 rounded-lg`}>
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--looply-color-bg-subtle)] text-[10px] font-bold text-[var(--looply-color-text-brand)]">
-            NM
+            {name ? initials(name) : "·"}
           </div>
           {!sidebarCollapsed && (
             <div className="min-w-0">
-              <div className="truncate text-[12.5px] font-semibold text-[var(--looply-color-text-primary)]">Natan Massuia</div>
-              <div className="text-[10.5px] text-[var(--looply-color-text-muted)]">Administrador · Demo</div>
+              <div className="truncate text-[12.5px] font-semibold text-[var(--looply-color-text-primary)]">
+                {name ?? "·"}
+              </div>
+              <div className="text-[10.5px] text-[var(--looply-color-text-muted)]">
+                {role ? (ROLE_LABEL[role] ?? "Equipe") : "·"}
+              </div>
             </div>
           )}
         </div>

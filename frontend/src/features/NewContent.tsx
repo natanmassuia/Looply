@@ -5,6 +5,7 @@ import { FORMAT_LABEL } from "../lib/format";
 import type { ContentFormat } from "../lib/types";
 import { Card, ErrorState, PageHeader, Spinner } from "../components/common";
 import { ApiError } from "../lib/api";
+import { IconPlus } from "../components/Icons";
 
 const empty = {
   title: "",
@@ -52,7 +53,7 @@ export default function NewContent() {
       const created = await create.mutateAsync(payload);
       navigate(`/contents/${(created as { id: string }).id}`);
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Falha ao criar conteúdo.");
+      setFormError(err instanceof ApiError ? err.message : "Falha ao criar job.");
     }
   };
 
@@ -61,9 +62,9 @@ export default function NewContent() {
   return (
     <div>
       <PageHeader
-        title="Novo conteúdo"
-        subtitle="Crie um conteúdo e envie para revisão interna"
-        crumbs={[{ label: "Conteúdos", to: "/contents" }, { label: "Novo conteúdo" }]}
+        title="Novo job"
+        subtitle="Crie um job e envie para revisão interna"
+        crumbs={[{ label: "Jobs", to: "/contents" }, { label: "Novo job" }]}
       />
 
       {clients && clients.length === 0 && (
@@ -72,55 +73,86 @@ export default function NewContent() {
         </Card>
       )}
 
-      <div className="space-y-5">
-        {/* Basic info */}
-        <Card>
-          <h3 className="mb-4 text-sm font-semibold text-[var(--looply-foreground)]">Informações básicas</h3>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div>
-              <label className="label">Título do conteúdo</label>
-              <input
-                className="input"
-                value={form.title}
-                onChange={(e) => set("title", e.target.value)}
-                placeholder="Ex.: Campanha Dia dos Pais"
-                autoFocus
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        {/* Main column: content info */}
+        <div className="space-y-5 lg:col-span-3">
+          <Card>
+            <h3 className="section-title mb-4">Informações básicas</h3>
+            <div className="space-y-4">
               <div>
-                <label className="label">Cliente</label>
-                <select
+                <label className="label">Título do job</label>
+                <input
                   className="input"
-                  value={form.clientId}
-                  onChange={(e) => set("clientId", e.target.value)}
-                >
-                  <option value="">Selecione um cliente…</option>
-                  {clients?.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  value={form.title}
+                  onChange={(e) => set("title", e.target.value)}
+                  placeholder="Ex.: Campanha Dia dos Pais"
+                  autoFocus
+                />
               </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="label">Cliente</label>
+                  <select
+                    className="input"
+                    value={form.clientId}
+                    onChange={(e) => set("clientId", e.target.value)}
+                  >
+                    <option value="">Selecione um cliente…</option>
+                    {clients?.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Formato</label>
+                  <select
+                    className="input"
+                    value={form.format}
+                    onChange={(e) => set("format", e.target.value as ContentFormat)}
+                  >
+                    {Object.entries(FORMAT_LABEL).map(([k, v]) => (
+                      <option key={k} value={k}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="label">Formato</label>
-                <select
+                <label className="label">Legenda</label>
+                <textarea
+                  className="input min-h-[140px]"
+                  value={form.caption}
+                  onChange={(e) => set("caption", e.target.value)}
+                  placeholder="Escreva a legenda do job…"
+                />
+              </div>
+
+              <div>
+                <label className="label">URL da mídia (demo)</label>
+                <input
                   className="input"
-                  value={form.format}
-                  onChange={(e) => set("format", e.target.value as ContentFormat)}
-                >
-                  {Object.entries(FORMAT_LABEL).map(([k, v]) => (
-                    <option key={k} value={k}>
-                      {v}
-                    </option>
-                  ))}
-                </select>
+                  value={form.mediaUrl}
+                  onChange={(e) => set("mediaUrl", e.target.value)}
+                  placeholder="https://… (opcional)"
+                />
+                <p className="mt-1 text-xs text-[var(--looply-color-text-muted)]">
+                  Em produção, aqui seria o upload de imagem/vídeo.
+                </p>
               </div>
             </div>
+          </Card>
+        </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* Side column: scheduling + actions */}
+        <div className="space-y-5 lg:col-span-2">
+          <Card>
+            <h3 className="section-title mb-4">Detalhes</h3>
+            <div className="space-y-4">
               <div>
                 <label className="label">Rede / Canal</label>
                 <input
@@ -130,6 +162,7 @@ export default function NewContent() {
                   placeholder="Instagram, TikTok…"
                 />
               </div>
+
               <div>
                 <label className="label">Responsável</label>
                 <select
@@ -145,63 +178,46 @@ export default function NewContent() {
                   ))}
                 </select>
               </div>
-            </div>
 
-            <div>
-              <label className="label">Data prevista de publicação</label>
-              <input
-                type="date"
-                className="input"
-                value={form.publicationTarget}
-                onChange={(e) => set("publicationTarget", e.target.value)}
-              />
+              <div>
+                <label className="label">Data prevista de publicação</label>
+                <input
+                  type="date"
+                  className="input"
+                  value={form.publicationTarget}
+                  onChange={(e) => set("publicationTarget", e.target.value)}
+                />
+              </div>
             </div>
-          </form>
-        </Card>
+          </Card>
 
-        {/* Content */}
-        <Card>
-          <h3 className="mb-4 text-sm font-semibold text-[var(--looply-foreground)]">Conteúdo</h3>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div>
-              <label className="label">Legenda</label>
-              <textarea
-                className="input min-h-[140px]"
-                value={form.caption}
-                onChange={(e) => set("caption", e.target.value)}
-                placeholder="Escreva a legenda do conteúdo…"
-              />
-            </div>
-
-            <div>
-              <label className="label">URL da mídia (demo)</label>
-              <input
-                className="input"
-                value={form.mediaUrl}
-                onChange={(e) => set("mediaUrl", e.target.value)}
-                placeholder="https://… (opcional)"
-              />
-              <p className="mt-1 text-xs text-[var(--looply-muted-foreground)]">
-                Em produção, aqui seria o upload de imagem/vídeo.
-              </p>
-            </div>
-
+          {/* Actions */}
+          <Card>
             {formError && (
-              <div className="rounded-lg bg-[var(--looply-danger-bg)] px-3 py-2.5 text-sm text-[var(--looply-danger)]">
+              <div className="mb-4 rounded-lg bg-[var(--looply-color-status-danger)]/10 px-3 py-2.5 text-sm text-[var(--looply-color-status-danger)]">
                 {formError}
               </div>
             )}
-
-            <div className="flex justify-end gap-2 border-t border-[var(--looply-border)] pt-4">
-              <button type="button" className="btn-secondary" onClick={() => navigate("/contents")}>
-                Cancelar
-              </button>
-              <button type="submit" className="btn-primary" disabled={create.isPending}>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                className="btn-primary btn-lg w-full"
+                onClick={onSubmit}
+                disabled={create.isPending}
+              >
+                <IconPlus className="h-4 w-4" />
                 {create.isPending ? "Criando…" : "Criar e ir para revisão"}
               </button>
+              <button
+                type="button"
+                className="btn-ghost w-full"
+                onClick={() => navigate("/contents")}
+              >
+                Cancelar
+              </button>
             </div>
-          </form>
-        </Card>
+          </Card>
+        </div>
       </div>
     </div>
   );

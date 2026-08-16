@@ -166,6 +166,28 @@ describe("onboarding", () => {
     expect(s.readyToComplete).toBe(false);
   });
 
+  it("status exposes company website and resolves the appearance default (F4C)", async () => {
+    const { db, auth } = await seeded();
+    await db.user.update({ where: { id: auth.userId }, data: { mustChangePassword: false } });
+    await db.company.update({
+      where: { id: auth.companyId },
+      data: { website: "https://corp.example", appearancePreset: "FLUX", appearanceMode: "LIGHT" },
+    });
+    const s = await getOnboardingStatus(db, auth);
+    expect(s.company.website).toBe("https://corp.example");
+    expect(s.appearance).toEqual({ preset: "FLUX", mode: "LIGHT", customColors: null });
+    // never-configured rows resolve deterministically to AURA/LIGHT
+    await db.company.update({
+      where: { id: auth.companyId },
+      data: { appearancePreset: null, appearanceMode: null },
+    });
+    expect((await getOnboardingStatus(db, auth)).appearance).toEqual({
+      preset: "AURA",
+      mode: "LIGHT",
+      customColors: null,
+    });
+  });
+
   it("rejects invalid template, accepts valid one, blocks change after ACTIVE", async () => {
     const { db, auth } = await seeded();
     await expect(selectTemplate(db, auth.companyId, "ENTERPRISE_MEGA")).rejects.toMatchObject({ status: 400 });

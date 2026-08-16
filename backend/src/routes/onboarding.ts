@@ -4,6 +4,8 @@ import { prisma } from "../lib/db";
 import { asyncHandler, badRequest } from "../lib/errors";
 import { parse } from "../lib/parse";
 import { requireAuth } from "../middleware/requireAuth";
+import { updateAppearanceSchema } from "../lib/validation";
+import { updateAppearance } from "../services/workspaceAppearanceService";
 import {
   getOnboardingStatus,
   selectTemplate,
@@ -64,6 +66,17 @@ router.post(
     );
     await selectTemplate(prisma, req.auth!.companyId, template);
     res.json({ template });
+  }),
+);
+
+// Appearance step (F4C). Pre-activation write: /api/settings/appearance is
+// gated by requireWorkspaceActive, so onboarding exposes the same validated
+// service here. Tenant always from the session.
+router.patch(
+  "/appearance",
+  asyncHandler(async (req, res) => {
+    const input = parse(updateAppearanceSchema, req.body);
+    res.json({ appearance: await updateAppearance(prisma, req.auth!.companyId, input) });
   }),
 );
 
