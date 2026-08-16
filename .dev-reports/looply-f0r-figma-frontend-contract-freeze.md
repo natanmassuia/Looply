@@ -114,8 +114,8 @@ NEXT: obtain Figma access (token/MCP/CLI + read scope on file 8JDixNLJNe1f3KVPRw
 STATUS: F0R — BLOCKED: FIGMA_ACCESS_REQUIRED
 BRANCH: feature/demo-v1-polish
 INITIAL_HEAD: d58eebbb396f630d0a9d2a27bcd1c3697b63ebcf
-FINAL_HEAD: <set by Phase 18 docs commit>
-COMMIT: <set by Phase 18>
+FINAL_HEAD: 8c55a49b1d0f5399f0cffb0c813b0eb7d9d94015
+COMMIT: 8c55a49b1d0f5399f0cffb0c813b0eb7d9d94015 (docs(v1): freeze current figma frontend contracts)
 FIGMA_FILE: https://www.figma.com/design/8JDixNLJNe1f3KVPRwEFBi/Looply-%E2%80%94-Brand---Product
 FIGMA_INSPECTED: NO
 FIGMA_PAGES_AUDITED: 0
