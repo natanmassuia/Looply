@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction, RequestHandler } from "express";
 import { Prisma } from "@prisma/client";
+import { logger } from "./logger";
 
 export class AppError extends Error {
   constructor(
@@ -15,9 +16,14 @@ export class AppError extends Error {
 
 export const badRequest = (msg: string, details?: unknown) =>
   new AppError(400, msg, "bad_request", details);
+export const unauthorized = (msg = "Não autenticado") =>
+  new AppError(401, msg, "unauthorized");
+export const forbidden = (msg = "Acesso negado") => new AppError(403, msg, "forbidden");
 export const notFound = (msg = "Não encontrado") => new AppError(404, msg, "not_found");
 export const conflict = (msg: string, details?: unknown) =>
   new AppError(409, msg, "conflict", details);
+export const tooManyRequests = (msg = "Muitas tentativas") =>
+  new AppError(429, msg, "rate_limited");
 
 // Wrap async route handlers so thrown errors reach the error middleware.
 type AsyncFn = (req: Request, res: Response, next: NextFunction) => Promise<unknown>;
@@ -41,12 +47,22 @@ function toAppError(err: unknown): AppError {
   return new AppError(500, "Erro interno do servidor", "internal_error");
 }
 
-export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
-  const appErr = toAppError(err);
+export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
+  const appErr = err instanceof Error && "status" in err && "code" in err
+    ? new AppError(Number((err as { status: number }).status), err.message, String((err as { code: string }).code))
+    : toAppError(err);
+  if (appErr.status >= 500) {
+    logger.error("unhandled_error", {
+      requestId: res.locals.requestId,
+      path: req.path,
+      stack: err instanceof Error ? err.stack : String(err),
+    });
+  }
   const error: Record<string, unknown> = {
     code: appErr.code,
     message: appErr.message,
   };
+  if (res.locals.requestId) error.requestId = res.locals.requestId;
   if (appErr.details !== undefined) error.details = appErr.details;
   // Never leak stack traces / internals to clients.
   if (appErr.status >= 500 && process.env.NODE_ENV === "development") {
@@ -56,5 +72,11 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
 }
 
 export function notFoundHandler(_req: Request, res: Response) {
-  res.status(404).json({ error: { code: "not_found", message: "Rota não encontrada" } });
+  res.status(404).json({
+    error: {
+      code: "not_found",
+      message: "Rota não encontrada",
+      ...(res.locals.requestId ? { requestId: res.locals.requestId } : {}),
+    },
+  });
 }

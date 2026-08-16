@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 
 // Dev: proxy API + health to the backend so the SPA can use relative URLs.
 export default defineConfig({
+  envDir: "..",
   plugins: [react()],
   server: {
     port: 5173,

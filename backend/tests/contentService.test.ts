@@ -17,17 +17,30 @@ function makeFakeDB(): DB {
   const id = () => `id_${++n}`;
 
   const db: any = {
+    company: {
+      findUnique: async () => ({ workspaceTemplate: "LOCAL_BUSINESS", isActive: true }),
+    },
+    workflowDefinition: {
+      findUnique: async () => ({
+        id: "w1",
+        companyId: "company_1",
+        template: "LOCAL_BUSINESS",
+        stages: [{ id: "s1", position: 0 }],
+      }),
+      create: async () => ({ id: "w1", stages: [{ id: "s1", position: 0 }] }),
+    },
     client: {
-      findUnique: async ({ where }: any) =>
-        state.clients.find((c) => c.id === where.id || c.name === where.name) ?? null,
+      findFirst: async ({ where }: any) =>
+        state.clients.find((c) => c.id === where.id && c.companyId === where.companyId) ?? null,
     },
     user: {
       findUnique: async ({ where }: any) =>
         state.users.find((u) => u.id === where.id || u.email === where.email) ?? null,
     },
-    content: {
-      findUnique: async ({ where }: any) =>
-        state.contents.find((c) => c.id === where.id) ?? null,
+    job: {
+      findUnique: async ({ where }: any) => state.contents.find((c) => c.id === where.id) ?? null,
+      findFirst: async ({ where }: any) =>
+        state.contents.find((c) => c.id === where.id && (!where.companyId || c.companyId === where.companyId)) ?? null,
       create: async ({ data }: any) => {
         const { versions: vCreate, ...rest } = data;
         const content = { id: id(), createdAt: new Date(), updatedAt: new Date(), ...rest };
@@ -45,8 +58,14 @@ function makeFakeDB(): DB {
         Object.assign(c, data);
         return c;
       },
+      updateMany: async ({ where, data }: any) => {
+        const c = state.contents.find((x) => x.id === where.id && (!where.companyId || x.companyId === where.companyId));
+        if (!c) return { count: 0 };
+        Object.assign(c, data);
+        return { count: 1 };
+      },
     },
-    contentVersion: {
+    jobVersion: {
       findFirst: async ({ where, orderBy }: any) => {
         let vs = state.versions.filter((v) => v.contentId === where.contentId);
         if (orderBy?.versionNumber === "desc") vs = [...vs].sort((a, b) => b.versionNumber - a.versionNumber);
@@ -64,6 +83,9 @@ function makeFakeDB(): DB {
         state.approvals.push(a);
         return a;
       },
+    },
+    activity: {
+      create: async ({ data }: any) => ({ id: id(), ...data }),
     },
     async $transaction(arg: any) {
       return typeof arg === "function" ? arg(db) : Promise.all(arg);
@@ -87,10 +109,10 @@ const baseInput: CreateContentInput = {
 describe("contentService.createContent", () => {
   it("creates the content and an initial version #1 with status DRAFT", async () => {
     const db = makeFakeDB();
-    (db as any).__state.clients.push({ id: "client_1", name: "Restaurante Aurora" });
+    (db as any).__state.clients.push({ id: "client_1", companyId: "company_1", name: "Restaurante Aurora" });
     (db as any).__state.users.push({ id: "user_1", name: "Lucas" });
 
-    const created = (await createContent(db, baseInput)) as any;
+    const created = (await createContent(db, baseInput, "company_1")) as any;
     const versions = (db as any).__state.versions as any[];
 
     expect(created.status).toBe("DRAFT");
@@ -102,21 +124,21 @@ describe("contentService.createContent", () => {
 
   it("rejects when the client does not exist", async () => {
     const db = makeFakeDB();
-    await expect(createContent(db, baseInput)).rejects.toThrow();
+    await expect(createContent(db, baseInput, "company_1")).rejects.toThrow();
   });
 });
 
 describe("contentService.sendForApproval", () => {
   it("creates a PENDING approval bound to the LATEST version and moves to AWAITING_CLIENT", async () => {
     const db = makeFakeDB();
-    (db as any).__state.clients.push({ id: "client_1", name: "Aurora" });
+    (db as any).__state.clients.push({ id: "client_1", companyId: "company_1", name: "Aurora" });
     (db as any).__state.users.push({ id: "user_1", name: "Lucas" });
 
-    const created = (await createContent(db, baseInput)) as any;
+    const created = (await createContent(db, baseInput, "company_1")) as any;
     // bring to IN_REVIEW (legal prerequisite for send-approval)
     (db as any).__state.contents[0].status = "IN_REVIEW";
 
-    const result = (await sendForApproval(db, created.id)) as any;
+    const result = (await sendForApproval(db, "company_1", created.id)) as any;
     const approvals = (db as any).__state.approvals as any[];
     const versions = (db as any).__state.versions as any[];
 

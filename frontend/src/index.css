@@ -3,40 +3,505 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: light;
+
+    /* ── Brand base — Looply Human Relay (figma 19:2) ── */
+    --looply-color-aubergine-950: #2a171f;
+    --looply-color-coral-500: #f06d55;
+    --looply-color-coral-600: #d95b47;
+    --looply-color-amber-400: #f3b84b;
+    --looply-color-coral-100: #ffe3d7;
+    --looply-color-cream-100: #fff7f1;
+
+    /* ── Semantic roles — canonical AURA/LIGHT (static startup state) ── */
+    --looply-color-bg-canvas: #fff7f1;
+    --looply-color-bg-surface: #ffffff;
+    --looply-color-bg-subtle: #f8ece5;
+    --looply-color-bg-inverse: #2a171f;
+    --looply-color-bg-brand-soft: color-mix(in srgb, var(--looply-color-action-primary) 10%, var(--looply-color-bg-surface));
+    --looply-color-text-primary: #2a171f;
+    --looply-color-text-secondary: #514146;
+    --looply-color-text-muted: #6d5a5d;
+    --looply-color-text-inverse: #fffdfc;
+    --looply-color-text-brand: #b94738;
+    --looply-color-border-default: #e8d8d1;
+    --looply-color-border-brand: #f06d55;
+    --looply-color-action-primary: #f06d55;
+    --looply-color-action-primary-hover: #d95b47;
+    --looply-color-action-primary-active: #c8503b;
+    --looply-color-action-secondary: #f3b84b;
+    --looply-color-focus-ring: #e0563f;
+    --looply-color-status-success: #059669;
+    --looply-color-status-warning: #b45309;
+    --looply-color-status-danger: #dc2626;
+    --looply-color-status-info: #7c5c6b;
+
+    /* ── Required contract aliases → canonical roles. var() aliases resolve at
+       computed-value time, so runtime applyTheme overrides on <html> propagate
+       to these names automatically (elevated surfaces read bg-surface; accent
+       reads the secondary action; status/focus read their canonical roles). ── */
+    --looply-color-bg-elevated: var(--looply-color-bg-surface);
+    --looply-color-accent: var(--looply-color-action-secondary);
+    --looply-color-success: var(--looply-color-status-success);
+    --looply-color-warning: var(--looply-color-status-warning);
+    --looply-color-danger: var(--looply-color-status-danger);
+    --looply-color-focus: var(--looply-color-focus-ring);
+
+    /* ── Legacy aliases → semantic roles (F2+ migrates screens) ── */
+    --looply-background: var(--looply-color-bg-canvas);
+    --looply-surface: var(--looply-color-bg-surface);
+    --looply-surface-elevated: var(--looply-color-bg-surface);
+    --looply-surface-muted: var(--looply-color-bg-subtle);
+    --looply-surface-subtle: var(--looply-color-bg-subtle);
+    --looply-border: var(--looply-color-border-default);
+    --looply-border-strong: var(--looply-color-border-default);
+    --looply-border-subtle: var(--looply-color-border-default);
+    --looply-foreground: var(--looply-color-text-primary);
+    --looply-muted-foreground: var(--looply-color-text-muted);
+    --looply-faint-foreground: var(--looply-color-text-muted);
+    --looply-tertiary-foreground: var(--looply-color-text-muted);
+    --looply-primary: var(--looply-color-action-primary);
+    --looply-primary-hover: var(--looply-color-action-primary-hover);
+    --looply-primary-active: var(--looply-color-action-primary-active);
+    --looply-primary-subtle: var(--looply-color-coral-100);
+    --looply-primary-soft: var(--looply-color-coral-100);
+    --looply-success: var(--looply-color-status-success);
+    --looply-success-bg: #ecfdf5;
+    --looply-success-border: #a7f3d0;
+    --looply-warning: var(--looply-color-status-warning);
+    --looply-warning-bg: #fffbeb;
+    --looply-warning-border: #fde68a;
+    --looply-danger: var(--looply-color-status-danger);
+    --looply-danger-bg: #fef2f2;
+    --looply-danger-border: #fecaca;
+    --looply-information: var(--looply-color-status-info);
+    --looply-information-bg: #f6edf1;
+    --looply-information-border: #e4d2d8;
+
+    /* ── Shape (existing technical radii preserved) ── */
+    --looply-radius-sm: 6px;
+    --looply-radius: 8px;
+    --looply-radius-md: 10px;
+    --looply-radius-lg: 12px;
+    --looply-radius-xl: 16px;
+    --looply-btn-radius: 10px;
+
+    /* ── Shadows (legacy) ── */
+    --looply-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
+    --looply-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+    --looply-shadow-md: 0 4px 8px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.03);
+    --looply-shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.08), 0 4px 8px rgba(0, 0, 0, 0.04);
+
+    /* ── Figma foundation — spacing / radius / elevation ── */
+    --looply-space-16: 16px;
+    --looply-space-24: 24px;
+    --looply-space-32: 32px;
+    --looply-space-48: 48px;
+    --looply-space-64: 64px;
+    --looply-radius-10: 10px;
+    --looply-radius-16: 16px;
+    --looply-radius-full: 999px;
+    --looply-elevation-1: 0 2px 6px rgba(42, 23, 31, 0.08);
+    --looply-elevation-2: 0 2px 4px -1px rgba(42, 23, 31, 0.06), 0 6px 16px -2px rgba(42, 23, 31, 0.1);
+    --looply-elevation-3: 0 6px 12px -4px rgba(42, 23, 31, 0.08), 0 16px 40px -8px rgba(42, 23, 31, 0.16);
+  }
+
+  /* AURA dark — "profundidade aubergine", never generic zinc/black */
+  html[data-looply-theme="aura"][data-looply-mode="dark"] {
+    color-scheme: dark;
+    --looply-color-bg-canvas: #2a171f;
+    --looply-color-bg-surface: #34202a;
+    --looply-color-bg-subtle: #3d2731;
+    --looply-color-bg-inverse: #fff7f1;
+    --looply-color-bg-brand-soft: color-mix(in srgb, var(--looply-color-action-primary) 14%, var(--looply-color-bg-surface));
+    --looply-color-text-primary: #fffdfc;
+    --looply-color-text-secondary: #e8d8d1;
+    --looply-color-text-muted: #b7a4a9;
+    --looply-color-text-inverse: #2a171f;
+    --looply-color-text-brand: #f58a75;
+    --looply-color-border-default: #5b434c;
+    --looply-color-border-brand: #f06d55;
+    --looply-color-action-primary: #f06d55;
+    --looply-color-action-primary-hover: #f58470;
+    --looply-color-action-primary-active: #ff9b82;
+    --looply-color-action-secondary: #f3b84b;
+    --looply-color-focus-ring: #f06d55;
+    --looply-color-status-success: #34d399;
+    --looply-color-status-warning: #fbbf24;
+    --looply-color-status-danger: #f87171;
+    --looply-color-status-info: #c9a2b4;
+  }
+
   html,
   body,
   #root {
     height: 100%;
   }
+
   body {
-    @apply bg-slate-100 text-slate-800 antialiased;
+    font-family: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+      Roboto, "Helvetica Neue", Arial, sans-serif;
     font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--looply-color-bg-canvas);
+    color: var(--looply-color-text-primary);
   }
+
   * {
-    @apply border-slate-200;
+    border-color: var(--looply-color-border-default);
   }
 }
 
 @layer components {
+  /* ── Cards ── */
   .card {
-    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+    background: var(--looply-color-bg-surface);
+    border: 1px solid var(--looply-color-border-default);
+    border-radius: var(--looply-radius-lg);
+    box-shadow: var(--looply-shadow-sm);
   }
+
+  .card-elevated {
+    background: var(--looply-color-bg-elevated);
+    border: 1px solid var(--looply-color-border-default);
+    border-radius: var(--looply-radius-lg);
+    box-shadow: var(--looply-shadow);
+  }
+
+  /* ── Buttons ── */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1;
+    transition: all 120ms ease;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    white-space: nowrap;
+    user-select: none;
   }
+  .btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  .btn:focus-visible {
+    box-shadow: 0 0 0 2px var(--looply-color-bg-surface), 0 0 0 4px var(--looply-color-focus);
+  }
+
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1;
+    transition: all 120ms ease;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    white-space: nowrap;
+    user-select: none;
+    background: var(--looply-color-action-primary);
+    color: var(--looply-color-text-inverse);
+    box-shadow: var(--looply-shadow-sm);
   }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--looply-color-action-primary-hover);
+    box-shadow: var(--looply-shadow);
+  }
+  .btn-primary:active:not(:disabled) {
+    background: var(--looply-color-action-primary-active);
+    transform: scale(0.98);
+  }
+  .btn-primary:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  .btn-primary:focus-visible {
+    box-shadow: 0 0 0 2px var(--looply-color-bg-surface), 0 0 0 4px var(--looply-color-focus);
+  }
+
   .btn-secondary {
-    @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1;
+    transition: all 120ms ease;
+    cursor: pointer;
+    outline: none;
+    white-space: nowrap;
+    user-select: none;
+    background: var(--looply-color-bg-surface);
+    color: var(--looply-color-text-primary);
+    border: 1px solid var(--looply-color-border-default);
+    box-shadow: var(--looply-shadow-sm);
   }
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--looply-color-bg-subtle);
+    border-color: var(--looply-color-border-default);
+  }
+  .btn-secondary:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  .btn-secondary:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  .btn-secondary:focus-visible {
+    box-shadow: 0 0 0 2px var(--looply-color-bg-surface), 0 0 0 4px var(--looply-color-focus);
+  }
+
   .btn-ghost {
-    @apply btn text-slate-600 hover:bg-slate-100;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1;
+    transition: all 120ms ease;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    white-space: nowrap;
+    user-select: none;
+    background: transparent;
+    color: var(--looply-color-text-muted);
   }
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--looply-color-bg-subtle);
+    color: var(--looply-color-text-primary);
+  }
+  .btn-ghost:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  .btn-ghost:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  .btn-ghost:focus-visible {
+    box-shadow: 0 0 0 2px var(--looply-color-bg-surface), 0 0 0 4px var(--looply-color-focus);
+  }
+
+  .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1;
+    transition: all 120ms ease;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    white-space: nowrap;
+    user-select: none;
+    background: var(--looply-color-status-danger);
+    color: var(--looply-color-text-inverse);
+  }
+  .btn-danger:hover:not(:disabled) {
+    background: #b91c1c;
+  }
+  .btn-danger:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  .btn-danger:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  .btn-danger:focus-visible {
+    box-shadow: 0 0 0 2px var(--looply-color-bg-surface), 0 0 0 4px var(--looply-color-focus);
+  }
+
+  .btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  .btn-lg {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  /* ── Inputs ── */
   .input {
-    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100;
+    width: 100%;
+    border-radius: var(--looply-radius);
+    border: 1px solid var(--looply-color-border-default);
+    background: var(--looply-color-bg-surface);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--looply-color-text-primary);
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+    outline: none;
   }
+  .input::placeholder {
+    color: var(--looply-color-text-muted);
+  }
+  .input:hover:not(:focus):not(:disabled) {
+    border-color: var(--looply-color-border-default);
+  }
+  .input:focus {
+    border-color: var(--looply-color-action-primary);
+    box-shadow: 0 0 0 3px var(--looply-color-focus);
+  }
+  .input:disabled {
+    background: var(--looply-color-bg-subtle);
+    cursor: not-allowed;
+  }
+
+  select.input {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%235f6577' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.25em 1.25em;
+    padding-right: 2.25rem;
+  }
+
+  /* F2 large control (auth/onboarding, 05.1): 48px */
+  .input-lg {
+    padding: 0.75rem 1rem;
+    font-size: 0.9375rem;
+    min-height: 48px;
+  }
+
+  textarea.input {
+    resize: vertical;
+    min-height: 80px;
+  }
+
   .label {
-    @apply mb-1 block text-sm font-medium text-slate-700;
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--looply-color-text-primary);
+  }
+
+  /* ── Status pills ── */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 9999px;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  /* ── Section headers ── */
+  .section-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--looply-color-text-primary);
+    letter-spacing: -0.01em;
+  }
+
+  .section-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--looply-color-text-muted);
+  }
+
+  /* ── Looply Human Relay type ramp (figma 19:2) ── */
+  .typo-eyebrow {
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 700;
+    letter-spacing: 0.88px;
+    text-transform: uppercase;
+  }
+  .typo-display-large {
+    font-size: 56px;
+    line-height: 64px;
+    font-weight: 800;
+    letter-spacing: -1.12px;
+  }
+  .typo-heading-h2 {
+    font-size: 36px;
+    line-height: 44px;
+    font-weight: 700;
+    letter-spacing: -0.36px;
+  }
+  .typo-title-large {
+    font-size: 22px;
+    line-height: 28px;
+    font-weight: 700;
+  }
+  .typo-body-large {
+    font-size: 18px;
+    line-height: 28px;
+    font-weight: 400;
+  }
+  .typo-body-medium {
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 400;
+  }
+  .typo-body-small {
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 400;
+  }
+  .typo-label-large {
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 600;
+  }
+  .typo-label-small {
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .typo-caption {
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 400;
+  }
+
+  /* ── Inverse foreground roles (05.1 Product Story, F4C-R1) ──
+     Tailwind v3 cannot apply opacity modifiers to var() colors
+     (text-[var(--x)]/70 silently compiles to nothing), so inverse
+     secondary/muted roles are explicit utilities over the semantic token. */
+  .text-inverse {
+    color: var(--looply-color-text-inverse);
+  }
+  .text-inverse-secondary {
+    color: color-mix(in srgb, var(--looply-color-text-inverse) 80%, transparent);
+  }
+  .text-inverse-muted {
+    color: color-mix(in srgb, var(--looply-color-text-inverse) 65%, transparent);
   }
 }
+

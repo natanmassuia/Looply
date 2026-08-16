@@ -5,58 +5,151 @@ import {
   IconCalendar,
   IconClients,
   IconTeam,
+  IconSettings,
 } from "./Icons";
+import { Logo } from "./Logo";
+import { useUIStore } from "../lib/store";
 
-const NAV = [
-  { to: "/dashboard", label: "Dashboard", Icon: IconDashboard, end: true },
-  { to: "/contents", label: "Contents", Icon: IconContents, end: false },
-  { to: "/calendar", label: "Calendário", Icon: IconCalendar, end: true },
-  { to: "/clients", label: "Clientes", Icon: IconClients, end: true },
-  { to: "/team", label: "Equipe", Icon: IconTeam, end: true },
+// Single canonical navigation registry: shared between desktop Sidebar and
+// mobile AppLayout (bottom nav + account menu).
+// Mobile derives primary and secondary destinations directly via `mobilePlacement`.
+export interface NavItem {
+  to: string;
+  label: string;
+  short: string;
+  Icon: React.ComponentType<{ className?: string }>;
+  end?: boolean;
+  mobilePlacement: "primary" | "secondary";
+}
+
+export const NAV: NavItem[] = [
+  { to: "/dashboard", label: "Visão geral", short: "Visão geral", Icon: IconDashboard, end: true, mobilePlacement: "primary" },
+  { to: "/clients", label: "Clientes", short: "Clientes", Icon: IconClients, end: true, mobilePlacement: "primary" },
+  { to: "/contents", label: "Jobs", short: "Jobs", Icon: IconContents, end: false, mobilePlacement: "primary" },
+  { to: "/calendar", label: "Agenda", short: "Agenda", Icon: IconCalendar, end: true, mobilePlacement: "primary" },
+  { to: "/team", label: "Equipe", short: "Equipe", Icon: IconTeam, end: true, mobilePlacement: "secondary" },
+  { to: "/settings", label: "Configurações", short: "Configurações", Icon: IconSettings, end: true, mobilePlacement: "secondary" },
 ];
 
-export default function Sidebar() {
+// Session identity comes from AppLayout's useMe cache via props — no
+// duplicate query, no hardcoded demo user.
+const ROLE_LABEL: Record<string, string> = {
+  OWNER: "Proprietário",
+  ADMIN: "Administrador",
+  CONTENT_MANAGER: "Gerente de conteúdo",
+  EDITOR: "Editor",
+  SOCIAL_MEDIA: "Social media",
+  DESIGNER: "Designer",
+};
+
+function initials(name: string): string {
   return (
-    <aside className="flex w-64 shrink-0 flex-col bg-navy-900 text-slate-300">
-      <div className="flex items-center gap-2.5 px-5 py-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 font-black text-white">
-          L
-        </div>
-        <div>
-          <div className="text-base font-bold tracking-tight text-white">Looply</div>
-          <div className="text-[11px] font-medium text-slate-400">Fluxo de conteúdo</div>
-        </div>
+    name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((w) => w[0] ?? "")
+      .join("")
+      .toUpperCase() || "·"
+  );
+}
+
+export default function Sidebar({
+  user,
+  role,
+}: {
+  user?: { name: string } | null;
+  role?: string;
+}) {
+  const { sidebarCollapsed, toggleSidebar } = useUIStore();
+  const name = user?.name ?? null;
+
+  return (
+    <aside
+      aria-label="Menu principal"
+      className={`hidden shrink-0 flex-col border-r border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] transition-all duration-200 md:flex ${
+        sidebarCollapsed ? "w-[72px]" : "w-60"
+      }`}
+    >
+      {/* Brand — canonical Human Relay symbol; visible text carries the name */}
+      <div className={`flex items-center ${sidebarCollapsed ? "justify-center px-3" : "gap-2.5 px-5"} py-5`}>
+        <Logo size={42} wordmark={false} />
+        {!sidebarCollapsed && (
+          <div className="flex-1">
+            <div className="text-[14px] font-bold tracking-tight text-[var(--looply-color-text-primary)]">Looply</div>
+            <div className="text-[10.5px] font-medium text-[var(--looply-color-text-muted)]">Fluxo de conteúdo</div>
+          </div>
+        )}
       </div>
 
-      <nav className="mt-2 flex-1 space-y-1 px-3">
+      {/* Navigation */}
+      <nav aria-label="Navegação" className="mt-2 flex-1 space-y-0.5 px-2.5">
         {NAV.map(({ to, label, Icon, end }) => (
           <NavLink
             key={to}
             to={to}
             end={end}
+            title={sidebarCollapsed ? label : undefined}
             className={({ isActive }) =>
-              `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+              `group flex items-center ${sidebarCollapsed ? "justify-center px-2" : "gap-2.5 px-2.5"} py-2 rounded-lg text-[13px] font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] ${
                 isActive
-                  ? "bg-brand-600 text-white shadow-sm"
-                  : "text-slate-300 hover:bg-navy-800 hover:text-white"
+                  ? "bg-[var(--looply-color-bg-subtle)] font-semibold text-[var(--looply-color-text-brand)]"
+                  : "text-[var(--looply-color-text-muted)] hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
               }`
             }
           >
-            <Icon className="h-5 w-5" />
-            {label}
+            {({ isActive }) => (
+              <>
+                <Icon className={`h-[17px] w-[17px] shrink-0 transition-colors ${isActive ? "text-[var(--looply-color-text-brand)]" : "text-[var(--looply-color-text-muted)] group-hover:text-[var(--looply-color-text-primary)]"}`} />
+                {!sidebarCollapsed && label}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
 
-      <div className="border-t border-navy-800 px-5 py-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-navy-700 text-xs font-bold text-slate-200">
-            NM
+      {/* Collapse toggle + User area */}
+      <div className="border-t border-[var(--looply-color-border-default)] px-2 py-2">
+        {/* Toggle button */}
+        <button
+          onClick={toggleSidebar}
+          aria-label={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
+          aria-expanded={!sidebarCollapsed}
+          className="flex w-full items-center justify-center rounded-lg py-2 text-[var(--looply-color-text-muted)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
+          title={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
+        >
+          <svg
+            aria-hidden="true"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`transition-transform duration-200 ${sidebarCollapsed ? "rotate-180" : ""}`}
+          >
+            <path d="M11 6l-6 6 6 6" />
+            <path d="M17 6l-6 6 6 6" opacity="0.3" />
+          </svg>
+        </button>
+
+        {/* User area — real session identity (props from AppLayout) */}
+        <div className={`flex items-center ${sidebarCollapsed ? "justify-center px-2" : "gap-2.5 px-2"} py-2 rounded-lg`}>
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--looply-color-bg-subtle)] text-[10px] font-bold text-[var(--looply-color-text-brand)]">
+            {name ? initials(name) : "·"}
           </div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-medium text-white">Natan Massuia</div>
-            <div className="text-[11px] text-slate-400">Administrador · Demo</div>
-          </div>
+          {!sidebarCollapsed && (
+            <div className="min-w-0">
+              <div className="truncate text-[12.5px] font-semibold text-[var(--looply-color-text-primary)]">
+                {name ?? "·"}
+              </div>
+              <div className="text-[10.5px] text-[var(--looply-color-text-muted)]">
+                {role ? (ROLE_LABEL[role] ?? "Equipe") : "·"}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </aside>

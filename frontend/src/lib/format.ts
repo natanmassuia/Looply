@@ -1,4 +1,4 @@
-import type { ContentStatus, ContentFormat, UserRole } from "./types";
+import type { ContentStatus, ContentFormat, UserRole, MemberRole } from "./types";
 
 export const STATUS_LABEL: Record<ContentStatus, string> = {
   DRAFT: "Rascunho",
@@ -35,6 +35,12 @@ export const ROLE_LABEL: Record<UserRole, string> = {
   EDITOR: "Editor",
   SOCIAL_MEDIA: "Social Media",
   DESIGNER: "Designer",
+};
+
+export const MEMBER_ROLE_LABEL: Record<MemberRole, string> = {
+  OWNER: "Proprietário",
+  ADMIN: "Administrador",
+  MEMBER: "Membro",
 };
 
 export const STATUS_FILTERS: ContentStatus[] = [
@@ -87,4 +93,12 @@ export function relativeTime(iso?: string | null): string {
   }
   const d = Math.floor(abs / day);
   return diff > 0 ? `há ${d}d` : `em ${d}d`;
+}
+
+export function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }

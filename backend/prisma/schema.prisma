@@ -22,6 +22,21 @@ enum UserRole {
   DESIGNER
 }
 
+// Company membership role (multi-tenant authorization).
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// Workspace operational profile. Chosen during onboarding (B4);
+// null = workspace provisioned but not yet configured.
+enum WorkspaceTemplate {
+  LOCAL_BUSINESS
+  HIGH_TICKET
+  MARKETING_AGENCY
+}
+
 enum ClientStatus {
   ACTIVE
   INACTIVE
@@ -47,32 +62,216 @@ enum ContentStatus {
   PUBLISHED
 }
 
+enum AppointmentStatus {
+  SCHEDULED
+  CANCELLED
+}
+
+enum JobLifecycleStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// Workspace visual identity (BP1). Chosen during onboarding (F4B) and editable
+// in Settings. Values are canonical product vocabulary; the six base colors
+// apply to the CUSTOM preset only.
+enum AppearancePreset {
+  AURA
+  FLUX
+  PULSE
+  CUSTOM
+}
+
+enum AppearanceMode {
+  LIGHT
+  DARK
+}
+
+enum ActivityType {
+  JOB_CREATED
+  JOB_UPDATED
+  JOB_STAGE_CHANGED
+  JOB_COMPLETED
+  JOB_CANCELLED
+  APPROVAL_REQUESTED
+  APPROVAL_APPROVED
+  APPROVAL_CHANGES_REQUESTED
+  APPROVAL_REJECTED
+  APPROVAL_REVOKED
+}
+
+enum FileStatus {
+  PENDING
+  AVAILABLE
+  FAILED
+}
+
 enum ApprovalStatus {
   PENDING
   APPROVED
   CHANGES_REQUESTED
+  REJECTED
+  REVOKED
+}
+
+enum ApprovalDecisionType {
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
 }
 
 // ── Models ─────────────────────────────────────────────────────────────
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  role      UserRole @default(EDITOR)
-  avatarUrl String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  name               String
+  email              String   @unique
+  role               UserRole @default(EDITOR)
+  avatarUrl          String?
+  active             Boolean  @default(true)
+  passwordHash       String?  // null until the user sets a password (demo users)
+  mustChangePassword Boolean  @default(false) // true after provisioning/invite temp credential
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   // content this user is responsible for
-  responsibleFor Content[]   @relation("ContentResponsible")
-  createdBy      Content[]   @relation("ContentCreator")
-  versions       ContentVersion[]
+  responsibleFor Job[]   @relation("JobResponsible")
+  createdBy      Job[]   @relation("JobCreator")
+  versions       JobVersion[]
+  activities     Activity[]
+  attachments    JobAttachment[]
+  memberships CompanyMember[]
+  sessions       Session[]
+  invitationsSent Invitation[] @relation("InvitationInviter")
+  createdAppointments Appointment[] @relation("AppointmentCreator")
+  whatsappIdentities WhatsAppIdentity[]
+}
+
+// Tenant / workspace. Resources (Client, Content, ...) are NOT yet bound to
+// Company — that lands per domain battery (B4/B5+).
+model Company {
+  id                String           @id @default(cuid())
+  name              String
+  slug              String?          @unique
+  workspaceTemplate WorkspaceTemplate?
+  isActive          Boolean          @default(true)
+  // Onboarding data (B4). onboardedAt = null until guided onboarding completes.
+  legalName         String?
+  document          String?
+  email             String?
+  phone             String?
+  website           String?
+  timezone          String           @default("America/Sao_Paulo")
+  locale            String           @default("pt-BR")
+  onboardedAt       DateTime?
+  // Workspace appearance (BP1). Nullable so existing rows resolve to the
+  // deterministic default (AURA/LIGHT, no custom colors) without backfill.
+  appearancePreset  AppearancePreset?
+  appearanceMode    AppearanceMode?
+  appearanceCustomPrimary   String?  // CUSTOM base colors (#RRGGBB uppercase)
+  appearanceCustomSecondary String?
+  appearanceCustomAccent    String?
+  appearanceCustomSurface   String?
+  appearanceCustomText      String?
+  appearanceCustomBorder    String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  members     CompanyMember[]
+  invitations Invitation[]
+  clients     Client[]
+  jobs        Job[]
+  workflows   WorkflowDefinition[]
+  activities  Activity[]
+  attachments JobAttachment[]
+  approvals   Approval[]
+  appointments Appointment[]
+  whatsappIdentities WhatsAppIdentity[]
+}
+
+model CompanyMember {
+  id         String     @id @default(cuid())
+  userId     String
+  companyId  String
+  role       MemberRole @default(MEMBER)
+  isActive   Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([userId, companyId])
+  @@index([companyId])
+  @@index([userId])
+}
+
+// DB-backed session. The cookie carries a random token; the row id is its
+// sha256 hash, so a DB leak does not yield usable session tokens.
+model Session {
+  id         String    @id // sha256(token)
+  userId     String
+  companyId  String?   // active workspace (validated against membership)
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+// Invitation to join a company. The token is random 256-bit; only its sha256
+// (id) is stored. Single-use, expiring, revocable. No public signup exists —
+// this is the only controlled path for new users besides Verbum provisioning.
+model Invitation {
+  id              String     @id @default(cuid()) // not the token; token is only in memory
+  companyId       String
+  email           String
+  role            MemberRole @default(MEMBER)
+  tokenHash       String     @unique // sha256(plaintext token)
+  invitedByUserId String
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime  @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+  invitedBy User  @relation("InvitationInviter", fields: [invitedByUserId], references: [id])
+
+  @@index([companyId])
+  @@index([email])
+}
+
+// Explicit WhatsApp sender → (User, Company) authorization mapping. The row
+// itself grants nothing: runtime resolution must still prove User active +
+// active CompanyMember(userId, companyId) + Company active/template. Client
+// contact phones are NEVER actor identities.
+model WhatsAppIdentity {
+  id          String   @id @default(cuid())
+  userId      String
+  companyId   String
+  provider    String   @default("whatsapp")
+  phoneNumber String   // canonical E.164-like, see lib/phone.ts
+  enabled     Boolean  @default(true)
+  label       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, phoneNumber])
+  @@index([companyId])
+  @@index([userId])
 }
 
 model Client {
   id                 String       @id @default(cuid())
+  companyId          String
   name               String
   brandColor         String?
   status             ClientStatus @default(ACTIVE)
@@ -83,20 +282,28 @@ model Client {
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 
-  content Content[]
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  jobs Job[]
+  appointments Appointment[]
 
-  @@unique([name])
+  @@unique([companyId, name])
+  @@index([companyId])
 }
 
-model Content {
+model Job {
   id             String        @id @default(cuid())
+  companyId      String
   title          String
   clientId       String
+  parentId       String?
   format         ContentFormat @default(POST)
   channel        String?
   responsibleId  String?
   createdById    String?
   status         ContentStatus @default(DRAFT)
+  lifecycleStatus JobLifecycleStatus @default(OPEN)
+  workflowId     String?
+  currentStageId String?
   publicationTarget DateTime?   // intended pub date (editorial plan)
   scheduledAt    DateTime?      // set when SCHEDULED
   publishedAt    DateTime?      // set when PUBLISHED
@@ -104,18 +311,30 @@ model Content {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  client      Client           @relation(fields: [clientId], references: [id])
-  responsible User?           @relation("ContentResponsible", fields: [responsibleId], references: [id])
-  createdBy   User?           @relation("ContentCreator", fields: [createdById], references: [id])
-  versions    ContentVersion[]
+  company     Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  client      Client           @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  parent      Job?             @relation("JobGroup", fields: [parentId], references: [id])
+  children    Job[]            @relation("JobGroup")
+  responsible User?            @relation("JobResponsible", fields: [responsibleId], references: [id])
+  createdBy   User?            @relation("JobCreator", fields: [createdById], references: [id])
+  versions    JobVersion[]
   approvals   Approval[]
+  workflow    WorkflowDefinition? @relation("WorkflowJobs", fields: [workflowId], references: [id])
+  currentStage WorkflowStage? @relation("JobCurrentStage", fields: [currentStageId], references: [id])
+  activities  Activity[]
+  attachments JobAttachment[]
 
+  @@index([companyId])
   @@index([clientId])
   @@index([status])
   @@index([responsibleId])
+  @@index([parentId])
+  @@index([workflowId])
+  @@index([currentStageId])
+  @@map("Content")
 }
 
-model ContentVersion {
+model JobVersion {
   id          String   @id @default(cuid())
   contentId   String
   versionNumber Int
@@ -126,30 +345,160 @@ model ContentVersion {
   createdById String?
   createdAt   DateTime @default(now())
 
-  content    Content   @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  content    Job       @relation(fields: [contentId], references: [id], onDelete: Cascade)
   createdBy  User?     @relation(fields: [createdById], references: [id])
   approvals  Approval[]
 
   @@unique([contentId, versionNumber])
   @@index([contentId])
+  @@map("ContentVersion")
+}
+
+model WorkflowDefinition {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  template  WorkspaceTemplate
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  stages  WorkflowStage[]
+  jobs    Job[] @relation("WorkflowJobs")
+
+  @@unique([companyId])
+  @@index([companyId])
+}
+
+model WorkflowStage {
+  id         String   @id @default(cuid())
+  workflowId String
+  name       String
+  position   Int
+  terminal   Boolean  @default(false)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  workflow WorkflowDefinition @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  jobs     Job[] @relation("JobCurrentStage")
+
+  @@unique([workflowId, position])
+  @@index([workflowId])
+}
+
+model Activity {
+  id          String       @id @default(cuid())
+  companyId   String
+  jobId       String
+  actorUserId String?
+  type        ActivityType
+  metadata    Json?
+  createdAt   DateTime     @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  job     Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  actor   User?   @relation(fields: [actorUserId], references: [id])
+
+  @@index([companyId, jobId])
+  @@index([jobId, createdAt])
+}
+
+model JobAttachment {
+  id               String     @id @default(cuid())
+  companyId        String
+  jobId            String
+  uploadedByUserId String?
+  storageKey       String     @unique
+  originalName     String
+  contentType      String
+  sizeBytes        Int
+  status           FileStatus @default(PENDING)
+  etag             String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  job        Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  uploadedBy User?   @relation(fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  approvals  ApprovalAttachment[]
+
+  @@index([companyId, jobId])
+  @@index([jobId, status])
 }
 
 // One row per "send for approval" round. Tied to a specific version so
 // history is preserved: v1 -> changes_requested, v2 -> approved.
 model Approval {
   id               String         @id @default(cuid())
+  companyId        String
   contentId        String
   contentVersionId String
-  token            String         @unique // random, non-sequential (crypto)
+  tokenHash        String         @unique
   status           ApprovalStatus @default(PENDING)
   feedback         String?        // client change-request text
   clientName       String?
   clientReviewedAt DateTime?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  decidedAt        DateTime?
   createdAt        DateTime       @default(now())
 
-  content   Content        @relation(fields: [contentId], references: [id], onDelete: Cascade)
-  version   ContentVersion @relation(fields: [contentVersionId], references: [id], onDelete: Cascade)
+  company   Company      @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  content   Job        @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  version   JobVersion @relation(fields: [contentVersionId], references: [id], onDelete: Cascade)
+  decisions ApprovalDecision[]
+  files     ApprovalAttachment[]
 
+  @@index([companyId, contentId])
   @@index([contentId])
   @@index([contentVersionId])
+}
+
+model ApprovalDecision {
+  id          String              @id @default(cuid())
+  approvalId  String
+  decision    ApprovalDecisionType
+  comment     String?
+  actorName   String?
+  actorEmail  String?
+  actorType   String              @default("PUBLIC")
+  createdAt   DateTime            @default(now())
+
+  approval Approval @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+
+  @@index([approvalId, createdAt])
+}
+
+model ApprovalAttachment {
+  approvalId   String
+  attachmentId String
+  createdAt    DateTime @default(now())
+
+  approval   Approval      @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+  attachment JobAttachment @relation(fields: [attachmentId], references: [id], onDelete: Restrict)
+
+  @@id([approvalId, attachmentId])
+  @@index([attachmentId])
+}
+
+model Appointment {
+  id              String            @id @default(cuid())
+  companyId       String
+  clientId        String?
+  title           String
+  description     String?
+  startsAt        DateTime
+  endsAt          DateTime?
+  status          AppointmentStatus @default(SCHEDULED)
+  createdByUserId String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  client    Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  createdBy User?   @relation("AppointmentCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, startsAt])
 }

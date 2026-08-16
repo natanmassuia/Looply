@@ -10,10 +10,17 @@ import {
   notFound,
 } from "../lib/errors";
 import type { CreateContentInput, CreateVersionInput, ScheduleInput } from "../lib/validation";
-import { randomToken } from "../lib/token";
+import { ensureDefaultWorkflow } from "./workflowService";
+import { createActivity } from "./activityService";
+import { createApproval } from "./approvalService";
 
-export async function createContent(db: DB, input: CreateContentInput, actorId?: string) {
-  const client = await db.client.findUnique({ where: { id: input.clientId } });
+export async function createContent(
+  db: DB,
+  input: CreateContentInput,
+  companyId: string,
+  actorId?: string,
+) {
+  const client = await db.client.findFirst({ where: { id: input.clientId, companyId } });
   if (!client) throw notFound("Cliente não encontrado");
 
   if (input.responsibleId) {
@@ -21,9 +28,14 @@ export async function createContent(db: DB, input: CreateContentInput, actorId?:
     if (!u) throw notFound("Responsável não encontrado");
   }
 
+  const workflow = await ensureDefaultWorkflow(db, companyId);
+  const firstStage = workflow.stages[0];
+  if (!firstStage) throw badRequest("Workflow sem stage inicial");
+
   return db.$transaction(async (tx) => {
-    const content = await tx.content.create({
+    const content = await tx.job.create({
       data: {
+        companyId,
         title: input.title,
         clientId: input.clientId,
         format: input.format,
@@ -31,6 +43,9 @@ export async function createContent(db: DB, input: CreateContentInput, actorId?:
         responsibleId: input.responsibleId ?? null,
         createdById: actorId ?? null,
         status: "DRAFT",
+        lifecycleStatus: "OPEN",
+        workflowId: workflow.id,
+        currentStageId: firstStage.id,
         publicationTarget: input.publicationTarget ? new Date(input.publicationTarget) : null,
         notes: input.notes ?? null,
         versions: {
@@ -45,25 +60,33 @@ export async function createContent(db: DB, input: CreateContentInput, actorId?:
       },
       include: { versions: { orderBy: { versionNumber: "desc" } } },
     });
+    await createActivity(tx, {
+      companyId,
+      jobId: content.id,
+      actorUserId: actorId,
+      type: "JOB_CREATED",
+      metadata: { legacyAdapter: true, stageId: firstStage.id },
+    });
     return content;
   });
 }
 
-export async function listContents(db: DB, statusFilter?: ContentStatus) {
-  return db.content.findMany({
-    where: statusFilter ? { status: statusFilter } : undefined,
+export async function listContents(db: DB, companyId: string, statusFilter?: ContentStatus) {
+  return db.job.findMany({
+    where: { companyId, ...(statusFilter ? { status: statusFilter } : {}) },
     orderBy: { updatedAt: "desc" },
     include: {
       client: { select: { id: true, name: true, brandColor: true } },
       responsible: { select: { id: true, name: true } },
       versions: { orderBy: { versionNumber: "desc" }, take: 1 },
+      children: { select: { id: true, title: true, status: true, format: true } },
     },
   });
 }
 
-export async function getContent(db: DB, id: string) {
-  const content = await db.content.findUnique({
-    where: { id },
+export async function getContent(db: DB, companyId: string, id: string) {
+  const content = await db.job.findUnique({
+    where: { id, companyId },
     include: {
       client: true,
       responsible: { select: { id: true, name: true, role: true } },
@@ -82,60 +105,41 @@ export async function getContent(db: DB, id: string) {
   return content;
 }
 
-async function loadOr404(db: DB, id: string) {
-  const c = await db.content.findUnique({ where: { id } });
+async function loadOr404(db: DB, companyId: string, id: string) {
+  const c = await db.job.findFirst({ where: { id, companyId } });
   if (!c) throw notFound("Conteúdo não encontrado");
   return c;
 }
 
 async function latestVersionNumber(db: DB, contentId: string): Promise<number> {
-  const last = await db.contentVersion.findFirst({
+  const last = await db.jobVersion.findFirst({
     where: { contentId },
     orderBy: { versionNumber: "desc" },
   });
   return last?.versionNumber ?? 0;
 }
 
-export async function moveToReview(db: DB, id: string) {
-  const c = await loadOr404(db, id);
+export async function moveToReview(db: DB, companyId: string, id: string) {
+  const c = await loadOr404(db, companyId, id);
   assertCanTransition(c.status as ContentStatus, "IN_REVIEW");
-  return db.content.update({ where: { id }, data: { status: "IN_REVIEW" } });
+  await db.job.updateMany({ where: { id, companyId }, data: { status: "IN_REVIEW" } });
+  return db.job.findFirst({ where: { id, companyId } });
 }
 
 // Creates a fresh Approval (PENDING) with a random token bound to the latest
 // version, and moves IN_REVIEW → AWAITING_CLIENT.
-export async function sendForApproval(db: DB, id: string) {
-  const c = await loadOr404(db, id);
+export async function sendForApproval(db: DB, companyId: string, id: string) {
+  const c = await loadOr404(db, companyId, id);
   assertCanTransition(c.status as ContentStatus, "AWAITING_CLIENT");
-
-  const maxVersion = await latestVersionNumber(db, id);
-  if (maxVersion === 0) throw badRequest("Conteúdo sem versão inicial");
-
-  const version = await db.contentVersion.findFirst({
-    where: { contentId: id, versionNumber: maxVersion },
-  });
-  if (!version) throw notFound("Versão não encontrada");
-
-  const token = randomToken(32);
-  const [approval] = await db.$transaction([
-    db.approval.create({
-      data: {
-        contentId: id,
-        contentVersionId: version.id,
-        token,
-        status: "PENDING",
-        clientName: null,
-      },
-    }),
-    db.content.update({ where: { id }, data: { status: "AWAITING_CLIENT" } }),
-  ]);
-  return { approval, token };
+  const result = await createApproval(db, { companyId, jobId: id });
+  await db.job.updateMany({ where: { id, companyId }, data: { status: "AWAITING_CLIENT" } });
+  return result;
 }
 
 // Create the next version (CHANGES_REQUESTED → IN_REVIEW). History is preserved:
 // previous versions + their approvals remain untouched.
-export async function createVersion(db: DB, id: string, input: CreateVersionInput, actorId?: string) {
-  const c = await loadOr404(db, id);
+export async function createVersion(db: DB, companyId: string, id: string, input: CreateVersionInput, actorId?: string) {
+  const c = await loadOr404(db, companyId, id);
   if (c.status !== "CHANGES_REQUESTED") {
     throw new AppError(
       409,
@@ -147,7 +151,7 @@ export async function createVersion(db: DB, id: string, input: CreateVersionInpu
   const next = nextVersionNumber(maxVersion);
 
   return db.$transaction(async (tx) => {
-    const version = await tx.contentVersion.create({
+    const version = await tx.jobVersion.create({
       data: {
         contentId: id,
         versionNumber: next,
@@ -158,31 +162,31 @@ export async function createVersion(db: DB, id: string, input: CreateVersionInpu
         createdById: actorId ?? null,
       },
     });
-    await tx.content.update({ where: { id }, data: { status: "IN_REVIEW" } });
+    await tx.job.updateMany({ where: { id, companyId }, data: { status: "IN_REVIEW" } });
     return version;
   });
 }
 
-export async function schedule(db: DB, id: string, input: ScheduleInput) {
-  const c = await loadOr404(db, id);
+export async function schedule(db: DB, companyId: string, id: string, input: ScheduleInput) {
+  const c = await loadOr404(db, companyId, id);
   assertCanTransition(c.status as ContentStatus, "SCHEDULED");
   const scheduledAt = new Date(input.scheduledAt);
   if (isNaN(scheduledAt.getTime())) throw badRequest("Data de agendamento inválida");
-  return db.content.update({ where: { id }, data: { status: "SCHEDULED", scheduledAt } });
+  await db.job.updateMany({ where: { id, companyId }, data: { status: "SCHEDULED", scheduledAt } });
+  return db.job.findFirst({ where: { id, companyId } });
 }
 
-export async function publish(db: DB, id: string) {
-  const c = await loadOr404(db, id);
+export async function publish(db: DB, companyId: string, id: string) {
+  const c = await loadOr404(db, companyId, id);
   assertCanTransition(c.status as ContentStatus, "PUBLISHED");
-  return db.content.update({
-    where: { id },
-    data: { status: "PUBLISHED", publishedAt: new Date() },
-  });
+  await db.job.updateMany({ where: { id, companyId }, data: { status: "PUBLISHED", publishedAt: new Date() } });
+  return db.job.findFirst({ where: { id, companyId } });
 }
 
-export async function listPublications(db: DB) {
-  return db.content.findMany({
+export async function listPublications(db: DB, companyId: string) {
+  return db.job.findMany({
     where: {
+      companyId,
       OR: [
         { status: "SCHEDULED" },
         { status: "PUBLISHED" },
@@ -195,4 +199,35 @@ export async function listPublications(db: DB) {
       versions: { orderBy: { versionNumber: "desc" }, take: 1 },
     },
   });
+}
+
+export async function groupContent(db: DB, companyId: string, childId: string, parentId: string) {
+  if (childId === parentId) throw badRequest("Um conteúdo não pode ser agrupado nele mesmo");
+
+  const child = await loadOr404(db, companyId, childId);
+  const parent = await loadOr404(db, companyId, parentId);
+
+  if (child.clientId !== parent.clientId) {
+    throw badRequest("Só é possível agrupar conteúdos da mesma empresa");
+  }
+
+  // Prevent circular grouping: parent cannot be a descendant of child
+  let current = parent;
+  while (current.parentId) {
+    if (current.parentId === childId) {
+      throw badRequest("Agrupamento circular não permitido");
+    }
+    current = await db.job.findFirstOrThrow({ where: { id: current.parentId, companyId } });
+  }
+
+  await db.job.updateMany({ where: { id: childId, companyId }, data: { parentId } });
+  return db.job.findFirst({ where: { id: childId, companyId } });
+}
+
+export async function ungroupContent(db: DB, companyId: string, childId: string) {
+  const child = await loadOr404(db, companyId, childId);
+  if (!child.parentId) throw badRequest("Este conteúdo não está agrupado");
+
+  await db.job.updateMany({ where: { id: childId, companyId }, data: { parentId: null } });
+  return db.job.findFirst({ where: { id: childId, companyId } });
 }
