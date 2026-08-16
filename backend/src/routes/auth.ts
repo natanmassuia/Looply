@@ -114,7 +114,19 @@ router.get(
       }),
       prisma.company.findUnique({
         where: { id: auth.companyId },
-        select: { id: true, name: true, workspaceTemplate: true },
+        select: {
+          id: true,
+          name: true,
+          workspaceTemplate: true,
+          appearancePreset: true,
+          appearanceMode: true,
+          appearanceCustomPrimary: true,
+          appearanceCustomSecondary: true,
+          appearanceCustomAccent: true,
+          appearanceCustomSurface: true,
+          appearanceCustomText: true,
+          appearanceCustomBorder: true,
+        },
       }),
     ]);
     if (!user || !user.active) throw unauthorized();

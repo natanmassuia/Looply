@@ -74,6 +74,21 @@ enum JobLifecycleStatus {
   CANCELLED
 }
 
+// Workspace visual identity (BP1). Chosen during onboarding (F4B) and editable
+// in Settings. Values are canonical product vocabulary; the six base colors
+// apply to the CUSTOM preset only.
+enum AppearancePreset {
+  AURA
+  FLUX
+  PULSE
+  CUSTOM
+}
+
+enum AppearanceMode {
+  LIGHT
+  DARK
+}
+
 enum ActivityType {
   JOB_CREATED
   JOB_UPDATED
@@ -151,6 +166,16 @@ model Company {
   timezone          String           @default("America/Sao_Paulo")
   locale            String           @default("pt-BR")
   onboardedAt       DateTime?
+  // Workspace appearance (BP1). Nullable so existing rows resolve to the
+  // deterministic default (AURA/LIGHT, no custom colors) without backfill.
+  appearancePreset  AppearancePreset?
+  appearanceMode    AppearanceMode?
+  appearanceCustomPrimary   String?  // CUSTOM base colors (#RRGGBB uppercase)
+  appearanceCustomSecondary String?
+  appearanceCustomAccent    String?
+  appearanceCustomSurface   String?
+  appearanceCustomText      String?
+  appearanceCustomBorder    String?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 

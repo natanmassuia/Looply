@@ -10,6 +10,7 @@ import { requireWorkspaceActive } from "./middleware/requireWorkspaceActive";
 import authRouter from "./routes/auth";
 import onboardingRouter from "./routes/onboarding";
 import membersRouter from "./routes/members";
+import settingsRouter from "./routes/settings";
 import invitationsRouter from "./routes/invitations";
 import healthRouter from "./routes/health";
 import dashboardRouter from "./routes/dashboard";
@@ -68,6 +69,7 @@ app.use("/api/assistant", assistantRouter);
 app.use("/api/whatsapp-identities", whatsappIdentitiesRouter);
 app.use("/api/team", teamRouter);
 app.use("/api/members", membersRouter);
+app.use("/api/settings", settingsRouter);
 app.use("/api/contents", contentsRouter);
 app.use("/api/publications", publicationsRouter);
 

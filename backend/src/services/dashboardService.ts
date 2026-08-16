@@ -11,7 +11,7 @@ export async function getDashboardForCompany(
   companyId: string,
   now = new Date(),
 ) {
-  const company = await db.company.findUnique({ where: { id: companyId }, select: { id: true, name: true, timezone: true, workspaceTemplate: true } });
+  const company = await db.company.findUnique({ where: { id: companyId }, select: { id: true, name: true, timezone: true, workspaceTemplate: true, appearancePreset: true, appearanceMode: true, appearanceCustomPrimary: true, appearanceCustomSecondary: true, appearanceCustomAccent: true, appearanceCustomSurface: true, appearanceCustomText: true, appearanceCustomBorder: true } });
   if (!company || !company.workspaceTemplate) throw new Error("Workspace não configurado");
   const capabilities = Object.values(Capability).filter((capability) => hasCapability(company.workspaceTemplate, capability));
   const can = (capability: Capability) => capabilities.includes(capability);
