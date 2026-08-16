@@ -2,6 +2,7 @@ import type { DB } from "../lib/db";
 import { unauthorized, forbidden } from "../lib/errors";
 import { hashPassword, verifyPassword, newSessionToken, hashToken } from "../lib/password";
 import { SESSION_TTL_MS } from "../lib/session";
+import { resolveWorkspaceContext, type WorkspaceContext } from "../domain/capabilities";
 
 // ── AuthContext: what every authenticated handler receives ────────────────
 export interface AuthContext {
@@ -35,7 +36,12 @@ export async function login(
   db: DB,
   email: string,
   password: string,
-): Promise<{ token: string; user: SessionUser; memberships: MembershipInfo[] }> {
+): Promise<{
+  token: string;
+  user: SessionUser;
+  memberships: MembershipInfo[];
+  workspace: WorkspaceContext;
+}> {
   const user = await db.user.findUnique({ where: { email: email.toLowerCase() } });
   const ok = await verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
   // One generic failure for every bad-login case — no user enumeration.
@@ -45,7 +51,23 @@ export async function login(
 
   const memberships = await db.companyMember.findMany({
     where: { userId: user.id, isActive: true, company: { isActive: true } },
-    include: { company: { select: { name: true } } },
+    include: {
+      company: {
+        select: {
+          id: true,
+          name: true,
+          workspaceTemplate: true,
+          appearancePreset: true,
+          appearanceMode: true,
+          appearanceCustomPrimary: true,
+          appearanceCustomSecondary: true,
+          appearanceCustomAccent: true,
+          appearanceCustomSurface: true,
+          appearanceCustomText: true,
+          appearanceCustomBorder: true,
+        },
+      },
+    },
   });
   if (memberships.length === 0) {
     throw forbidden("Usuário sem workspace ativo");
@@ -76,6 +98,9 @@ export async function login(
       companyName: m.company.name,
       role: m.role,
     })),
+    // Workspace state at login time — same shape as /api/auth/me, so the
+    // frontend routes to the right first-access gate immediately.
+    workspace: resolveWorkspaceContext(memberships[0].company),
   };
 }
 

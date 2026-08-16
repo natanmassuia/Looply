@@ -14,6 +14,23 @@ export type Capability =
 
 export type WorkspaceTemplate = "LOCAL_BUSINESS" | "HIGH_TICKET" | "MARKETING_AGENCY";
 
+// Mirror of the backend OnboardingStatus contract (onboardingService.ts).
+// Server-persisted authority for first-access routing (F4B).
+export interface OnboardingCompany {
+  name: string;
+  timezone: string;
+  locale: string;
+  template: WorkspaceTemplate | null;
+  onboardedAt: string | null;
+}
+
+export interface OnboardingStatus {
+  mustChangePassword: boolean;
+  company: OnboardingCompany;
+  readyToComplete: boolean;
+  status: "PASSWORD_CHANGE_REQUIRED" | "ONBOARDING_REQUIRED" | "ACTIVE";
+}
+
 // Mirror of the backend WorkspaceAppearance contract (src/domain/appearance.ts).
 // Values come from GET /api/auth/me → workspace.appearance; null/missing → AURA/LIGHT.
 export type AppearancePreset = "AURA" | "FLUX" | "PULSE" | "CUSTOM";

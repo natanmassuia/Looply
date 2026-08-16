@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useMe, useLogin, ApiError } from "../lib/api";
+import { getPostLoginDestination } from "../lib/workspace";
 import type { ReactNode } from "react";
 
 export default function Login() {
@@ -13,8 +14,8 @@ export default function Login() {
     e.preventDefault();
     setError(null);
     try {
-      await login.mutateAsync({ email, password });
-      window.location.assign("/dashboard");
+      const session = await login.mutateAsync({ email, password });
+      window.location.assign(getPostLoginDestination(session));
     } catch (err) {
       // Backend returns one generic message for every bad-login case (no
       // enumeration). Network failures get a neutral message, never a raw

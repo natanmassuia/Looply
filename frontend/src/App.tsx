@@ -9,6 +9,7 @@ import Clients from "./features/Clients";
 import Team from "./features/Team";
 import PublicApproval from "./features/PublicApproval";
 import Login, { ProtectedRoute } from "./features/Login";
+import Onboarding, { AccessGate, ChangePassword } from "./features/Onboarding";
 import { ThemeProvider } from "./theme/react";
 
 export default function App() {
@@ -16,25 +17,33 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
 
-      {/* Internal application shell (sidebar + layout), session required.
-          ThemeProvider sits inside ProtectedRoute: public pages (Login,
+      {/* Authenticated area. ProtectedRoute gates the session; AccessGate is
+          the canonical first-access guard (password change → onboarding →
+          app). ThemeProvider sits inside ProtectedRoute: public pages (Login,
           PublicApproval) keep the static AURA/LIGHT startup state. */}
       <Route
         element={
           <ProtectedRoute>
             <ThemeProvider>
-              <AppLayout />
+              <AccessGate />
             </ThemeProvider>
           </ProtectedRoute>
         }
       >
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/contents" element={<ContentsList />} />
-        <Route path="/contents/new" element={<NewContent />} />
-        <Route path="/contents/:id" element={<ContentDetail />} />
-        <Route path="/calendar" element={<Calendar />} />
-        <Route path="/clients" element={<Clients />} />
-        <Route path="/team" element={<Team />} />
+        {/* First-access screens — full page, outside the app shell */}
+        <Route path="/change-password" element={<ChangePassword />} />
+        <Route path="/onboarding" element={<Onboarding />} />
+
+        {/* Internal application shell (sidebar + layout) */}
+        <Route element={<AppLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/contents" element={<ContentsList />} />
+          <Route path="/contents/new" element={<NewContent />} />
+          <Route path="/contents/:id" element={<ContentDetail />} />
+          <Route path="/calendar" element={<Calendar />} />
+          <Route path="/clients" element={<Clients />} />
+          <Route path="/team" element={<Team />} />
+        </Route>
       </Route>
 
       {/* Public client approval — NO internal sidebar */}
