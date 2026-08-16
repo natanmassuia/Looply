@@ -9,14 +9,25 @@ import Clients from "./features/Clients";
 import Team from "./features/Team";
 import PublicApproval from "./features/PublicApproval";
 import Login, { ProtectedRoute } from "./features/Login";
+import { ThemeProvider } from "./theme/react";
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
 
-      {/* Internal application shell (sidebar + layout), session required */}
-      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+      {/* Internal application shell (sidebar + layout), session required.
+          ThemeProvider sits inside ProtectedRoute: public pages (Login,
+          PublicApproval) keep the static AURA/LIGHT startup state. */}
+      <Route
+        element={
+          <ProtectedRoute>
+            <ThemeProvider>
+              <AppLayout />
+            </ThemeProvider>
+          </ProtectedRoute>
+        }
+      >
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/contents" element={<ContentsList />} />
         <Route path="/contents/new" element={<NewContent />} />
