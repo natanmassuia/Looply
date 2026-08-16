@@ -11,8 +11,10 @@ import type {
   ContentDetail,
   ContentStatus,
   ContentVersion,
+  OnboardingStatus,
   User,
   WorkspaceContext,
+  WorkspaceTemplate,
 } from "./types";
 
 // Relative in dev (Vite proxies /api → backend). Override with VITE_API_URL.
@@ -134,6 +136,54 @@ export function useMe() {
     queryFn: () => apiFetch<SessionInfo>("/api/auth/me"),
     retry: false,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+// ── First-access flow (F4B) ────────────────────────────────────────────────
+export function useOnboardingStatus() {
+  return useQuery({
+    queryKey: ["onboarding-status"],
+    queryFn: () => apiFetch<OnboardingStatus>("/api/onboarding/status"),
+    retry: false,
+  });
+}
+
+export function useChangePassword() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { newPassword: string }) =>
+      apiFetch<{ ok: true }>("/api/auth/change-password", { method: "POST", body }),
+    // Session cookie is rotated server-side; refetch so the gate re-routes.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
+  });
+}
+
+export function useUpdateOnboardingCompany() {
+  return useMutation({
+    mutationFn: (body: { name: string; timezone: string; locale: string }) =>
+      apiFetch<{ name: string; timezone: string; locale: string }>("/api/onboarding/company", {
+        method: "PATCH",
+        body,
+      }),
+  });
+}
+
+export function useSelectTemplate() {
+  return useMutation({
+    mutationFn: (template: WorkspaceTemplate) =>
+      apiFetch<{ template: WorkspaceTemplate }>("/api/onboarding/template", {
+        method: "POST",
+        body: { template },
+      }),
+  });
+}
+
+export function useCompleteOnboarding() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch<OnboardingStatus>("/api/onboarding/complete", { method: "POST" }),
+    // onboardedAt is now set: the access gate must see status ACTIVE.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
   });
 }
 

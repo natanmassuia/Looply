@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import Login, { ProtectedRoute } from "../features/Login";
 import { ApiError } from "../lib/api";
-import { getPostLoginDestination } from "../lib/workspace";
 
 const useLoginMock = vi.hoisted(() => ({
   mutateAsync: vi.fn(),
@@ -46,6 +45,7 @@ describe("Login", () => {
 
   it("submits the email/password contract and routes to post-login destination", async () => {
     const user = userEvent.setup();
+    // Partial session (no workspace yet): the onboarding gate is the destination.
     useLoginMock.mutateAsync.mockResolvedValue({ user: { email: "a@b.c" } });
     render(<Login />);
     await user.type(screen.getByLabelText("E-mail"), "admin@looply.app");
@@ -57,7 +57,7 @@ describe("Login", () => {
         email: "admin@looply.app",
         password: "secret",
       });
-      expect(assignSpy).toHaveBeenCalledWith(getPostLoginDestination(undefined));
+      expect(assignSpy).toHaveBeenCalledWith("/onboarding");
     });
   });
 

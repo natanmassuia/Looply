@@ -76,8 +76,8 @@ async function seedWorld() {
       { id: "uNoMember", name: "Lonely", email: "l@x.com", active: true, passwordHash: pass },
     ],
     companies: [
-      { id: "cA", name: "Company A", slug: "a", isActive: true },
-      { id: "cB", name: "Company B", slug: "b", isActive: true },
+      { id: "cA", name: "Company A", slug: "a", isActive: true, workspaceTemplate: null },
+      { id: "cB", name: "Company B", slug: "b", isActive: true, workspaceTemplate: null },
     ],
     members: [
       { id: "mA", userId: "uA", companyId: "cA", role: "OWNER", isActive: true },
@@ -134,6 +134,17 @@ describe("login", () => {
     expect(r.user.role).toBe("OWNER");
     expect(JSON.stringify(r)).not.toContain("passwordHash");
     expect(JSON.stringify(r)).not.toContain("swordfish1");
+  });
+
+  it("returns the workspace context so the frontend can route first access", async () => {
+    const { db } = await seedWorld();
+    const r = await login(db as unknown as DB, "a@x.com", "swordfish1");
+    expect(r.workspace).toMatchObject({
+      id: "cA",
+      name: "Company A",
+      template: null,
+      status: "UNCONFIGURED",
+    });
   });
 
   it("same generic error for unknown email, wrong password, inactive user", async () => {

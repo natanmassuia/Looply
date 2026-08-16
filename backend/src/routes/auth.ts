@@ -42,6 +42,7 @@ router.post(
       },
       mustChangePassword: result.user.mustChangePassword,
       memberships: result.memberships,
+      workspace: result.workspace,
     });
   }),
 );
