@@ -14,12 +14,33 @@ export type Capability =
 
 export type WorkspaceTemplate = "LOCAL_BUSINESS" | "HIGH_TICKET" | "MARKETING_AGENCY";
 
+// Mirror of the backend WorkspaceAppearance contract (src/domain/appearance.ts).
+// Values come from GET /api/auth/me → workspace.appearance; null/missing → AURA/LIGHT.
+export type AppearancePreset = "AURA" | "FLUX" | "PULSE" | "CUSTOM";
+export type AppearanceMode = "LIGHT" | "DARK";
+
+export interface CustomColors {
+  primary: string;
+  secondary: string;
+  accent: string;
+  surface: string;
+  text: string;
+  border: string;
+}
+
+export interface WorkspaceAppearance {
+  preset: AppearancePreset;
+  mode: AppearanceMode;
+  customColors: CustomColors | null;
+}
+
 export interface WorkspaceContext {
   id: string;
   name: string;
   template: WorkspaceTemplate | null;
   capabilities: Capability[];
   status: "ACTIVE" | "UNCONFIGURED";
+  appearance?: WorkspaceAppearance | null;
 }
 
 export type ContentStatus =
