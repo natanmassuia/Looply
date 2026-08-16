@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { useMe, useLogin } from "../lib/api";
+import { useMe, useLogin, ApiError } from "../lib/api";
 import type { ReactNode } from "react";
 
 export default function Login() {
@@ -16,41 +16,48 @@ export default function Login() {
       await login.mutateAsync({ email, password });
       window.location.assign("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao entrar");
+      // Backend returns one generic message for every bad-login case (no
+      // enumeration). Network failures get a neutral message, never a raw
+      // browser/backend leak.
+      setError(err instanceof ApiError ? err.message : "Não foi possível conectar. Tente novamente.");
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--looply-background)] px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--looply-color-bg-canvas)] px-4">
       <form
         onSubmit={submit}
-        className="w-full max-w-sm rounded-2xl border border-[var(--looply-border)] bg-white p-8 shadow-sm"
+        className="w-full max-w-sm rounded-2xl border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] p-8 shadow-sm"
       >
-        <h1 className="mb-1 text-xl font-semibold text-[var(--looply-foreground)]">Looply</h1>
-        <p className="mb-6 text-sm text-neutral-500">Entre para acessar seu workspace</p>
-        <label className="mb-1 block text-sm font-medium text-neutral-700">E-mail</label>
+        <h1 className="mb-1 text-xl font-semibold text-[var(--looply-color-text-primary)]">Looply</h1>
+        <p className="mb-6 text-sm text-[var(--looply-color-text-muted)]">Entre para acessar seu workspace</p>
+        <label htmlFor="login-email" className="label">E-mail</label>
         <input
+          id="login-email"
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mb-4 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900"
+          className="input mb-4"
           autoComplete="email"
         />
-        <label className="mb-1 block text-sm font-medium text-neutral-700">Senha</label>
+        <label htmlFor="login-password" className="label">Senha</label>
         <input
+          id="login-password"
           type="password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mb-4 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900"
+          className="input mb-4"
           autoComplete="current-password"
         />
-        {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+        {error && (
+          <p role="alert" className="mb-4 text-sm text-[var(--looply-color-status-danger)]">{error}</p>
+        )}
         <button
           type="submit"
           disabled={login.isPending}
-          className="w-full rounded-lg bg-neutral-900 py-2 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-60"
+          className="btn-primary w-full"
         >
           {login.isPending ? "Entrando..." : "Entrar"}
         </button>
@@ -65,7 +72,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   const location = useLocation();
   if (isPending) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-neutral-500">
+      <div className="flex min-h-screen items-center justify-center text-sm text-[var(--looply-color-text-muted)]">
         Carregando...
       </div>
     );
