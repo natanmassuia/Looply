@@ -35,6 +35,17 @@
     --looply-color-status-danger: #dc2626;
     --looply-color-status-info: #7c5c6b;
 
+    /* ── Required contract aliases → canonical roles. var() aliases resolve at
+       computed-value time, so runtime applyTheme overrides on <html> propagate
+       to these names automatically (elevated surfaces read bg-surface; accent
+       reads the secondary action; status/focus read their canonical roles). ── */
+    --looply-color-bg-elevated: var(--looply-color-bg-surface);
+    --looply-color-accent: var(--looply-color-action-secondary);
+    --looply-color-success: var(--looply-color-status-success);
+    --looply-color-warning: var(--looply-color-status-warning);
+    --looply-color-danger: var(--looply-color-status-danger);
+    --looply-color-focus: var(--looply-color-focus-ring);
+
     /* ── Legacy aliases → semantic roles (F2+ migrates screens) ── */
     --looply-background: var(--looply-color-bg-canvas);
     --looply-surface: var(--looply-color-bg-surface);
