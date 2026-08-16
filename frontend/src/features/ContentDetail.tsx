@@ -2,34 +2,75 @@ import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   useContent,
+  useClients,
   useWorkflowAction,
   useCreateVersion,
+  useUpdateJob,
+  useUngroupContent,
+  useJobFiles,
+  useUploadJobAttachment,
+  useDownloadJobFile,
+  useDeleteJobFile,
+  useJobActivity,
   ApiError,
 } from "../lib/api";
 import {
   FORMAT_LABEL,
   ROLE_LABEL,
+  formatBytes,
   formatDate,
   formatDateTime,
+  relativeTime,
 } from "../lib/format";
 import { Card, ErrorState, MediaPreview, PageHeader, Spinner } from "../components/common";
 import StatusPill from "../components/StatusPill";
-import { IconCheck, IconClock, IconLink, IconPlus, IconSend, IconEye } from "../components/Icons";
-import type { ContentVersion } from "../lib/types";
+import {
+  IconCheck,
+  IconClock,
+  IconLink,
+  IconPlus,
+  IconSend,
+  IconEye,
+  IconEdit,
+  IconX,
+  IconFileText,
+  IconTrash,
+} from "../components/Icons";
+import type { ActivityType, ContentVersion } from "../lib/types";
 
 export default function ContentDetail() {
   const { id = "" } = useParams();
   const { data: content, isLoading, isError, error, refetch } = useContent(id);
+  const { data: clients } = useClients();
 
   const review = useWorkflowAction((cid) => `/api/contents/${cid}/review`);
   const sendApproval = useWorkflowAction((cid) => `/api/contents/${cid}/send-approval`);
   const publish = useWorkflowAction((cid) => `/api/contents/${cid}/publish`);
   const schedule = useWorkflowAction((cid) => `/api/contents/${cid}/schedule`);
   const createVersion = useCreateVersion(id);
+  const updateJob = useUpdateJob();
+  const ungroupMutation = useUngroupContent();
+
+  const { data: jobFiles, isLoading: filesLoading } = useJobFiles(id);
+  const uploadAttachment = useUploadJobAttachment(id);
+  const downloadFile = useDownloadJobFile();
+  const deleteFile = useDeleteJobFile(id);
 
   const [approvalUrl, setApprovalUrl] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [showVersionForm, setShowVersionForm] = useState(false);
+
+  // Edit metadata modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editErr, setEditErr] = useState<string | null>(null);
+  const [editSuccessNotice, setEditSuccessNotice] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    title: "",
+    clientId: "",
+    notes: "",
+    publicationTarget: "",
+  });
 
   const currentVersion: ContentVersion | undefined = useMemo(() => {
     if (!content?.versions?.length) return undefined;
@@ -51,9 +92,87 @@ export default function ContentDetail() {
     }
   };
 
-  if (isLoading) return <Spinner label="Carregando conteúdo…" />;
+  const openEdit = () => {
+    if (!content) return;
+    setEditErr(null);
+    setEditForm({
+      title: content.title,
+      clientId: content.clientId,
+      notes: content.notes ?? "",
+      publicationTarget: content.publicationTarget
+        ? new Date(content.publicationTarget).toISOString().slice(0, 10)
+        : "",
+    });
+    setShowEditModal(true);
+  };
+
+  const saveJobEdit = async () => {
+    if (!content) return;
+    setEditErr(null);
+    if (!editForm.title.trim()) {
+      setEditErr("Informe o título do job.");
+      return;
+    }
+
+    try {
+      await updateJob.mutateAsync({
+        id: content.id,
+        body: {
+          title: editForm.title.trim(),
+          clientId: editForm.clientId || undefined,
+          notes: editForm.notes || undefined,
+          publicationTarget: editForm.publicationTarget
+            ? new Date(`${editForm.publicationTarget}T12:00:00Z`).toISOString()
+            : null,
+        },
+      });
+      setShowEditModal(false);
+      setEditSuccessNotice("Detalhes do job atualizados com sucesso.");
+      setTimeout(() => setEditSuccessNotice(null), 4000);
+      refetch();
+    } catch (e) {
+      setEditErr(e instanceof ApiError ? e.message : "Falha ao atualizar detalhes do job.");
+    }
+  };
+
+  const handleUngroup = async () => {
+    if (!content) return;
+    setErr(null);
+    try {
+      await ungroupMutation.mutateAsync(content.id);
+      setEditSuccessNotice("Job desagrupado com sucesso.");
+      setTimeout(() => setEditSuccessNotice(null), 4000);
+      refetch();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : "Falha ao desagrupar job.");
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !content) return;
+    setUploadError(null);
+
+    if (file.size > 50 * 1024 * 1024) {
+      setUploadError("O arquivo excede o limite máximo permitido de 50MB.");
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      await uploadAttachment.mutateAsync(file);
+      setEditSuccessNotice(`Arquivo "${file.name}" enviado com sucesso.`);
+      setTimeout(() => setEditSuccessNotice(null), 4000);
+    } catch (err) {
+      setUploadError(err instanceof ApiError ? err.message : "Falha no upload do arquivo.");
+    } finally {
+      e.target.value = "";
+    }
+  };
+
+  if (isLoading) return <Spinner label="Carregando job…" />;
   if (isError) return <ErrorState message={(error as Error)?.message} />;
-  if (!content || !currentVersion) return <ErrorState message="Conteúdo não encontrado." />;
+  if (!content || !currentVersion) return <ErrorState message="Job não encontrado." />;
 
   const onSendApproval = async () => {
     const res = (await run(sendApproval)) as { approvalUrl?: string } | null;
@@ -70,31 +189,185 @@ export default function ContentDetail() {
       <PageHeader
         title={content.title}
         subtitle={`${FORMAT_LABEL[content.format]} · ${content.client?.name} · Versão ${currentVersion.versionNumber}`}
-        crumbs={[{ label: "Conteúdos", to: "/contents" }, { label: content.title }]}
-        actions={<StatusPill status={status} />}
+        crumbs={[{ label: "Jobs", to: "/contents" }, { label: content.title }]}
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="btn-secondary btn-sm flex items-center gap-1.5"
+              onClick={openEdit}
+            >
+              <IconEdit className="h-3.5 w-3.5" />
+              <span>Editar</span>
+            </button>
+            <StatusPill status={status} />
+          </div>
+        }
       />
 
+      {editSuccessNotice && (
+        <div className="mb-4 rounded-lg bg-[var(--looply-color-status-success)]/10 px-3 py-2.5 text-sm text-[var(--looply-color-status-success)]">
+          {editSuccessNotice}
+        </div>
+      )}
+
       {err && (
-        <div className="mb-4 rounded-lg bg-[var(--looply-danger-bg)] px-3 py-2.5 text-sm text-[var(--looply-danger)]">
+        <div className="mb-4 rounded-lg bg-[var(--looply-color-status-danger)]/10 px-3 py-2.5 text-sm text-[var(--looply-color-status-danger)]">
           {err}
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Left: preview + content */}
-        <div className="space-y-5 lg:col-span-2">
+      {/* Grouped state banner */}
+      {content.parentId && (
+        <div className="mb-5 flex flex-col gap-2 rounded-lg border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between text-xs text-[var(--looply-color-text-muted)]">
+          <span>Este job faz parte de um agrupamento de conteúdos.</span>
+          <button
+            type="button"
+            className="btn-ghost btn-sm text-xs font-medium text-[var(--looply-color-action-primary)] hover:bg-[var(--looply-color-action-primary)]/10 w-fit"
+            disabled={ungroupMutation.isPending}
+            onClick={handleUngroup}
+          >
+            {ungroupMutation.isPending ? "Desagrupando…" : "Desagrupar job"}
+          </button>
+        </div>
+      )}
+
+      {/* Edit Job Details Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <Card className="w-full max-w-lg shadow-looply-lg">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="section-title">Editar detalhes do job</h3>
+              <button
+                className="btn-ghost btn-sm"
+                onClick={() => setShowEditModal(false)}
+                aria-label="Fechar"
+              >
+                <IconX className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div>
+                <label className="label">Título</label>
+                <input
+                  className="input"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="label">Cliente</label>
+                <select
+                  className="input"
+                  value={editForm.clientId}
+                  onChange={(e) => setEditForm((f) => ({ ...f, clientId: e.target.value }))}
+                >
+                  {clients?.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label">Publicação prevista</label>
+                <input
+                  className="input"
+                  type="date"
+                  value={editForm.publicationTarget}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, publicationTarget: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="label">Notas internas</label>
+                <textarea
+                  className="input min-h-[80px] resize-none"
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                  placeholder="Observações e notas sobre este job…"
+                />
+              </div>
+            </div>
+            {editErr && (
+              <div className="mt-3 rounded-lg bg-[var(--looply-color-status-danger)]/10 px-3 py-2 text-sm text-[var(--looply-color-status-danger)]">
+                {editErr}
+              </div>
+            )}
+            <div className="mt-5 flex justify-end gap-2 border-t border-[var(--looply-color-border-default)] pt-4">
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={updateJob.isPending}
+                onClick={() => setShowEditModal(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={updateJob.isPending}
+                onClick={saveJobEdit}
+              >
+                {updateJob.isPending ? "Salvando…" : "Salvar alterações"}
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        {/* Left: preview + content (~65%) */}
+        <div className="space-y-5 lg:col-span-3">
+          {/* Content preview */}
+          <Card>
+            <h3 className="section-title mb-3">Pré-visualização</h3>
+            <MediaPreview
+              url={currentVersion.mediaUrl}
+              alt={content.title}
+              className="mb-4 aspect-video w-full rounded-lg"
+            />
+            <div className="space-y-3">
+              <div>
+                <div className="section-label mb-1.5">Legenda</div>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--looply-color-text-primary)]">
+                  {currentVersion.caption}
+                </p>
+              </div>
+              {currentVersion.changeNote && (
+                <div className="rounded-lg bg-[var(--looply-color-bg-subtle)] px-3 py-2.5 text-xs text-[var(--looply-color-text-muted)]">
+                  <span className="font-medium">Nota da versão:</span> {currentVersion.changeNote}
+                </div>
+              )}
+            </div>
+          </Card>
+
           {/* Metadata card */}
           <Card>
-            <h3 className="mb-3 text-sm font-semibold text-[var(--looply-foreground)]">Detalhes</h3>
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="section-title">Detalhes</h3>
+              <button
+                type="button"
+                className="btn-ghost btn-sm flex items-center gap-1 text-xs"
+                onClick={openEdit}
+              >
+                <IconEdit className="h-3.5 w-3.5" />
+                <span>Editar</span>
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
               <Meta label="Cliente">
                 <span
-                  className="inline-flex items-center gap-1.5 font-medium text-[var(--looply-foreground)]"
+                  className="inline-flex items-center gap-1.5 font-medium text-[var(--looply-color-text-primary)]"
                   style={{ color: content.client?.brandColor ?? undefined }}
                 >
                   <span
                     className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: content.client?.brandColor ?? "var(--looply-faint-foreground)" }}
+                    style={{
+                      backgroundColor:
+                        content.client?.brandColor ?? "var(--looply-color-text-muted)",
+                    }}
                   />
                   {content.client?.name}
                 </span>
@@ -103,47 +376,111 @@ export default function ContentDetail() {
               <Meta label="Canal">{content.channel ?? "—"}</Meta>
               <Meta label="Responsável">
                 {content.responsible?.name ?? "—"}
-                {content.responsible?.role
-                  ? ` · ${ROLE_LABEL[content.responsible.role]}`
-                  : ""}
+                {content.responsible?.role ? ` · ${ROLE_LABEL[content.responsible.role]}` : ""}
               </Meta>
               <Meta label="Versão">v{currentVersion.versionNumber}</Meta>
               <Meta label="Publicação prevista">{formatDate(content.publicationTarget)}</Meta>
             </div>
-          </Card>
-
-          {/* Content preview */}
-          <Card>
-            <h3 className="mb-3 text-sm font-semibold text-[var(--looply-foreground)]">Pré-visualização</h3>
-            <MediaPreview
-              url={currentVersion.mediaUrl}
-              alt={content.title}
-              className="mb-4 aspect-video w-full rounded-lg"
-            />
-            <div className="space-y-3">
-              <div>
-                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--looply-muted-foreground)]">
-                  Legenda
+            {content.notes && (
+              <div className="mt-4 border-t border-[var(--looply-color-border-default)] pt-3">
+                <div className="section-label mb-1 text-xs text-[var(--looply-color-text-muted)]">
+                  Notas
                 </div>
-                <p className="whitespace-pre-wrap text-sm text-[var(--looply-foreground)]">
-                  {currentVersion.caption}
+                <p className="text-xs text-[var(--looply-color-text-primary)] whitespace-pre-wrap">
+                  {content.notes}
                 </p>
               </div>
-              {currentVersion.changeNote && (
-                <div className="rounded-lg bg-[var(--looply-surface-muted)] px-3 py-2 text-xs text-[var(--looply-muted-foreground)]">
-                  <span className="font-medium">Nota da versão:</span> {currentVersion.changeNote}
-                </div>
-              )}
+            )}
+          </Card>
+
+          {/* Files & Attachments card (B5) */}
+          <Card>
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="section-title">Arquivos e Anexos ({jobFiles?.files?.length ?? 0})</h3>
+              <label className="btn-secondary btn-sm flex items-center gap-1.5 cursor-pointer">
+                <IconPlus className="h-3.5 w-3.5" />
+                <span>{uploadAttachment.isPending ? "Enviando…" : "Enviar arquivo"}</span>
+                <input
+                  type="file"
+                  className="hidden"
+                  disabled={uploadAttachment.isPending}
+                  onChange={handleFileUpload}
+                />
+              </label>
             </div>
+
+            {uploadError && (
+              <div className="mb-3 rounded-lg bg-[var(--looply-color-status-danger)]/10 px-3 py-2 text-xs text-[var(--looply-color-status-danger)]">
+                {uploadError}
+              </div>
+            )}
+
+            {filesLoading ? (
+              <div className="py-2 text-xs text-[var(--looply-color-text-muted)]">Carregando arquivos…</div>
+            ) : !jobFiles?.files || jobFiles.files.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-[var(--looply-color-border-default)] p-4 text-center text-xs text-[var(--looply-color-text-muted)]">
+                Nenhum arquivo anexado a este job. Clique em "Enviar arquivo" para fazer upload.
+              </div>
+            ) : (
+              <div className="divide-y divide-[var(--looply-color-border-default)]">
+                {jobFiles.files.map((file) => (
+                  <div key={file.id} className="flex items-center justify-between py-2.5 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <IconFileText className="h-4 w-4 shrink-0 text-[var(--looply-color-text-muted)]" />
+                      <div className="min-w-0 truncate">
+                        <div className="font-medium text-[var(--looply-color-text-primary)] truncate">
+                          {file.originalName}
+                        </div>
+                        <div className="text-[11px] text-[var(--looply-color-text-muted)]">
+                          {formatBytes(file.sizeBytes)} · {formatDate(file.createdAt)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      <button
+                        type="button"
+                        className="btn-ghost btn-sm text-[var(--looply-color-action-primary)] hover:underline"
+                        onClick={async () => {
+                          try {
+                            const res = await downloadFile.mutateAsync(file.id);
+                            if (res?.url) {
+                              window.open(res.url, "_blank", "noopener,noreferrer");
+                            }
+                          } catch (e) {
+                            setErr(e instanceof ApiError ? e.message : "Falha ao gerar link de download.");
+                          }
+                        }}
+                      >
+                        Baixar
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-ghost btn-sm p-1 text-[var(--looply-color-status-danger)] hover:bg-[var(--looply-color-status-danger)]/10"
+                        aria-label={`Excluir ${file.originalName}`}
+                        onClick={async () => {
+                          try {
+                            await deleteFile.mutateAsync(file.id);
+                          } catch (e) {
+                            setErr(e instanceof ApiError ? e.message : "Falha ao excluir anexo.");
+                          }
+                        }}
+                      >
+                        <IconTrash className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
 
           <VersionHistory versions={content.versions} />
         </div>
 
-        {/* Right: actions */}
-        <div className="space-y-5">
+        {/* Right: actions + activity feed (~35%) */}
+        <div className="space-y-5 lg:col-span-2">
           <Card>
-            <h3 className="mb-4 text-sm font-semibold text-[var(--looply-foreground)]">Ações</h3>
+            <h3 className="section-title mb-4">Ações</h3>
 
             {status === "DRAFT" && (
               <ActionButton
@@ -168,20 +505,22 @@ export default function ContentDetail() {
             )}
 
             {status === "AWAITING_CLIENT" && (
-              <div className="flex items-start gap-2 rounded-lg bg-[var(--looply-information-bg)] px-3 py-2.5 text-sm text-[var(--looply-information)]">
+              <div className="flex items-start gap-2 rounded-lg bg-[var(--looply-color-status-info)]/10 px-3 py-2.5 text-sm text-[var(--looply-color-status-info)]">
                 <IconClock className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>Aguardando o cliente aprovar ou solicitar alterações pelo link público.</span>
               </div>
             )}
 
             {status === "CHANGES_REQUESTED" && latestApproval?.feedback && (
-              <div className="rounded-lg border border-[var(--looply-danger)]/20 bg-[var(--looply-danger-bg)] p-3">
-                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--looply-danger)]">
+              <div className="rounded-lg border border-[var(--looply-color-status-danger)]/20 bg-[var(--looply-color-status-danger)]/10 p-3">
+                <div className="section-label mb-1.5 text-[var(--looply-color-status-danger)]">
                   Alteração solicitada
                 </div>
-                <p className="text-sm text-[var(--looply-danger)]/90">{latestApproval.feedback}</p>
+                <p className="text-sm text-[var(--looply-color-status-danger)]/90">
+                  {latestApproval.feedback}
+                </p>
                 {latestApproval.clientName && (
-                  <div className="mt-2 text-xs text-[var(--looply-danger)]/60">
+                  <div className="mt-2 text-xs text-[var(--looply-color-status-danger)]/60">
                     — {latestApproval.clientName} · {formatDateTime(latestApproval.clientReviewedAt)}
                   </div>
                 )}
@@ -201,7 +540,11 @@ export default function ContentDetail() {
                     loading={createVersion.isPending}
                     onCancel={() => setShowVersionForm(false)}
                     onSubmit={async (caption, mediaUrl, changeNote) => {
-                      const ok = await createVersion.mutateAsync({ caption, mediaUrl, changeNote });
+                      const ok = await createVersion.mutateAsync({
+                        caption,
+                        mediaUrl,
+                        changeNote,
+                      });
                       if (ok) {
                         setShowVersionForm(false);
                         refetch();
@@ -215,15 +558,13 @@ export default function ContentDetail() {
             {status === "APPROVED" && (
               <ScheduleForm
                 loading={schedule.isPending}
-                onSubmit={(iso) =>
-                  run(schedule, { scheduledAt: iso }).then(() => undefined)
-                }
+                onSubmit={(iso) => run(schedule, { scheduledAt: iso }).then(() => undefined)}
               />
             )}
 
             {status === "SCHEDULED" && (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2.5 text-sm text-blue-700">
+                <div className="flex items-center gap-2 rounded-lg bg-[var(--looply-color-action-primary)]/10 px-3 py-2.5 text-sm text-[var(--looply-color-action-primary)]">
                   <IconClock className="h-4 w-4" />
                   Agendado para {formatDateTime(content.scheduledAt)}
                 </div>
@@ -237,12 +578,15 @@ export default function ContentDetail() {
             )}
 
             {status === "PUBLISHED" && (
-              <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2.5 text-sm text-emerald-700">
+              <div className="flex items-center gap-2 rounded-lg bg-[var(--looply-color-status-success)]/10 px-3 py-2.5 text-sm text-[var(--looply-color-status-success)]">
                 <IconCheck className="h-4 w-4" />
                 Publicado em {formatDateTime(content.publishedAt)}
               </div>
             )}
           </Card>
+
+          {/* Job Activity Feed (B6) */}
+          <JobActivityTimeline jobId={content.id} responsibleName={content.responsible?.name} />
         </div>
       </div>
     </div>
@@ -252,25 +596,29 @@ export default function ContentDetail() {
 function Meta({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-xs font-medium uppercase tracking-wide text-[var(--looply-muted-foreground)]">{label}</div>
-      <div className="mt-0.5 text-sm">{children}</div>
+      <div className="section-label mb-1 text-xs text-[var(--looply-color-text-muted)]">{label}</div>
+      <div className="font-medium text-[var(--looply-color-text-primary)]">{children}</div>
     </div>
   );
 }
 
 function ActionButton({
-  label,
   onClick,
-  loading,
+  label,
   icon,
+  loading,
 }: {
-  label: string;
   onClick: () => void;
-  loading?: boolean;
+  label: string;
   icon?: React.ReactNode;
+  loading?: boolean;
 }) {
   return (
-    <button onClick={onClick} disabled={loading} className="btn-primary w-full">
+    <button
+      className="btn-primary w-full justify-center"
+      disabled={loading}
+      onClick={onClick}
+    >
       {icon}
       {loading ? "Processando…" : label}
     </button>
@@ -279,30 +627,41 @@ function ActionButton({
 
 function ApprovalLinkBox({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
+
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
+      setTimeout(() => setCopied(false), 2000);
     } catch {
-      /* clipboard unavailable */
+      // Fallback
     }
   };
+
   return (
-    <div className="mt-3 rounded-lg border border-[var(--looply-information)]/20 bg-[var(--looply-information-bg)] p-3">
-      <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--looply-information)]">
-        <IconLink className="h-3.5 w-3.5" />
-        Link de aprovação
-      </div>
-      <div className="truncate rounded bg-[var(--looply-surface)] px-2.5 py-2 font-mono text-xs text-[var(--looply-muted-foreground)]">
-        {url}
-      </div>
-      <div className="mt-2 flex gap-2">
-        <a href={url} target="_blank" rel="noreferrer" className="btn-secondary flex-1 text-xs">
+    <div className="rounded-lg border border-[var(--looply-color-action-primary)]/20 bg-[var(--looply-color-action-primary)]/10 p-3.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--looply-color-action-primary)]">
+          <IconLink className="h-3.5 w-3.5" />
+          Link de aprovação
+        </div>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 text-xs font-medium text-[var(--looply-color-action-primary)] hover:underline"
+        >
           <IconEye className="h-3.5 w-3.5" />
           Abrir
         </a>
-        <button onClick={copy} className="btn-secondary flex-1 text-xs">
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          readOnly
+          value={url}
+          className="input flex-1 bg-[var(--looply-color-bg-surface)] text-xs"
+        />
+        <button className="btn-secondary btn-sm shrink-0" onClick={copy}>
           {copied ? "Copiado!" : "Copiar"}
         </button>
       </div>
@@ -315,44 +674,65 @@ function NewVersionForm({
   onCancel,
   loading,
 }: {
-  onSubmit: (caption: string, mediaUrl: string, changeNote: string) => Promise<void>;
+  onSubmit: (caption: string, mediaUrl?: string, changeNote?: string) => Promise<void>;
   onCancel: () => void;
-  loading?: boolean;
+  loading: boolean;
 }) {
   const [caption, setCaption] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
   const [changeNote, setChangeNote] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = async () => {
+    setErr(null);
+    if (!caption.trim()) {
+      setErr("A legenda é obrigatória.");
+      return;
+    }
+    await onSubmit(caption.trim(), mediaUrl.trim() || undefined, changeNote.trim() || undefined);
+  };
+
   return (
-    <div className="mt-3 space-y-2.5 rounded-lg border border-[var(--looply-border)] bg-[var(--looply-surface-muted)] p-3">
-      <div className="text-xs font-semibold text-[var(--looply-foreground)]">Nova versão</div>
-      <textarea
-        className="input min-h-[90px]"
-        placeholder="Nova legenda…"
-        value={caption}
-        onChange={(e) => setCaption(e.target.value)}
-      />
-      <input
-        className="input"
-        placeholder="URL da mídia (opcional)"
-        value={mediaUrl}
-        onChange={(e) => setMediaUrl(e.target.value)}
-      />
-      <input
-        className="input"
-        placeholder="Nota da versão (opcional)"
-        value={changeNote}
-        onChange={(e) => setChangeNote(e.target.value)}
-      />
-      <div className="flex gap-2">
-        <button className="btn-secondary flex-1 text-xs" onClick={onCancel}>
+    <div className="space-y-3 rounded-lg border border-[var(--looply-color-border-default)] p-3.5">
+      <div className="section-label">Nova versão</div>
+      <div>
+        <label className="label">Legenda *</label>
+        <textarea
+          className="input min-h-[90px] resize-none text-sm"
+          value={caption}
+          onChange={(e) => setCaption(e.target.value)}
+          placeholder="Legenda atualizada…"
+        />
+      </div>
+      <div>
+        <label className="label">URL da mídia (opcional)</label>
+        <input
+          className="input text-sm"
+          value={mediaUrl}
+          onChange={(e) => setMediaUrl(e.target.value)}
+          placeholder="https://…"
+        />
+      </div>
+      <div>
+        <label className="label">O que mudou? (opcional)</label>
+        <input
+          className="input text-sm"
+          value={changeNote}
+          onChange={(e) => setChangeNote(e.target.value)}
+          placeholder="Ex.: Ajustado contraste e texto da headline"
+        />
+      </div>
+      {err && (
+        <div className="rounded-lg bg-[var(--looply-color-status-danger)]/10 px-3 py-2 text-xs text-[var(--looply-color-status-danger)]">
+          {err}
+        </div>
+      )}
+      <div className="flex justify-end gap-2 pt-1">
+        <button className="btn-secondary btn-sm" onClick={onCancel} disabled={loading}>
           Cancelar
         </button>
-        <button
-          className="btn-primary flex-1 text-xs"
-          disabled={loading || !caption.trim()}
-          onClick={() => onSubmit(caption.trim(), mediaUrl.trim(), changeNote.trim())}
-        >
-          {loading ? "Salvando…" : "Salvar nova versão"}
+        <button className="btn-primary btn-sm" onClick={submit} disabled={loading}>
+          {loading ? "Criando…" : "Salvar versão"}
         </button>
       </div>
     </div>
@@ -363,80 +743,224 @@ function ScheduleForm({
   onSubmit,
   loading,
 }: {
-  onSubmit: (iso: string) => void;
-  loading?: boolean;
+  onSubmit: (iso: string) => Promise<void>;
+  loading: boolean;
 }) {
-  const [dt, setDt] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("12:00");
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = async () => {
+    setErr(null);
+    if (!date) {
+      setErr("Escolha uma data.");
+      return;
+    }
+    const iso = new Date(`${date}T${time || "12:00"}:00`).toISOString();
+    await onSubmit(iso);
+  };
+
   return (
-    <div className="space-y-2.5">
-      <div className="text-xs font-medium text-[var(--looply-muted-foreground)]">Data e hora de publicação</div>
-      <input
-        type="datetime-local"
-        className="input"
-        value={dt}
-        onChange={(e) => setDt(e.target.value)}
-      />
-      <button
-        className="btn-primary w-full"
-        disabled={loading || !dt}
-        onClick={() => onSubmit(new Date(dt).toISOString())}
-      >
-        {loading ? "Agendando…" : "Agendar publicação"}
+    <div className="space-y-3">
+      <div className="section-label">Agendar publicação</div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="label">Data</label>
+          <input
+            type="date"
+            className="input text-sm"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="label">Horário</label>
+          <input
+            type="time"
+            className="input text-sm"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+          />
+        </div>
+      </div>
+      {err && (
+        <div className="rounded-lg bg-[var(--looply-color-status-danger)]/10 px-3 py-2 text-xs text-[var(--looply-color-status-danger)]">
+          {err}
+        </div>
+      )}
+      <button className="btn-primary w-full justify-center" disabled={loading} onClick={submit}>
+        <IconClock className="h-4 w-4" />
+        {loading ? "Agendando…" : "Confirmar agendamento"}
       </button>
     </div>
   );
 }
 
-function VersionHistory({ versions }: { versions: ContentVersion[] }) {
+function VersionHistory({ versions }: { versions?: ContentVersion[] }) {
+  if (!versions || versions.length === 0) return null;
+  const sorted = [...versions].reverse();
+
   return (
     <Card>
-      <h3 className="mb-4 text-sm font-semibold text-[var(--looply-foreground)]">Histórico de versões</h3>
-      <ol className="space-y-4">
-        {versions.map((v) => {
-          const ap = v.approvals?.[0];
-          return (
-            <li key={v.id} className="flex gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--looply-surface-muted)] text-xs font-bold text-[var(--looply-muted-foreground)]">
-                {v.versionNumber}
+      <h3 className="section-title mb-4">Histórico de versões ({versions.length})</h3>
+      <div className="space-y-3">
+        {sorted.map((v) => (
+          <div
+            key={v.id}
+            className="flex items-start justify-between rounded-lg border border-[var(--looply-color-border-default)] p-3 text-xs"
+          >
+            <div>
+              <div className="font-semibold text-[var(--looply-color-text-primary)]">
+                Versão {v.versionNumber}
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-medium text-[var(--looply-foreground)]">
-                    Versão {v.versionNumber}
-                    {v.createdBy && (
-                      <span className="ml-1 text-xs font-normal text-[var(--looply-muted-foreground)]">
-                        · {v.createdBy.name}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-[var(--looply-muted-foreground)]">{formatDateTime(v.createdAt)}</div>
+              <div className="text-[var(--looply-color-text-muted)]">
+                {formatDateTime(v.createdAt)}
+                {v.createdBy?.name ? ` · por ${v.createdBy.name}` : ""}
+              </div>
+              {v.changeNote && (
+                <div className="mt-1 text-[var(--looply-color-text-muted)] italic">
+                  "{v.changeNote}"
                 </div>
-                <p className="mt-1 line-clamp-2 text-sm text-[var(--looply-muted-foreground)]">{v.caption}</p>
-                {ap && (
-                  <div
-                    className={`mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                      ap.status === "APPROVED"
-                        ? "bg-emerald-50 text-emerald-700"
-                        : ap.status === "CHANGES_REQUESTED"
-                          ? "bg-rose-50 text-rose-700"
-                          : "bg-[var(--looply-surface-muted)] text-[var(--looply-muted-foreground)]"
-                    }`}
-                  >
-                    <span className={`h-1.5 w-1.5 rounded-full ${
-                      ap.status === "APPROVED" ? "bg-emerald-500" : ap.status === "CHANGES_REQUESTED" ? "bg-rose-500" : "bg-slate-400"
-                    }`} />
-                    {ap.status === "APPROVED"
-                      ? "Aprovado pelo cliente"
-                      : ap.status === "CHANGES_REQUESTED"
-                        ? "Alteração solicitada"
-                        : "Aguardando cliente"}
+              )}
+            </div>
+            {v.mediaUrl && (
+              <a
+                href={v.mediaUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-ghost btn-sm text-[var(--looply-color-action-primary)] hover:underline"
+              >
+                Ver mídia
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+// ── Job Activity Timeline (B6) ──────────────────────────────────────────────
+function activityCopy(type: ActivityType): { title: string; defaultActor: string } {
+  switch (type) {
+    case "JOB_CREATED":
+      return { title: "criou este job", defaultActor: "Sistema" };
+    case "JOB_UPDATED":
+      return { title: "atualizou os detalhes do job", defaultActor: "Membro da equipe" };
+    case "JOB_STAGE_CHANGED":
+      return { title: "alterou a etapa do job", defaultActor: "Membro da equipe" };
+    case "JOB_COMPLETED":
+      return { title: "marcou o job como concluído", defaultActor: "Membro da equipe" };
+    case "JOB_CANCELLED":
+      return { title: "cancelou este job", defaultActor: "Membro da equipe" };
+    case "APPROVAL_REQUESTED":
+      return { title: "enviou o job para aprovação do cliente", defaultActor: "Membro da equipe" };
+    case "APPROVAL_APPROVED":
+      return { title: "aprovou o conteúdo", defaultActor: "Cliente" };
+    case "APPROVAL_CHANGES_REQUESTED":
+      return { title: "solicitou alterações no conteúdo", defaultActor: "Cliente" };
+    case "APPROVAL_REJECTED":
+      return { title: "reprovou o conteúdo", defaultActor: "Cliente" };
+    case "APPROVAL_REVOKED":
+      return { title: "revogou o link de aprovação", defaultActor: "Membro da equipe" };
+    default:
+      return { title: "realizou uma ação", defaultActor: "Sistema" };
+  }
+}
+
+function ActivityIcon({ type }: { type: ActivityType }) {
+  if (type === "APPROVAL_APPROVED" || type === "JOB_COMPLETED") {
+    return <IconCheck className="h-3.5 w-3.5 text-[var(--looply-color-status-success)]" />;
+  }
+  if (
+    type === "APPROVAL_CHANGES_REQUESTED" ||
+    type === "JOB_CANCELLED" ||
+    type === "APPROVAL_REJECTED"
+  ) {
+    return <IconX className="h-3.5 w-3.5 text-[var(--looply-color-status-danger)]" />;
+  }
+  if (type === "APPROVAL_REQUESTED") {
+    return <IconSend className="h-3.5 w-3.5 text-[var(--looply-color-action-primary)]" />;
+  }
+  if (type === "JOB_UPDATED") {
+    return <IconEdit className="h-3.5 w-3.5 text-[var(--looply-color-text-muted)]" />;
+  }
+  return <IconClock className="h-3.5 w-3.5 text-[var(--looply-color-text-muted)]" />;
+}
+
+function JobActivityTimeline({
+  jobId,
+  responsibleName,
+}: {
+  jobId: string;
+  responsibleName?: string;
+}) {
+  const { data, isLoading, isError, refetch } = useJobActivity(jobId);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <h3 className="section-title mb-4">Histórico de atividades</h3>
+        <div className="py-3 text-xs text-[var(--looply-color-text-muted)]">
+          Carregando atividades…
+        </div>
+      </Card>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card>
+        <h3 className="section-title mb-4">Histórico de atividades</h3>
+        <div className="flex items-center justify-between rounded-lg bg-[var(--looply-color-status-danger)]/10 p-3 text-xs text-[var(--looply-color-status-danger)]">
+          <span>Falha ao carregar histórico de atividades.</span>
+          <button
+            type="button"
+            className="btn-ghost btn-sm text-xs font-semibold underline"
+            onClick={() => refetch()}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </Card>
+    );
+  }
+
+  const activities = data?.activities ?? [];
+
+  return (
+    <Card>
+      <h3 className="section-title mb-4">Histórico de atividades ({activities.length})</h3>
+      {activities.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-[var(--looply-color-border-default)] p-4 text-center text-xs text-[var(--looply-color-text-muted)]">
+          Nenhuma atividade registrada neste job ainda.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {[...activities].reverse().map((act) => {
+            const { title, defaultActor } = activityCopy(act.type);
+            const actor = responsibleName || defaultActor;
+            return (
+              <div
+                key={act.id}
+                className="flex items-start gap-2.5 rounded-lg border border-[var(--looply-color-border-default)] p-3 text-xs"
+              >
+                <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--looply-color-bg-subtle)]">
+                  <ActivityIcon type={act.type} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[var(--looply-color-text-primary)]">
+                    <span className="font-semibold">{actor}</span> {title}
                   </div>
-                )}
+                  <div className="mt-1 text-[11px] text-[var(--looply-color-text-muted)]">
+                    {relativeTime(act.createdAt)} · {formatDateTime(act.createdAt)}
+                  </div>
+                </div>
               </div>
-            </li>
-          );
-        })}
-      </ol>
+            );
+          })}
+        </div>
+      )}
     </Card>
   );
 }

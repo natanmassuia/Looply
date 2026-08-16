@@ -5,16 +5,58 @@ import {
   type UseQueryOptions,
 } from "@tanstack/react-query";
 import type {
+  AppearanceMode,
+  AppearancePreset,
+  Appointment,
+  AppointmentListResponse,
+  AppointmentStatus,
+  CustomColors,
   Dashboard,
   Client,
+  CompanyMember,
   ContentListItem,
   ContentDetail,
   ContentStatus,
   ContentVersion,
+  CreateAppointmentPayload,
+  CreateClientPayload,
+  CreateInvitationPayload,
+  CreateInvitationResponse,
+  Invitation,
+  JobActivity,
+  JobAttachment,
+  MemberRole,
   OnboardingStatus,
+  UpdateAppointmentPayload,
+  UpdateClientPayload,
+  UpdateJobPayload,
+  UploadIntentResponse,
   User,
+  WorkspaceAppearance,
   WorkspaceContext,
   WorkspaceTemplate,
+} from "./types";
+
+export type {
+  ActivityType,
+  Appointment,
+  AppointmentListResponse,
+  AppointmentStatus,
+  ClientStatus,
+  CreateAppointmentPayload,
+  CreateClientPayload,
+  CreateInvitationPayload,
+  CreateInvitationResponse,
+  CompanyMember,
+  Invitation,
+  JobActivity,
+  JobAttachment,
+  MemberRole,
+  UpdateAppointmentPayload,
+  UpdateClientPayload,
+  UpdateJobPayload,
+  UploadIntentResponse,
+  UserRole,
 } from "./types";
 
 // Relative in dev (Vite proxies /api → backend). Override with VITE_API_URL.
@@ -160,7 +202,7 @@ export function useChangePassword() {
 
 export function useUpdateOnboardingCompany() {
   return useMutation({
-    mutationFn: (body: { name: string; timezone: string; locale: string }) =>
+    mutationFn: (body: { name: string; website?: string; timezone: string; locale: string }) =>
       apiFetch<{ name: string; timezone: string; locale: string }>("/api/onboarding/company", {
         method: "PATCH",
         body,
@@ -175,6 +217,41 @@ export function useSelectTemplate() {
         method: "POST",
         body: { template },
       }),
+  });
+}
+
+export function useUpdateOnboardingAppearance() {
+  return useMutation({
+    mutationFn: (body: { preset: AppearancePreset; mode: AppearanceMode }) =>
+      apiFetch<{ appearance: WorkspaceAppearance }>("/api/onboarding/appearance", {
+        method: "PATCH",
+        body,
+      }),
+  });
+}
+
+export function useUpdateSettingsAppearance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { preset?: AppearancePreset; mode?: AppearanceMode; customColors?: CustomColors | null }) =>
+      apiFetch<{ appearance: WorkspaceAppearance }>("/api/settings/appearance", {
+        method: "PATCH",
+        body,
+      }),
+    onSuccess: (data) => {
+      qc.setQueryData(["me"], (old: unknown) => {
+        if (!old || typeof old !== "object") return old;
+        const session = old as { workspace?: { appearance?: WorkspaceAppearance } };
+        return {
+          ...session,
+          workspace: {
+            ...session.workspace,
+            appearance: data.appearance,
+          },
+        };
+      });
+      qc.invalidateQueries({ queryKey: ["me"] });
+    },
   });
 }
 
@@ -205,6 +282,20 @@ export const useTeam = () =>
   useQuery({
     queryKey: ["team"],
     queryFn: () => apiFetch<{ team: User[] }>("/api/team").then((r) => r.team),
+  });
+
+export const useMembers = (enabled = true) =>
+  useQuery({
+    queryKey: ["members"],
+    queryFn: () => apiFetch<{ members: CompanyMember[] }>("/api/members").then((r) => r.members),
+    enabled,
+  });
+
+export const useInvitations = (enabled = true) =>
+  useQuery({
+    queryKey: ["invitations"],
+    queryFn: () => apiFetch<{ invitations: Invitation[] }>("/api/invitations").then((r) => r.invitations),
+    enabled,
   });
 
 export const useContents = (status?: ContentStatus) =>
@@ -296,14 +387,33 @@ export function useCreateContent() {
 export function useCreateClient() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: {
-      name: string;
-      brandColor?: string;
-      primaryContactName?: string;
-      primaryContactEmail?: string;
-      primaryContactPhone?: string;
-      channels?: string[];
-    }) => apiFetch<Client>("/api/clients", { method: "POST", body: payload }),
+    mutationFn: (payload: CreateClientPayload) =>
+      apiFetch<Client>("/api/clients", { method: "POST", body: payload }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useUpdateClient() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateClientPayload }) =>
+      apiFetch<Client>(`/api/clients/${id}`, { method: "PATCH", body }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["client", vars.id] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useDeleteClient() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<null>(`/api/clients/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["clients"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
@@ -323,6 +433,7 @@ export function useCreateVersion(id: string) {
       qc.invalidateQueries({ queryKey: ["content", id] });
       qc.invalidateQueries({ queryKey: ["contents"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["jobActivity", id] });
     },
   });
 }
@@ -347,25 +458,70 @@ export function useUngroupContent() {
   return useMutation({
     mutationFn: (childId: string) =>
       apiFetch(`/api/contents/${childId}/ungroup`, { method: "POST" }),
-    onSuccess: () => {
+    onSuccess: (_data, childId) => {
+      qc.invalidateQueries({ queryKey: ["content", childId] });
       qc.invalidateQueries({ queryKey: ["contents"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["jobActivity", childId] });
+    },
+  });
+}
+
+export function useUpdateJob() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateJobPayload }) =>
+      apiFetch(`/api/jobs/${id}`, { method: "PATCH", body }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["content", vars.id] });
+      qc.invalidateQueries({ queryKey: ["contents"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["calendar"] });
+      qc.invalidateQueries({ queryKey: ["jobActivity", vars.id] });
+    },
+  });
+}
+
+export function useCreateInvitation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateInvitationPayload) =>
+      apiFetch<CreateInvitationResponse>("/api/invitations", { method: "POST", body }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["invitations"] });
+      qc.invalidateQueries({ queryKey: ["members"] });
+      qc.invalidateQueries({ queryKey: ["team"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }
 
-export type UserRole = "ADMIN" | "CONTENT_MANAGER" | "EDITOR" | "SOCIAL_MEDIA" | "DESIGNER";
-
-export function useCreateTeamMember() {
+export function useRevokeInvitation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { name: string; email: string; role: UserRole; active?: boolean }) =>
-      apiFetch<User>("/api/team", { method: "POST", body: payload }),
+    mutationFn: (id: string) =>
+      apiFetch<{ ok: true }>(`/api/invitations/${id}/revoke`, { method: "POST" }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["team"] });
-      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["invitations"] });
     },
   });
+}
+
+export function useUpdateMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: { role?: MemberRole; isActive?: boolean } }) =>
+      apiFetch<CompanyMember>(`/api/members/${id}`, { method: "PATCH", body }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["members"] });
+      qc.invalidateQueries({ queryKey: ["team"] });
+    },
+  });
+}
+
+/** @deprecated Use useCreateInvitation instead */
+export function useCreateTeamMember() {
+  return useCreateInvitation();
 }
 
 // ── Public approval actions ────────────────────────────────────────────────
@@ -390,5 +546,161 @@ export function useRequestChangesPublic(token: string) {
         body,
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["approval", token] }),
+  });
+}
+
+export function useRejectPublic(token: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { feedback?: string; reviewerName?: string }) =>
+      apiFetch(`/api/public/approvals/${token}/reject`, {
+        method: "POST",
+        body,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["approval", token] }),
+  });
+}
+
+// ── Job Files & Object Storage Attachments (B5) ─────────────────────────────
+export function useJobFiles(jobId: string, options?: UseQueryOptions<{ files: JobAttachment[] }>) {
+  return useQuery<{ files: JobAttachment[] }>({
+    queryKey: ["jobFiles", jobId],
+    queryFn: () => apiFetch<{ files: JobAttachment[] }>(`/api/jobs/${jobId}/files`),
+    enabled: Boolean(jobId),
+    ...options,
+  });
+}
+
+export async function uploadJobAttachment(jobId: string, file: File): Promise<JobAttachment> {
+  if (file.size > 50 * 1024 * 1024) {
+    throw new ApiError(400, "Arquivo excede o limite máximo permitido de 50MB");
+  }
+
+  // Step 1: Request upload intent
+  const intent = await apiFetch<UploadIntentResponse>(`/api/jobs/${jobId}/files/upload-intent`, {
+    method: "POST",
+    body: {
+      originalName: file.name,
+      contentType: file.type || "application/octet-stream",
+      sizeBytes: file.size,
+    },
+  });
+
+  // Step 2: Direct storage upload (PUT to storage uploadUrl)
+  const res = await fetch(intent.uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Type": file.type || "application/octet-stream",
+    },
+    body: file,
+  });
+
+  if (!res.ok) {
+    throw new ApiError(res.status, "Falha ao enviar arquivo para o armazenamento");
+  }
+
+  // Step 3: Complete upload and persist status
+  const completed = await apiFetch<JobAttachment>(`/api/files/${intent.file.id}/complete`, {
+    method: "POST",
+  });
+
+  return completed;
+}
+
+export function useUploadJobAttachment(jobId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => uploadJobAttachment(jobId, file),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["jobFiles", jobId] });
+      qc.invalidateQueries({ queryKey: ["content", jobId] });
+      qc.invalidateQueries({ queryKey: ["jobActivity", jobId] });
+    },
+  });
+}
+
+export function useDownloadJobFile() {
+  return useMutation({
+    mutationFn: (fileId: string) =>
+      apiFetch<{ url: string; expiresAt: string }>(`/api/files/${fileId}/download`),
+  });
+}
+
+export function useDeleteJobFile(jobId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (fileId: string) =>
+      apiFetch<null>(`/api/files/${fileId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["jobFiles", jobId] });
+      qc.invalidateQueries({ queryKey: ["content", jobId] });
+      qc.invalidateQueries({ queryKey: ["jobActivity", jobId] });
+    },
+  });
+}
+
+// ── Job Activity Feed (B6) ──────────────────────────────────────────────────
+export function useJobActivity(
+  jobId: string,
+  options?: UseQueryOptions<{ activities: JobActivity[] }>,
+) {
+  return useQuery<{ activities: JobActivity[] }>({
+    queryKey: ["jobActivity", jobId],
+    queryFn: () => apiFetch<{ activities: JobActivity[] }>(`/api/jobs/${jobId}/activity`),
+    enabled: Boolean(jobId),
+    ...options,
+  });
+}
+
+// ── Calendar Appointments CRUD (B7) ─────────────────────────────────────────
+export function useAppointments(
+  query?: { clientId?: string; status?: AppointmentStatus },
+  options?: UseQueryOptions<AppointmentListResponse>,
+) {
+  const params = new URLSearchParams();
+  if (query?.clientId) params.set("clientId", query.clientId);
+  if (query?.status) params.set("status", query.status);
+  const qs = params.toString();
+
+  return useQuery<AppointmentListResponse>({
+    queryKey: ["appointments", query?.clientId, query?.status],
+    queryFn: () => apiFetch<AppointmentListResponse>(`/api/appointments${qs ? `?${qs}` : ""}`),
+    ...options,
+  });
+}
+
+export function useCreateAppointment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateAppointmentPayload) =>
+      apiFetch<Appointment>("/api/appointments", { method: "POST", body }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+      qc.invalidateQueries({ queryKey: ["calendar"] });
+    },
+  });
+}
+
+export function useUpdateAppointment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateAppointmentPayload }) =>
+      apiFetch<Appointment>(`/api/appointments/${id}`, { method: "PATCH", body }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+      qc.invalidateQueries({ queryKey: ["calendar"] });
+    },
+  });
+}
+
+export function useCancelAppointment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<Appointment>(`/api/appointments/${id}/cancel`, { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+      qc.invalidateQueries({ queryKey: ["calendar"] });
+    },
   });
 }

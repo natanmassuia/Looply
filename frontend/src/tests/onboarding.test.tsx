@@ -10,6 +10,7 @@ import type { OnboardingStatus } from "../lib/types";
 const meMock = vi.hoisted(() => ({
   data: undefined as
     | {
+        user: { id: string; name: string; email: string };
         mustChangePassword: boolean;
         workspace: { status: "ACTIVE" | "UNCONFIGURED" } | null;
       }
@@ -28,6 +29,7 @@ const mutations = vi.hoisted(() => ({
   changePassword: { mutateAsync: vi.fn(), isPending: false },
   updateCompany: { mutateAsync: vi.fn(), isPending: false },
   selectTemplate: { mutateAsync: vi.fn(), isPending: false },
+  updateAppearance: { mutateAsync: vi.fn(), isPending: false },
   complete: { mutateAsync: vi.fn(), isPending: false },
 }));
 
@@ -40,6 +42,7 @@ vi.mock("../lib/api", async (importOriginal) => {
     useChangePassword: () => mutations.changePassword,
     useUpdateOnboardingCompany: () => mutations.updateCompany,
     useSelectTemplate: () => mutations.selectTemplate,
+    useUpdateOnboardingAppearance: () => mutations.updateAppearance,
     useCompleteOnboarding: () => mutations.complete,
   };
 });
@@ -49,11 +52,13 @@ function makeStatus(overrides: Partial<OnboardingStatus> = {}): OnboardingStatus
     mustChangePassword: false,
     company: {
       name: "Studio Aurora",
+      website: null,
       timezone: "America/Sao_Paulo",
       locale: "pt-BR",
       template: null,
       onboardedAt: null,
     },
+    appearance: { preset: "AURA", mode: "LIGHT", customColors: null },
     readyToComplete: false,
     status: "ONBOARDING_REQUIRED",
     ...overrides,
@@ -75,6 +80,28 @@ function renderGate(path: string) {
   );
 }
 
+function renderOnboarding() {
+  return render(
+    <MemoryRouter>
+      <Onboarding />
+    </MemoryRouter>,
+  );
+}
+
+// Clicks through the wizard up to (and excluding) `target`; selects the
+// Negócio Local profile on the way when passing step 3.
+async function advanceTo(user: ReturnType<typeof userEvent.setup>, target: number) {
+  if (target >= 2) await user.click(screen.getByRole("button", { name: "Começar configuração" }));
+  if (target >= 3) await user.click(screen.getByRole("button", { name: "Continuar" })); // company
+  if (target >= 4) {
+    await user.click(screen.getByLabelText(/Negócio Local/));
+    await user.click(screen.getByRole("button", { name: "Continuar" })); // profile
+  }
+  if (target >= 5) await user.click(screen.getByRole("button", { name: "Continuar" })); // confirmation
+  if (target >= 6) await user.click(screen.getByRole("button", { name: "Continuar sem conectar" })); // meta
+  if (target >= 7) await user.click(screen.getByRole("button", { name: "Continuar" })); // appearance
+}
+
 // ── AccessGate: the canonical first-access routing authority ──────────────
 describe("AccessGate", () => {
   beforeEach(() => {
@@ -84,37 +111,61 @@ describe("AccessGate", () => {
   });
 
   it("sends a temp-password user to the password screen from any app route", () => {
-    meMock.data = { mustChangePassword: true, workspace: { status: "UNCONFIGURED" } };
+    meMock.data = {
+      user: { id: "u1", name: "Ana", email: "a@b.c" },
+      mustChangePassword: true,
+      workspace: { status: "UNCONFIGURED" },
+    };
     renderGate("/dashboard");
     expect(screen.getByText("tela de senha")).toBeTruthy();
   });
 
   it("keeps a temp-password user on the password screen (no loop)", () => {
-    meMock.data = { mustChangePassword: true, workspace: { status: "UNCONFIGURED" } };
+    meMock.data = {
+      user: { id: "u1", name: "Ana", email: "a@b.c" },
+      mustChangePassword: true,
+      workspace: { status: "UNCONFIGURED" },
+    };
     renderGate("/change-password");
     expect(screen.getByText("tela de senha")).toBeTruthy();
   });
 
   it("sends an un-onboarded user to onboarding from any app route (no bypass)", () => {
-    meMock.data = { mustChangePassword: false, workspace: { status: "UNCONFIGURED" } };
+    meMock.data = {
+      user: { id: "u1", name: "Ana", email: "a@b.c" },
+      mustChangePassword: false,
+      workspace: { status: "UNCONFIGURED" },
+    };
     renderGate("/contents");
     expect(screen.getByText("tela de onboarding")).toBeTruthy();
   });
 
   it("keeps an un-onboarded user on the onboarding screen (no loop)", () => {
-    meMock.data = { mustChangePassword: false, workspace: { status: "UNCONFIGURED" } };
+    meMock.data = {
+      user: { id: "u1", name: "Ana", email: "a@b.c" },
+      mustChangePassword: false,
+      workspace: { status: "UNCONFIGURED" },
+    };
     renderGate("/onboarding");
     expect(screen.getByText("tela de onboarding")).toBeTruthy();
   });
 
   it("an active workspace never sees the onboarding screens again", () => {
-    meMock.data = { mustChangePassword: false, workspace: { status: "ACTIVE" } };
+    meMock.data = {
+      user: { id: "u1", name: "Ana", email: "a@b.c" },
+      mustChangePassword: false,
+      workspace: { status: "ACTIVE" },
+    };
     renderGate("/onboarding");
     expect(screen.getByText("tela inicial")).toBeTruthy();
   });
 
   it("an active workspace renders the app", () => {
-    meMock.data = { mustChangePassword: false, workspace: { status: "ACTIVE" } };
+    meMock.data = {
+      user: { id: "u1", name: "Ana", email: "a@b.c" },
+      mustChangePassword: false,
+      workspace: { status: "ACTIVE" },
+    };
     renderGate("/dashboard");
     expect(screen.getByText("tela inicial")).toBeTruthy();
   });
@@ -204,111 +255,191 @@ describe("ChangePassword", () => {
   });
 });
 
-// ── Onboarding wizard ─────────────────────────────────────────────────────
+// ── Onboarding wizard (F4C · Figma 05: 7 steps over real contracts) ───────
 describe("Onboarding", () => {
   beforeEach(() => {
+    meMock.data = {
+      user: { id: "u1", name: "Ana Souza", email: "a@b.c" },
+      mustChangePassword: false,
+      workspace: { status: "UNCONFIGURED" },
+    };
     statusMock.data = makeStatus();
     statusMock.isPending = false;
     statusMock.isError = false;
     mutations.updateCompany.mutateAsync.mockReset();
     mutations.selectTemplate.mutateAsync.mockReset();
+    mutations.updateAppearance.mutateAsync.mockReset();
     mutations.complete.mutateAsync.mockReset();
     mutations.updateCompany.mutateAsync.mockResolvedValue({});
     mutations.selectTemplate.mutateAsync.mockResolvedValue({});
+    mutations.updateAppearance.mutateAsync.mockResolvedValue({});
     mutations.complete.mutateAsync.mockResolvedValue({});
   });
 
-  it("prefills step 1 from the server status and submits the company contract", async () => {
+  it("step 1 (welcome) is presentational and advances without any API call", async () => {
     const user = userEvent.setup();
-    render(
-      <MemoryRouter>
-        <Onboarding />
-      </MemoryRouter>,
-    );
-    expect(screen.getByLabelText("Nome do workspace")).toHaveValue("Studio Aurora");
-    expect(screen.getByLabelText("Fuso horário")).toHaveValue("America/Sao_Paulo");
-    expect(screen.getByLabelText("Idioma")).toHaveValue("pt-BR");
-
-    await user.click(screen.getByRole("button", { name: "Continuar" }));
-    await waitFor(() => {
-      expect(mutations.updateCompany.mutateAsync).toHaveBeenCalledWith({
-        name: "Studio Aurora",
-        timezone: "America/Sao_Paulo",
-        locale: "pt-BR",
-      });
-    });
-  });
-
-  it("requires a company name before advancing", async () => {
-    const user = userEvent.setup();
-    statusMock.data = makeStatus({
-      company: { name: "", timezone: "America/Sao_Paulo", locale: "pt-BR", template: null, onboardedAt: null },
-    });
-    render(
-      <MemoryRouter>
-        <Onboarding />
-      </MemoryRouter>,
-    );
-    await user.click(screen.getByRole("button", { name: "Continuar" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Informe o nome do workspace");
+    renderOnboarding();
+    expect(screen.getByText(/Bem-vindo, Ana\./)).toBeTruthy();
+    expect(screen.getByText("Etapa 1 de 7")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Começar configuração" }));
+    expect(screen.getByText("Etapa 2 de 7")).toBeTruthy();
     expect(mutations.updateCompany.mutateAsync).not.toHaveBeenCalled();
   });
 
-  it("step 2 requires a template before completing", async () => {
-    const user = userEvent.setup();
-    render(
-      <MemoryRouter>
-        <Onboarding />
-      </MemoryRouter>,
-    );
-    await user.click(screen.getByRole("button", { name: "Continuar" }));
-    await user.click(await screen.findByRole("button", { name: "Concluir" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("Escolha um modelo de trabalho");
-    expect(mutations.selectTemplate.mutateAsync).not.toHaveBeenCalled();
-    expect(mutations.complete.mutateAsync).not.toHaveBeenCalled();
-  });
-
-  it("selects the template, completes onboarding and prefills an existing choice", async () => {
+  it("step 2 prefills from server status and submits the company contract incl. site", async () => {
     const user = userEvent.setup();
     statusMock.data = makeStatus({
       company: {
         name: "Studio Aurora",
+        website: "https://aurora.example",
+        timezone: "America/Sao_Paulo",
+        locale: "pt-BR",
+        template: null,
+        onboardedAt: null,
+      },
+    });
+    renderOnboarding();
+    await user.click(screen.getByRole("button", { name: "Começar configuração" }));
+
+    expect(screen.getByLabelText("Nome da empresa")).toHaveValue("Studio Aurora");
+    expect(screen.getByLabelText("Site")).toHaveValue("https://aurora.example");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    await waitFor(() => {
+      expect(mutations.updateCompany.mutateAsync).toHaveBeenCalledWith({
+        name: "Studio Aurora",
+        website: "https://aurora.example",
+        timezone: "America/Sao_Paulo",
+        locale: "pt-BR",
+      });
+    });
+    expect(screen.getByText("Etapa 3 de 7")).toBeTruthy();
+  });
+
+  it("step 2 requires a company name before advancing", async () => {
+    const user = userEvent.setup();
+    statusMock.data = makeStatus({
+      company: {
+        name: "",
+        website: null,
+        timezone: "America/Sao_Paulo",
+        locale: "pt-BR",
+        template: null,
+        onboardedAt: null,
+      },
+    });
+    renderOnboarding();
+    await user.click(screen.getByRole("button", { name: "Começar configuração" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Informe o nome da empresa");
+    expect(mutations.updateCompany.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("step 3 (profile) requires a choice and persists the template", async () => {
+    const user = userEvent.setup();
+    renderOnboarding();
+    await user.click(screen.getByRole("button", { name: "Começar configuração" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Escolha um perfil de operação");
+    expect(mutations.selectTemplate.mutateAsync).not.toHaveBeenCalled();
+
+    await user.click(screen.getByLabelText(/Agência de Marketing/));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    await waitFor(() => {
+      expect(mutations.selectTemplate.mutateAsync).toHaveBeenCalledWith("MARKETING_AGENCY");
+    });
+    expect(screen.getByText("Etapa 4 de 7")).toBeTruthy();
+  });
+
+  it("step 4 (confirmation) explains the chosen profile without capability toggles", async () => {
+    const user = userEvent.setup();
+    statusMock.data = makeStatus({
+      company: {
+        name: "Studio Aurora",
+        website: null,
         timezone: "America/Sao_Paulo",
         locale: "pt-BR",
         template: "HIGH_TICKET",
         onboardedAt: null,
       },
     });
-    render(
-      <MemoryRouter>
-        <Onboarding />
-      </MemoryRouter>,
-    );
-    await user.click(screen.getByRole("button", { name: "Continuar" }));
-    const radio = await screen.findByLabelText(/Alto ticket/);
-    expect(radio).toBeChecked();
+    renderOnboarding();
+    await user.click(screen.getByRole("button", { name: "Começar configuração" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" })); // company
+    // profile prefilled with HIGH_TICKET from the server
+    expect(screen.getByLabelText(/High-Ticket/)).toBeChecked();
+    await user.click(screen.getByRole("button", { name: "Continuar" })); // profile
 
-    await user.click(screen.getByRole("button", { name: "Concluir" }));
+    expect(screen.getByText("Tudo pronto para High-Ticket")).toBeTruthy();
+    // presentational only: advancing from the confirmation performs no write
+    mutations.selectTemplate.mutateAsync.mockClear();
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(screen.getByText("Etapa 5 de 7")).toBeTruthy();
+    expect(mutations.selectTemplate.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("step 5 (Meta) is honestly deferred: status card, no connection API", async () => {
+    const user = userEvent.setup();
+    renderOnboarding();
+    await advanceTo(user, 5);
+
+    expect(screen.getByText("Conexão Meta")).toBeTruthy();
+    expect(screen.getByText("Em breve")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Continuar sem conectar" }));
+    expect(screen.getByText("Etapa 6 de 7")).toBeTruthy();
+  });
+
+  it("step 6 (appearance): AURA is preselected, a choice persists via the onboarding endpoint", async () => {
+    const user = userEvent.setup();
+    renderOnboarding();
+    await advanceTo(user, 6);
+
+    // AURA (server default) is checked; CUSTOM is visible but deferred
+    expect(screen.getByLabelText(/Aura/)).toBeChecked();
+    expect(screen.getByLabelText(/Customizado/)).toBeDisabled();
+
+    await user.click(screen.getByLabelText(/Flux/));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
     await waitFor(() => {
-      expect(mutations.selectTemplate.mutateAsync).toHaveBeenCalledWith("HIGH_TICKET");
-      expect(mutations.complete.mutateAsync).toHaveBeenCalled();
+      expect(mutations.updateAppearance.mutateAsync).toHaveBeenCalledWith({
+        preset: "FLUX",
+        mode: "LIGHT",
+      });
+    });
+    expect(screen.getByText("Etapa 7 de 7")).toBeTruthy();
+  });
+
+  it("step 7 (ready) summarizes the real chosen values and completes onboarding", async () => {
+    const user = userEvent.setup();
+    renderOnboarding();
+    await advanceTo(user, 7);
+
+    const summary = screen.getByText("Seu Looply está pronto para começar.").closest("form")!;
+    expect(summary).toHaveTextContent("Studio Aurora");
+    expect(summary).toHaveTextContent("Negócio Local");
+    expect(summary).toHaveTextContent("Aura");
+
+    await user.click(screen.getByRole("button", { name: "Entrar no Looply" }));
+    await waitFor(() => {
+      expect(mutations.complete.mutateAsync).toHaveBeenCalledTimes(1);
     });
   });
 
   it("shows a neutral message when the company save fails", async () => {
     const user = userEvent.setup();
     mutations.updateCompany.mutateAsync.mockRejectedValue(new TypeError("Failed to fetch"));
-    render(
-      <MemoryRouter>
-        <Onboarding />
-      </MemoryRouter>,
-    );
+    renderOnboarding();
+    await user.click(screen.getByRole("button", { name: "Começar configuração" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Não foi possível conectar. Tente novamente.",
     );
-    expect(screen.queryByLabelText("Modelo de trabalho")).toBeNull();
+    expect(screen.queryByLabelText("Escolha seu perfil")).toBeNull();
   });
 });

@@ -14,7 +14,7 @@ const statusDot: Record<ContentStatus, string> = {
 export default function StatusPill({ status }: { status: ContentStatus }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${STATUS_STYLE[status]}`}
+      className={`status-pill ${STATUS_STYLE[status]}`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${statusDot[status]}`} />
       {STATUS_LABEL[status]}

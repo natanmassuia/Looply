@@ -193,6 +193,24 @@ describe("contrast guarantees", () => {
     expect(contrastRatio(t.tokens.textInverse, t.tokens.actionPrimary)).toBeGreaterThanOrEqual(3.0);
   });
 
+  it("inverse foreground roles on the inverse surface stay readable in both modes (F4C-R1)", () => {
+    // Values as actually declared in index.css (light :root first, then the
+    // AURA dark override) — the contract the .text-inverse* utilities use.
+    const inversePairs = [...CSS.matchAll(/--looply-color-(bg|text)-inverse:\s*(#[0-9a-fA-F]{6})/g)];
+    const light = { bg: inversePairs[0][2].toUpperCase(), fg: inversePairs[1][2].toUpperCase() };
+    const dark = { bg: inversePairs[2][2].toUpperCase(), fg: inversePairs[3][2].toUpperCase() };
+    expect(light.bg).not.toBe(light.fg);
+    expect(dark.bg).not.toBe(dark.fg);
+    for (const { bg, fg } of [light, dark]) {
+      // .text-inverse (headline, large text): >= 3:1
+      expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(3);
+      // .text-inverse-secondary (80% over bg, body copy): >= 4.5:1
+      expect(contrastRatio(mix(bg, fg, 0.8), bg)).toBeGreaterThanOrEqual(4.5);
+      // .text-inverse-muted (65% over bg, captions): >= 4.5:1
+      expect(contrastRatio(mix(bg, fg, 0.65), bg)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it("pathological palette resolves safely and deterministically", () => {
     const bad = { primary: "#000000", secondary: "#000000", accent: "#000000", surface: "#000000", text: "#000000", border: "#000000" };
     const a = customTheme(bad, "LIGHT");

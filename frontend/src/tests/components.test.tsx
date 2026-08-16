@@ -6,6 +6,7 @@ import StatusPill from "../components/StatusPill";
 
 const COMMON_SRC = readFileSync(`${process.cwd()}/src/components/common.tsx`, "utf8");
 const BREADCRUMB_SRC = readFileSync(`${process.cwd()}/src/components/Breadcrumb.tsx`, "utf8");
+const PUBLIC_APPROVAL_SRC = readFileSync(`${process.cwd()}/src/features/PublicApproval.tsx`, "utf8");
 const CSS = readFileSync(`${process.cwd()}/src/index.css`, "utf8");
 
 const LEGACY_ALIASES = [
@@ -36,6 +37,88 @@ describe("shared component foundation consumes semantic tokens", () => {
     for (const alias of LEGACY_ALIASES) {
       expect(BREADCRUMB_SRC).not.toContain(alias);
     }
+  });
+
+  it("PublicApproval.tsx never references a legacy --looply-* alias or hardcoded emerald classes", () => {
+    for (const alias of LEGACY_ALIASES) {
+      expect(PUBLIC_APPROVAL_SRC).not.toContain(alias);
+    }
+    expect(PUBLIC_APPROVAL_SRC).not.toContain("bg-emerald-");
+    expect(PUBLIC_APPROVAL_SRC).not.toContain("text-emerald-");
+    expect(PUBLIC_APPROVAL_SRC).not.toContain("border-emerald-");
+  });
+
+  it("Dashboard.tsx never references a legacy --looply-* alias", () => {
+    const DASHBOARD_SRC = readFileSync(`${process.cwd()}/src/features/Dashboard.tsx`, "utf8");
+    for (const alias of LEGACY_ALIASES) {
+      expect(DASHBOARD_SRC).not.toContain(alias);
+    }
+  });
+
+  it("Dashboard.tsx enforces canonical Figma copy and CTA (Novo job)", () => {
+    const DASHBOARD_SRC = readFileSync(`${process.cwd()}/src/features/Dashboard.tsx`, "utf8");
+    expect(DASHBOARD_SRC).toContain("Novo job");
+    expect(DASHBOARD_SRC).not.toContain("Novo conteúdo");
+    expect(DASHBOARD_SRC).toContain("Atenção agora");
+    expect(DASHBOARD_SRC).toContain("Jobs ativos");
+    expect(DASHBOARD_SRC).toContain("Em aprovação");
+    expect(DASHBOARD_SRC).toContain("Clientes ativos");
+  });
+
+  it("Clients.tsx never references a legacy --looply-* alias and uses Jobs vocabulary", () => {
+    const CLIENTS_SRC = readFileSync(`${process.cwd()}/src/features/Clients.tsx`, "utf8");
+    for (const alias of LEGACY_ALIASES) {
+      expect(CLIENTS_SRC).not.toContain(alias);
+    }
+    expect(CLIENTS_SRC).toContain("Jobs ativos");
+    expect(CLIENTS_SRC).not.toContain("Conteúdos ativos");
+  });
+
+  it("Jobs features never reference legacy --looply-* aliases and use canonical Job copy", () => {
+    const LIST_SRC = readFileSync(`${process.cwd()}/src/features/ContentsList.tsx`, "utf8");
+    const DETAIL_SRC = readFileSync(`${process.cwd()}/src/features/ContentDetail.tsx`, "utf8");
+    const NEW_SRC = readFileSync(`${process.cwd()}/src/features/NewContent.tsx`, "utf8");
+
+    for (const alias of LEGACY_ALIASES) {
+      expect(LIST_SRC).not.toContain(alias);
+      expect(DETAIL_SRC).not.toContain(alias);
+      expect(NEW_SRC).not.toContain(alias);
+    }
+
+    expect(LIST_SRC).toContain("Novo job");
+    expect(LIST_SRC).not.toContain("Novo conteúdo");
+    expect(DETAIL_SRC).toContain('crumbs={[{ label: "Jobs", to: "/contents" }');
+    expect(NEW_SRC).toContain('title="Novo job"');
+  });
+
+  it("Calendar.tsx never references legacy --looply-* aliases and uses Agenda and Job vocabulary", () => {
+    const CAL_SRC = readFileSync(`${process.cwd()}/src/features/Calendar.tsx`, "utf8");
+    for (const alias of LEGACY_ALIASES) {
+      expect(CAL_SRC).not.toContain(alias);
+    }
+    expect(CAL_SRC).toContain('title="Agenda"');
+    expect(CAL_SRC).toContain("Jobs aprovados");
+    expect(CAL_SRC).not.toContain("Conteúdos aprovados");
+  });
+
+  it("Team.tsx never references legacy --looply-* aliases and uses Equipe vocabulary", () => {
+    const TEAM_SRC = readFileSync(`${process.cwd()}/src/features/Team.tsx`, "utf8");
+    for (const alias of LEGACY_ALIASES) {
+      expect(TEAM_SRC).not.toContain(alias);
+    }
+    expect(TEAM_SRC).toContain('title="Equipe"');
+    expect(TEAM_SRC).toContain("Convidar membro");
+  });
+
+  it("Settings.tsx never references legacy --looply-* aliases and surfaces canonical appearance and integration contracts", () => {
+    const SETTINGS_SRC = readFileSync(`${process.cwd()}/src/features/Settings.tsx`, "utf8");
+    for (const alias of LEGACY_ALIASES) {
+      expect(SETTINGS_SRC).not.toContain(alias);
+    }
+    expect(SETTINGS_SRC).toContain('title="Configurações"');
+    expect(SETTINGS_SRC).toContain("Aparência");
+    expect(SETTINGS_SRC).toContain("Integrações");
+    expect(SETTINGS_SRC).toContain("WhatsApp Oficial");
   });
 
   it("renders only semantic tokens in shared primitives", () => {

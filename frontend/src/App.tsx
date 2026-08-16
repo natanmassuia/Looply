@@ -7,6 +7,7 @@ import ContentDetail from "./features/ContentDetail";
 import Calendar from "./features/Calendar";
 import Clients from "./features/Clients";
 import Team from "./features/Team";
+import Settings from "./features/Settings";
 import PublicApproval from "./features/PublicApproval";
 import Login, { ProtectedRoute } from "./features/Login";
 import Onboarding, { AccessGate, ChangePassword } from "./features/Onboarding";
@@ -43,6 +44,7 @@ export default function App() {
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/clients" element={<Clients />} />
           <Route path="/team" element={<Team />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
       </Route>
 
