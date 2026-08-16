@@ -4,6 +4,8 @@
 // they live in code, not in the database. No plugin framework, no per-customer
 // overrides in V1.
 
+import { resolveAppearance, type AppearanceColumns, type WorkspaceAppearance } from "./appearance";
+
 export enum Capability {
   CLIENTS = "CLIENTS",
   JOBS = "JOBS",
@@ -90,18 +92,20 @@ export interface WorkspaceContext {
   template: WorkspaceTemplate | null;
   capabilities: Capability[];
   status: "UNCONFIGURED" | "ACTIVE";
+  appearance: WorkspaceAppearance;
 }
 
 export function resolveWorkspaceContext(company: {
   id: string;
   name: string;
   workspaceTemplate: WorkspaceTemplate | null;
-}): WorkspaceContext {
+} & Partial<AppearanceColumns>): WorkspaceContext {
   return {
     id: company.id,
     name: company.name,
     template: company.workspaceTemplate,
     capabilities: capabilitiesForTemplate(company.workspaceTemplate),
     status: company.workspaceTemplate ? "ACTIVE" : "UNCONFIGURED",
+    appearance: resolveAppearance(company),
   };
 }
