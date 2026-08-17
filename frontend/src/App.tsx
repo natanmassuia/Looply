@@ -10,6 +10,8 @@ import Team from "./features/Team";
 import Settings from "./features/Settings";
 import PublicApproval from "./features/PublicApproval";
 import Login, { ProtectedRoute } from "./features/Login";
+import Recovery from "./features/Recovery";
+import ResetPassword from "./features/ResetPassword";
 import Onboarding, { AccessGate, ChangePassword } from "./features/Onboarding";
 import { ThemeProvider } from "./theme/react";
 
@@ -17,6 +19,9 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<Recovery />} />
+      <Route path="/recovery" element={<Recovery />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* Authenticated area. ProtectedRoute gates the session; AccessGate is
           the canonical first-access guard (password change → onboarding →

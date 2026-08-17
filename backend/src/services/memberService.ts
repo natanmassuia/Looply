@@ -198,3 +198,57 @@ export async function acceptInvitation(
 
   return { userId, companyId: invitation.companyId, role: invitation.role, email: invitation.email };
 }
+
+// ── Reset Member Password (Administrative credential reset) ───────────────
+export async function resetMemberPassword(
+  db: DB,
+  companyId: string,
+  actorUserId: string,
+  actorRole: string,
+  memberRecordId: string,
+): Promise<{ temporaryPassword: string; user: { id: string; name: string; email: string } }> {
+  if (actorRole !== "OWNER" && actorRole !== "ADMIN") throw forbidden("Sem permissão para redefinir senha");
+
+  const member = await db.companyMember.findFirst({
+    where: { id: memberRecordId, companyId },
+    include: { user: true },
+  });
+  if (!member) throw notFound("Membro não encontrado");
+
+  // Prevent self-reset via administrative endpoint (must use /api/auth/change-password)
+  if (member.userId === actorUserId) {
+    throw badRequest("Para alterar sua própria senha, utilize a alteração de senha do perfil.");
+  }
+
+  // ADMIN cannot reset password for OWNER or ADMIN
+  if (actorRole === "ADMIN" && (member.role === "OWNER" || member.role === "ADMIN")) {
+    throw forbidden("Administradores não podem redefinir senha de outros administradores ou proprietários");
+  }
+
+  // Generate secure 12-char temporary password (alphanumeric)
+  const tempPassword = randomToken(12);
+
+  // Update passwordHash and force change on next login
+  await db.user.update({
+    where: { id: member.userId },
+    data: {
+      passwordHash: await hashPassword(tempPassword),
+      mustChangePassword: true,
+    },
+  });
+
+  // Revoke all active sessions for target user
+  await db.session.updateMany({
+    where: { userId: member.userId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+
+  return {
+    temporaryPassword: tempPassword,
+    user: {
+      id: member.user.id,
+      name: member.user.name,
+      email: member.user.email,
+    },
+  };
+}

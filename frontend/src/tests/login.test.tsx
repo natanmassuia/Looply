@@ -107,15 +107,10 @@ describe("Login", () => {
     expect(screen.queryByText(/O Looply é um produto Verbum Lab/i)).toBeNull();
   });
 
-  it("recovery entry point stays honest: explains the real path, never fakes a reset flow", async () => {
-    const user = userEvent.setup();
+  it("recovery entry point links to /forgot-password", () => {
     render(<Login />);
-    await user.click(screen.getByRole("button", { name: "Esqueci minha senha" }));
-    const note = await screen.findByRole("status");
-    expect(note).toHaveTextContent(/ainda não está disponível/i);
-    expect(note).toHaveTextContent(/quem administra o Looply na sua empresa/i);
-    // no navigation away from the login screen
-    expect(assignSpy).not.toHaveBeenCalled();
+    const link = screen.getByRole("link", { name: "Esqueci minha senha" });
+    expect(link).toHaveAttribute("href", "/forgot-password");
   });
 });
 

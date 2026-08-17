@@ -135,6 +135,12 @@ export const IconEdit = (p: P) => (
   </svg>
 );
 
+export const IconKey = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M21 2l-2 2m-1.5 1.5L14 9a5 5 0 1 0 3 3l3.5-3.5 1.5 1.5 2-2-3-3z" />
+  </svg>
+);
+
 export const IconCalendarDays = (p: P) => (
   <svg {...base(p)}>
     <rect x="3" y="4" width="18" height="18" rx="2" />

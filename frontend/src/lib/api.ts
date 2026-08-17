@@ -255,6 +255,72 @@ export function useUpdateSettingsAppearance() {
   });
 }
 
+export function useRequestPasswordRecovery() {
+  return useMutation({
+    mutationFn: (body: { email: string }) =>
+      apiFetch<{ ok: boolean; message: string }>("/api/auth/password-recovery", {
+        method: "POST",
+        body,
+      }),
+  });
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: (body: { token: string; password: string }) =>
+      apiFetch<{ ok: boolean; message: string }>("/api/auth/password-reset", {
+        method: "POST",
+        body,
+      }),
+  });
+}
+
+export function useCompanySettings(enabled = true) {
+  return useQuery({
+    queryKey: ["companySettings"],
+    queryFn: () =>
+      apiFetch<{ company: import("./types").CompanySettings }>("/api/settings/company").then((r) => r.company),
+    enabled,
+  });
+}
+
+export function useUpdateCompanySettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      name?: string;
+      timezone?: string;
+      legalName?: string | null;
+      document?: string | null;
+      email?: string | null;
+      phone?: string | null;
+      website?: string | null;
+    }) =>
+      apiFetch<{ company: import("./types").CompanySettings }>("/api/settings/company", {
+        method: "PATCH",
+        body,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["companySettings"] });
+      qc.invalidateQueries({ queryKey: ["me"] });
+    },
+  });
+}
+
+export function useResetMemberPassword() {
+  return useMutation({
+    mutationFn: (memberId: string) =>
+      apiFetch<{
+        ok: boolean;
+        temporaryPassword: string;
+        user: { id: string; name: string; email: string };
+        message: string;
+      }>(`/api/members/${memberId}/reset-password`, {
+        method: "POST",
+      }),
+  });
+}
+
 export function useCompleteOnboarding() {
   const qc = useQueryClient();
   return useMutation({
