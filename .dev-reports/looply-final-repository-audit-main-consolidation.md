@@ -1,10 +1,11 @@
 # Looply — Final Repository Audit + Main Consolidation
 
-Date: 2026-08-17 · Branch: `main` · HEAD before: `8487e4a` → after: `8e0d53b` ·
+Date: 2026-08-17 · Branch: `main` · HEAD before: `8487e4a` → after: `8e0d53b` →
+final HEAD: `e9ece66` ·
 Audited the entire repository (local + remote branches, commits, working tree, ignored files,
 migrations, dependency drift, secret risk), validated the F14 → F14.6.1 product state, consolidated
 the accumulated validated uncommitted work into one commit, and pushed it to origin/main (authorized,
-no force).
+no force). A follow-up docs commit records this report itself.
 
 ## Repository Identity
 
@@ -287,6 +288,17 @@ CONSOLIDATION_COMMIT_MESSAGE: feat(v1): consolidate validated runtime refinement
 Existing published history preserved; no squash/amend. The rejected F14.6.2 experiment is not
 claimed as shipped.
 
+## Follow-up Docs Commit
+
+The report documenting this audit was committed and pushed as a follow-up so the audit trail lives
+in the repository (matching the tracked-reports convention).
+
+```
+DOCS_COMMIT_SHA:               e9ece662e7ae6d3982286b6f4de50db79d4314fc
+DOCS_COMMIT_MESSAGE:           docs: record final repository audit and main consolidation
+DOCS_PUSH_RESULT:              8e0d53b..e9ece66 main -> main
+```
+
 ## Push
 
 ```
@@ -297,6 +309,9 @@ MAIN_LOCAL_SHA:                             8e0d53b03dad6e1dadb1f79cac9f018c3032
 MAIN_REMOTE_SHA:                            8e0d53b03dad6e1dadb1f79cac9f018c30323eda
 MAIN_LOCAL_REMOTE_MATCH:                    YES
 ```
+
+Follow-up docs push: `8e0d53b..e9ece66 main -> main` → final
+`MAIN_LOCAL_SHA == MAIN_REMOTE_SHA == e9ece662e7ae6d3982286b6f4de50db79d4314fc`.
 
 ## Post-Push Verification
 
@@ -331,8 +346,8 @@ experiment; kept, not deleted, not committed).
 ## Final Repository State
 
 ```
-MAIN_LOCAL_SHA:               8e0d53b03dad6e1dadb1f79cac9f018c30323eda
-MAIN_REMOTE_SHA:              8e0d53b03dad6e1dadb1f79cac9f018c30323eda
+MAIN_LOCAL_SHA:               e9ece662e7ae6d3982286b6f4de50db79d4314fc
+MAIN_REMOTE_SHA:              e9ece662e7ae6d3982286b6f4de50db79d4314fc
 MAIN_LOCAL_REMOTE_MATCH:      YES
 WORKTREE_STATUS:              clean (one intentionally excluded untracked local report)
 UNPUSHED_COMMITS:             0
@@ -438,14 +453,15 @@ UNSTAGED_REMAINING:                 0
 UNTRACKED_REMAINING:                1 (excluded report)
 CONSOLIDATION_COMMIT_SHA:           8e0d53b03dad6e1dadb1f79cac9f018c30323eda
 CONSOLIDATION_COMMIT_MESSAGE:       feat(v1): consolidate validated runtime refinements
+DOCS_COMMIT_SHA:                    e9ece662e7ae6d3982286b6f4de50db79d4314fc
 WORKTREE_AFTER_COMMIT:              clean (1 excluded local report)
 POST_COMMIT_DIFF_CHECK:             PASS
 UNTRACKED_EXCLUDED_FILES:           .dev-reports/looply-f14-6-2-collapsed-sidebar-workspace-identity.md
 REMOTE_MAIN_AHEAD_IMMEDIATELY_BEFORE_PUSH: 0
 LOCAL_MAIN_AHEAD_IMMEDIATELY_BEFORE_PUSH:  1
-PUSH_RESULT:                        8487e4a..8e0d53b main -> main
-MAIN_LOCAL_SHA:                     8e0d53b03dad6e1dadb1f79cac9f018c30323eda
-MAIN_REMOTE_SHA:                    8e0d53b03dad6e1dadb1f79cac9f018c30323eda
+PUSH_RESULT:                        8487e4a..8e0d53b main -> main (docs push: ..e9ece66)
+MAIN_LOCAL_SHA:                     e9ece662e7ae6d3982286b6f4de50db79d4314fc
+MAIN_REMOTE_SHA:                    e9ece662e7ae6d3982286b6f4de50db79d4314fc
 MAIN_LOCAL_REMOTE_MATCH:            YES
 UNPUSHED_LOCAL_COMMITS:             none
 REMOTE_COMMITS_NOT_LOCAL:           none
