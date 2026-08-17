@@ -310,8 +310,13 @@ export default function Calendar() {
               return (
                 <div
                   key={i}
+                  onClick={() => {
+                    if (inMonth && cell) openCreateModal(cell);
+                  }}
                   className={`min-h-[100px] border-b border-r border-[var(--looply-color-border-default)] p-1.5 transition-colors ${
-                    inMonth ? "bg-[var(--looply-color-bg-surface)]" : "bg-[var(--looply-color-bg-subtle)]/40"
+                    inMonth
+                      ? "bg-[var(--looply-color-bg-surface)] hover:bg-[var(--looply-color-bg-subtle)]/60 cursor-pointer"
+                      : "bg-[var(--looply-color-bg-subtle)]/40"
                   }`}
                 >
                   {cell && (
@@ -333,7 +338,10 @@ export default function Calendar() {
                             type="button"
                             className="btn-ghost p-0.5 text-[10px] text-[var(--looply-color-text-muted)] opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity"
                             title="Adicionar compromisso neste dia"
-                            onClick={() => openCreateModal(cell)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openCreateModal(cell);
+                            }}
                           >
                             <IconPlus className="h-3 w-3" />
                           </button>
@@ -347,6 +355,7 @@ export default function Calendar() {
                               <Link
                                 key={item.key}
                                 to={`/contents/${p.id}`}
+                                onClick={(e) => e.stopPropagation()}
                                 className="block truncate rounded px-1.5 py-0.5 text-[11px] font-medium text-white transition-opacity hover:opacity-90"
                                 style={{ backgroundColor: p.client?.brandColor ?? "#475569" }}
                                 title={`${p.client?.name ?? "Job"} — ${p.title}`}
@@ -361,7 +370,10 @@ export default function Calendar() {
                               <button
                                 key={item.key}
                                 type="button"
-                                onClick={() => openEditModal(app)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEditModal(app);
+                                }}
                                 className={`w-full text-left truncate rounded px-1.5 py-0.5 text-[11px] font-medium transition-colors border ${
                                   isCancelled
                                     ? "border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-muted)] line-through opacity-70"

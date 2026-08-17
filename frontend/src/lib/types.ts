@@ -53,6 +53,22 @@ export interface WorkspaceAppearance {
   customColors: CustomColors | null;
 }
 
+export interface CompanySettings {
+  id: string;
+  name: string;
+  slug: string | null;
+  timezone: string;
+  locale: string;
+  legalName: string | null;
+  document: string | null;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  onboardedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface WorkspaceContext {
   id: string;
   name: string;

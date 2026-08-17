@@ -7,12 +7,13 @@ import {
   useCreateInvitation,
   useRevokeInvitation,
   useUpdateMember,
+  useResetMemberPassword,
   ApiError,
 } from "../lib/api";
 import type { MemberRole, UserRole } from "../lib/types";
 import { MEMBER_ROLE_LABEL, ROLE_LABEL, formatDate } from "../lib/format";
 import { Card, EmptyState, ErrorState, PageHeader, Spinner } from "../components/common";
-import { IconPlus, IconX } from "../components/Icons";
+import { IconPlus, IconX, IconCheck, IconKey } from "../components/Icons";
 
 function initials(name: string): string {
   return name
@@ -67,8 +68,15 @@ export default function Team() {
   const createInvitation = useCreateInvitation();
   const revokeInvitation = useRevokeInvitation();
   const updateMember = useUpdateMember();
+  const resetMemberPassword = useResetMemberPassword();
 
   const [showForm, setShowForm] = useState(false);
+  const [resetModalData, setResetModalData] = useState<{
+    memberName: string;
+    memberEmail: string;
+    tempPass: string;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
   const [form, setForm] = useState<{ email: string; role: "ADMIN" | "MEMBER" }>({
     email: "",
     role: "MEMBER",
@@ -336,6 +344,35 @@ export default function Team() {
                       </span>
                     )}
                   </div>
+
+                  {/* Security / Password Reset Action (Figma 10 — Team / 03 — Team Actions) */}
+                  {isAdminOrOwner && m.user.id !== session?.user?.id && !(currentRole === "ADMIN" && (m.role === "OWNER" || m.role === "ADMIN")) && (
+                    <div className="mt-3 pt-3 border-t border-[var(--looply-color-border-default)] flex items-center justify-between">
+                      <span className="text-[11px] text-[var(--looply-color-text-muted)]">
+                        Segurança
+                      </span>
+                      <button
+                        type="button"
+                        disabled={resetMemberPassword.isPending}
+                        onClick={async () => {
+                          setErr(null);
+                          try {
+                            const res = await resetMemberPassword.mutateAsync(m.id);
+                            setResetModalData({
+                              memberName: res.user.name || res.user.email,
+                              memberEmail: res.user.email,
+                              tempPass: res.temporaryPassword,
+                            });
+                          } catch (e) {
+                            setErr(e instanceof ApiError ? e.message : "Falha ao redefinir acesso.");
+                          }
+                        }}
+                        className="btn-ghost btn-sm text-[11.5px] font-medium text-[var(--looply-color-text-brand)] hover:bg-[var(--looply-color-bg-subtle)]"
+                      >
+                        Redefinir acesso
+                      </button>
+                    </div>
+                  )}
                 </Card>
               );
             })}
@@ -386,6 +423,82 @@ export default function Team() {
         </div>
       ) : (
         !isLoading && <EmptyState title="Sem membros" description="Nenhum membro cadastrado ainda." />
+      )}
+
+      {/* Reset Password / Temporary Credential Modal (Figma 10 — Team / 03 — Team Actions) */}
+      {resetModalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="relative w-full max-w-md rounded-2xl border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] p-6 shadow-looply-lg animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--looply-color-border-default)]">
+              <div className="flex items-center gap-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-brand)]">
+                  <IconKey className="h-4 w-4" />
+                </span>
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--looply-color-text-primary)]">
+                    Redefinir acesso
+                  </h3>
+                  <p className="text-[11px] text-[var(--looply-color-text-muted)]">
+                    {resetModalData.memberName} ({resetModalData.memberEmail})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResetModalData(null)}
+                className="btn-ghost p-1 text-[var(--looply-color-text-muted)]"
+              >
+                <IconX className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <p className="text-xs leading-5 text-[var(--looply-color-text-secondary)]">
+                Uma senha temporária foi gerada. Copie e envie para o usuário. Ele será obrigado a cadastrar uma nova senha no próximo acesso. Todas as sessões ativas foram encerradas.
+              </p>
+
+              <div>
+                <label className="label text-xs">Senha temporária</label>
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="text"
+                    readOnly
+                    value={resetModalData.tempPass}
+                    className="input font-mono text-sm tracking-wider font-bold bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-primary)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(resetModalData.tempPass);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2500);
+                    }}
+                    className="btn btn-secondary shrink-0 text-xs flex items-center gap-1.5"
+                  >
+                    {copied ? (
+                      <>
+                        <IconCheck className="h-3.5 w-3.5 text-[var(--looply-color-status-success)]" />
+                        <span>Copiado!</span>
+                      </>
+                    ) : (
+                      <span>Copiar</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setResetModalData(null)}
+                className="btn btn-primary btn-sm"
+              >
+                Concluir
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

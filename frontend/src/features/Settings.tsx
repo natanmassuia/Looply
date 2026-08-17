@@ -1,10 +1,16 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useMe, useUpdateSettingsAppearance, ApiError } from "../lib/api";
+import {
+  useMe,
+  useUpdateSettingsAppearance,
+  useCompanySettings,
+  useUpdateCompanySettings,
+  ApiError,
+} from "../lib/api";
 import type { AppearanceMode, AppearancePreset, CustomColors } from "../lib/types";
 import { useWorkspaceAppearance } from "../theme/react";
 import { applyTheme } from "../theme/applyTheme";
 import { resolveTheme } from "../theme/resolveTheme";
-import { Card, PageHeader } from "../components/common";
+import { Card, PageHeader, Spinner } from "../components/common";
 import { IconCheck, IconAlertCircle } from "../components/Icons";
 
 const PRESETS: { value: AppearancePreset; title: string; description: string; colors: string[] }[] = [
@@ -34,6 +40,16 @@ const PRESETS: { value: AppearancePreset; title: string; description: string; co
   },
 ];
 
+const TIMEZONES = [
+  { value: "America/Sao_Paulo", label: "Brasília · GMT-3" },
+  { value: "America/Manaus", label: "Manaus · GMT-4" },
+  { value: "America/Rio_Branco", label: "Rio Branco · GMT-5" },
+  { value: "America/Noronha", label: "Fernando de Noronha · GMT-2" },
+  { value: "America/Fortaleza", label: "Fortaleza · GMT-3" },
+  { value: "America/Cuiaba", label: "Cuiabá · GMT-4" },
+  { value: "UTC", label: "UTC · GMT+0" },
+];
+
 const DEFAULT_CUSTOM: CustomColors = {
   primary: "#F06D55",
   secondary: "#F3B84B",
@@ -60,6 +76,14 @@ export default function Settings() {
   const [err, setErr] = useState<string | null>(null);
   const savedRef = useRef(false);
 
+  // Company Settings
+  const { data: companyData, isLoading: companyLoading } = useCompanySettings(activeTab === "company");
+  const updateCompany = useUpdateCompanySettings();
+  const [companyName, setCompanyName] = useState("");
+  const [companyTimezone, setCompanyTimezone] = useState("America/Sao_Paulo");
+  const [companyFeedback, setCompanyFeedback] = useState<string | null>(null);
+  const [companyErr, setCompanyErr] = useState<string | null>(null);
+
   // Synchronize initial state when server session loads
   useEffect(() => {
     setPreset(currentAppearance.preset);
@@ -68,6 +92,15 @@ export default function Settings() {
       setCustomColors(currentAppearance.customColors);
     }
   }, [currentAppearance.preset, currentAppearance.mode, currentAppearance.customColors]);
+
+  useEffect(() => {
+    if (companyData) {
+      setCompanyName(companyData.name || "");
+      setCompanyTimezone(companyData.timezone || "America/Sao_Paulo");
+    } else if (session?.workspace?.name) {
+      setCompanyName(session.workspace.name);
+    }
+  }, [companyData, session]);
 
   // Live theme preview on user interaction
   useEffect(() => {
@@ -115,183 +148,312 @@ export default function Settings() {
     }
   };
 
+  const handleSaveCompany = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCompanyErr(null);
+    setCompanyFeedback(null);
+    if (!companyName.trim()) {
+      setCompanyErr("Nome da empresa não pode ser vazio.");
+      return;
+    }
+    try {
+      await updateCompany.mutateAsync({
+        name: companyName.trim(),
+        timezone: companyTimezone,
+      });
+      setCompanyFeedback("Dados da empresa atualizados com sucesso.");
+      setTimeout(() => setCompanyFeedback(null), 3000);
+    } catch (e) {
+      setCompanyErr(e instanceof ApiError ? e.message : "Falha ao salvar dados da empresa.");
+    }
+  };
+
   return (
     <div>
       <PageHeader
         title="Configurações"
-        subtitle="Aparência, integrações e dados da empresa"
+        subtitle="Personalize a identidade e recursos do seu workspace"
       />
 
-      {/* Navigation tabs */}
-      <div className="mb-6 flex gap-2 border-b border-[var(--looply-color-border-default)] pb-px">
-        <button
-          type="button"
-          onClick={() => setActiveTab("appearance")}
-          className={`border-b-2 px-4 py-2 text-sm font-semibold transition-colors ${
-            activeTab === "appearance"
-              ? "border-[var(--looply-color-action-primary)] text-[var(--looply-color-text-primary)]"
-              : "border-transparent text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
-          }`}
-        >
-          Aparência
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("integrations")}
-          className={`border-b-2 px-4 py-2 text-sm font-semibold transition-colors ${
-            activeTab === "integrations"
-              ? "border-[var(--looply-color-action-primary)] text-[var(--looply-color-text-primary)]"
-              : "border-transparent text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
-          }`}
-        >
-          Integrações
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("company")}
-          className={`border-b-2 px-4 py-2 text-sm font-semibold transition-colors ${
-            activeTab === "company"
-              ? "border-[var(--looply-color-action-primary)] text-[var(--looply-color-text-primary)]"
-              : "border-transparent text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
-          }`}
-        >
-          Empresa
-        </button>
+      {/* Tabs bar */}
+      <div className="mb-6 border-b border-[var(--looply-color-border-default)]">
+        <div className="flex gap-6">
+          <button
+            type="button"
+            onClick={() => setActiveTab("appearance")}
+            className={`pb-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === "appearance"
+                ? "border-[var(--looply-color-action-primary)] text-[var(--looply-color-text-primary)] font-semibold"
+                : "border-transparent text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
+            }`}
+          >
+            Aparência
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("company")}
+            className={`pb-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === "company"
+                ? "border-[var(--looply-color-action-primary)] text-[var(--looply-color-text-primary)] font-semibold"
+                : "border-transparent text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
+            }`}
+          >
+            Empresa
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("integrations")}
+            className={`pb-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === "integrations"
+                ? "border-[var(--looply-color-action-primary)] text-[var(--looply-color-text-primary)] font-semibold"
+                : "border-transparent text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
+            }`}
+          >
+            Integrações
+          </button>
+        </div>
       </div>
 
       {/* Tab: Aparência */}
       {activeTab === "appearance" && (
         <form onSubmit={handleSaveAppearance} className="space-y-6">
+          {feedback && (
+            <div className="flex items-center gap-2 rounded-xl bg-[var(--looply-color-status-success)]/10 border border-[var(--looply-color-status-success)]/20 px-4 py-3 text-sm text-[var(--looply-color-status-success)]">
+              <IconCheck className="h-4 w-4" />
+              <span>{feedback}</span>
+            </div>
+          )}
+
+          {err && (
+            <div className="flex items-center gap-2 rounded-xl bg-[var(--looply-color-status-danger)]/10 border border-[var(--looply-color-status-danger)]/20 px-4 py-3 text-sm text-[var(--looply-color-status-danger)]">
+              <IconAlertCircle className="h-4 w-4" />
+              <span>{err}</span>
+            </div>
+          )}
+
+          {/* Presets Grid */}
           <Card>
-            <h3 className="section-title mb-1">Tema e Modo de Exibição</h3>
-            <p className="mb-4 text-xs text-[var(--looply-color-text-muted)]">
-              Personalize o esquema de cores e o modo claro ou escuro da sua interface.
+            <h3 className="section-title mb-1">Paleta de Cores</h3>
+            <p className="text-xs text-[var(--looply-color-text-muted)] mb-4">
+              Selecione uma identidade visual para todos os usuários deste workspace.
             </p>
 
-            {/* Mode selection */}
-            <div className="mb-6">
-              <label className="label mb-2">Modo</label>
-              <div className="flex max-w-xs gap-3">
-                <button
-                  type="button"
-                  onClick={() => setMode("LIGHT")}
-                  className={`flex flex-1 items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium transition-colors ${
-                    mode === "LIGHT"
-                      ? "border-[var(--looply-color-border-brand)] bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-primary)]"
-                      : "border-[var(--looply-color-border-default)] text-[var(--looply-color-text-muted)] hover:bg-[var(--looply-color-bg-subtle)]"
-                  }`}
-                >
-                  Modo Claro
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode("DARK")}
-                  className={`flex flex-1 items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium transition-colors ${
-                    mode === "DARK"
-                      ? "border-[var(--looply-color-border-brand)] bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-primary)]"
-                      : "border-[var(--looply-color-border-default)] text-[var(--looply-color-text-muted)] hover:bg-[var(--looply-color-bg-subtle)]"
-                  }`}
-                >
-                  Modo Escuro
-                </button>
-              </div>
-            </div>
-
-            {/* Presets grid */}
-            <div>
-              <label className="label mb-2">Predefinições de Tema</label>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {PRESETS.map((p) => {
-                  const isSelected = preset === p.value;
-                  return (
-                    <div
-                      key={p.value}
-                      onClick={() => setPreset(p.value)}
-                      className={`cursor-pointer rounded-xl border p-4 transition-all ${
-                        isSelected
-                          ? "border-[var(--looply-color-border-brand)] bg-[var(--looply-color-bg-subtle)] ring-1 ring-[var(--looply-color-border-brand)]"
-                          : "border-[var(--looply-color-border-default)] hover:border-[var(--looply-color-border-default)] hover:bg-[var(--looply-color-bg-subtle)]/50"
-                      }`}
-                    >
-                      <div className="mb-3 flex items-center justify-between">
-                        <div className="flex gap-1.5">
-                          {p.colors.map((c, idx) => (
-                            <span
-                              key={idx}
-                              className="h-4 w-4 rounded-full border border-black/10"
-                              style={{ backgroundColor: c }}
-                            />
-                          ))}
-                        </div>
-                        {isSelected && (
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--looply-color-action-primary)] text-white">
-                            <IconCheck className="h-3 w-3" />
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm font-semibold text-[var(--looply-color-text-primary)]">{p.title}</div>
-                      <div className="mt-1 text-xs text-[var(--looply-color-text-muted)]">{p.description}</div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {PRESETS.map((p) => {
+                const isSelected = preset === p.value;
+                return (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => setPreset(p.value)}
+                    className={`flex flex-col text-left rounded-xl p-4 border transition-all ${
+                      isSelected
+                        ? "border-[var(--looply-color-action-primary)] bg-[var(--looply-color-bg-subtle)] shadow-looply-sm ring-1 ring-[var(--looply-color-action-primary)]"
+                        : "border-[var(--looply-color-border-default)] hover:border-[var(--looply-color-border-strong)] bg-[var(--looply-color-bg-surface)]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold text-[var(--looply-color-text-primary)]">
+                        {p.title}
+                      </span>
+                      {isSelected && (
+                        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[var(--looply-color-action-primary)] text-white">
+                          <IconCheck className="h-2.5 w-2.5" />
+                        </span>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
+                    <p className="text-xs text-[var(--looply-color-text-muted)] mb-4 flex-1">
+                      {p.description}
+                    </p>
+                    <div className="flex h-4 w-full gap-1 rounded-md overflow-hidden p-0.5 bg-[var(--looply-color-border-default)]/30">
+                      {p.colors.map((c, i) => (
+                        <span key={i} className="h-full flex-1 rounded-xs" style={{ backgroundColor: c }} />
+                      ))}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
+          </Card>
 
-            {/* Custom colors editor if CUSTOM selected */}
-            {preset === "CUSTOM" && (
-              <div className="mt-6 rounded-xl border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)]/30 p-4">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--looply-color-text-muted)] mb-3">
-                  Cores Customizadas
-                </h4>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                  {(["primary", "secondary", "accent", "surface", "text", "border"] as (keyof CustomColors)[]).map(
-                    (key) => (
-                      <div key={key}>
-                        <label className="label text-[11px] capitalize">{key}</label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="color"
-                            value={customColors[key]}
-                            onChange={(e) =>
-                              setCustomColors((c) => ({ ...c, [key]: e.target.value }))
-                            }
-                            className="h-8 w-8 cursor-pointer rounded border border-[var(--looply-color-border-default)] p-0"
-                          />
-                          <input
-                            type="text"
-                            value={customColors[key]}
-                            onChange={(e) =>
-                              setCustomColors((c) => ({ ...c, [key]: e.target.value }))
-                            }
-                            className="input font-mono text-xs py-1"
-                          />
-                        </div>
-                      </div>
-                    ),
-                  )}
-                </div>
-              </div>
-            )}
+          {/* Mode Selector */}
+          <Card>
+            <h3 className="section-title mb-1">Modo de Exibição</h3>
+            <p className="text-xs text-[var(--looply-color-text-muted)] mb-4">
+              Escolha entre a interface padrão clara ou escura.
+            </p>
 
-            {/* Feedback / Error */}
-            {feedback && (
-              <div className="mt-4 rounded-lg bg-[var(--looply-color-status-success)]/10 px-3 py-2 text-sm text-[var(--looply-color-status-success)]">
-                {feedback}
-              </div>
-            )}
-            {err && (
-              <div className="mt-4 rounded-lg bg-[var(--looply-color-status-danger)]/10 px-3 py-2 text-sm text-[var(--looply-color-status-danger)]">
-                {err}
-              </div>
-            )}
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-[var(--looply-color-text-primary)]">
+                <input
+                  type="radio"
+                  name="mode"
+                  value="LIGHT"
+                  checked={mode === "LIGHT"}
+                  onChange={() => setMode("LIGHT")}
+                  className="radio"
+                />
+                <span>Modo Claro</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-[var(--looply-color-text-primary)]">
+                <input
+                  type="radio"
+                  name="mode"
+                  value="DARK"
+                  checked={mode === "DARK"}
+                  onChange={() => setMode("DARK")}
+                  className="radio"
+                />
+                <span>Modo Escuro</span>
+              </label>
+            </div>
+          </Card>
 
-            <div className="mt-6 flex justify-end">
+          {/* Custom Colors Editor (only when CUSTOM is selected) */}
+          {preset === "CUSTOM" && (
+            <Card>
+              <h3 className="section-title mb-1">Cores Customizadas</h3>
+              <p className="text-xs text-[var(--looply-color-text-muted)] mb-4">
+                Personalize os 6 tons base da sua marca (#RRGGBB).
+              </p>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {(Object.keys(DEFAULT_CUSTOM) as (keyof CustomColors)[]).map((key) => (
+                  <div key={key} className="space-y-1">
+                    <label className="label text-xs capitalize">{key}</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={customColors[key]}
+                        onChange={(e) =>
+                          setCustomColors({ ...customColors, [key]: e.target.value.toUpperCase() })
+                        }
+                        className="h-8 w-8 cursor-pointer rounded border border-[var(--looply-color-border-default)] p-0"
+                      />
+                      <input
+                        type="text"
+                        value={customColors[key]}
+                        onChange={(e) =>
+                          setCustomColors({ ...customColors, [key]: e.target.value.toUpperCase() })
+                        }
+                        className="input uppercase text-xs font-mono"
+                        maxLength={7}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Action footer */}
+          <Card className="flex items-center justify-between">
+            <span className="text-xs text-[var(--looply-color-text-muted)]">
+              {isOwnerOrAdmin
+                ? "Alterações serão salvas para toda a empresa."
+                : "Apenas proprietários e administradores podem salvar alterações."}
+            </span>
+            <div className="flex gap-2">
               <button
                 type="submit"
                 disabled={updateAppearance.isPending || !isOwnerOrAdmin}
                 className="btn-primary"
               >
                 {updateAppearance.isPending ? "Salvando…" : "Salvar aparência"}
+              </button>
+            </div>
+          </Card>
+        </form>
+      )}
+
+      {/* Tab: Empresa (Figma 12 — Settings / 04 — Company Edit) */}
+      {activeTab === "company" && (
+        <form onSubmit={handleSaveCompany} className="space-y-6">
+          {companyFeedback && (
+            <div className="flex items-center gap-2 rounded-xl bg-[var(--looply-color-status-success)]/10 border border-[var(--looply-color-status-success)]/20 px-4 py-3 text-sm text-[var(--looply-color-status-success)]">
+              <IconCheck className="h-4 w-4" />
+              <span>{companyFeedback}</span>
+            </div>
+          )}
+
+          {companyErr && (
+            <div className="flex items-center gap-2 rounded-xl bg-[var(--looply-color-status-danger)]/10 border border-[var(--looply-color-status-danger)]/20 px-4 py-3 text-sm text-[var(--looply-color-status-danger)]">
+              <IconAlertCircle className="h-4 w-4" />
+              <span>{companyErr}</span>
+            </div>
+          )}
+
+          <Card>
+            <h3 className="section-title mb-1">Dados da Empresa</h3>
+            <p className="text-xs text-[var(--looply-color-text-muted)] mb-4">
+              Informações do workspace e configurações de fuso horário.
+            </p>
+
+            {companyLoading ? (
+              <Spinner label="Carregando dados da empresa..." />
+            ) : (
+              <div className="space-y-4 max-w-lg">
+                <div>
+                  <label htmlFor="company-name" className="label">
+                    Nome da empresa
+                  </label>
+                  <input
+                    id="company-name"
+                    type="text"
+                    required
+                    disabled={!isOwnerOrAdmin}
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    className="input"
+                    placeholder="Nome da empresa"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="company-timezone" className="label">
+                    Fuso horário
+                  </label>
+                  <select
+                    id="company-timezone"
+                    disabled={!isOwnerOrAdmin}
+                    value={companyTimezone}
+                    onChange={(e) => setCompanyTimezone(e.target.value)}
+                    className="input"
+                  >
+                    {TIMEZONES.map((tz) => (
+                      <option key={tz.value} value={tz.value}>
+                        {tz.label} ({tz.value})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="label">Idioma da interface</label>
+                  <input
+                    type="text"
+                    className="input opacity-80"
+                    disabled
+                    value="Português (Brasil)"
+                  />
+                </div>
+              </div>
+            )}
+          </Card>
+
+          <Card className="flex items-center justify-between">
+            <span className="text-xs text-[var(--looply-color-text-muted)]">
+              {isOwnerOrAdmin
+                ? "Alterações serão refletidas em todos os agendamentos e visualizações."
+                : "Apenas proprietários e administradores podem salvar alterações."}
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={updateCompany.isPending || !isOwnerOrAdmin}
+                className="btn-primary"
+              >
+                {updateCompany.isPending ? "Salvando…" : "Salvar dados da empresa"}
               </button>
             </div>
           </Card>
@@ -328,41 +490,6 @@ export default function Settings() {
               <button type="button" disabled className="btn-secondary text-xs opacity-60 cursor-not-allowed">
                 Conectar WhatsApp
               </button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Tab: Empresa */}
-      {activeTab === "company" && (
-        <div className="space-y-6">
-          <Card>
-            <h3 className="section-title mb-4">Dados da Empresa</h3>
-            <div className="space-y-4 max-w-lg">
-              <div>
-                <label className="label">Nome da empresa</label>
-                <input
-                  className="input"
-                  disabled
-                  value={session?.workspace?.name ?? "Looply"}
-                />
-              </div>
-              <div>
-                <label className="label">Fuso horário</label>
-                <input
-                  className="input"
-                  disabled
-                  value="America/Sao_Paulo (Horário de Brasília)"
-                />
-              </div>
-              <div>
-                <label className="label">Idioma da interface</label>
-                <input
-                  className="input"
-                  disabled
-                  value="Português (Brasil)"
-                />
-              </div>
             </div>
           </Card>
         </div>

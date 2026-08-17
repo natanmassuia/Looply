@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useDashboard, useTeam } from "../lib/api";
+import { useDashboard, useMe } from "../lib/api";
 import { Card, EmptyState, ErrorState, Spinner } from "../components/common";
 import StatusPill from "../components/StatusPill";
 import { FORMAT_LABEL, relativeTime } from "../lib/format";
@@ -14,8 +14,8 @@ function getGreeting(name?: string): string {
 
 export default function Dashboard() {
   const { data, isLoading, isError, error } = useDashboard();
-  const { data: team } = useTeam();
-  const userName = team?.find((u) => u.role === "ADMIN")?.name;
+  const { data: me } = useMe();
+  const userName = me?.user?.name;
 
   const activeJobsCount = data
     ? Math.max(0, (data.counts.totalContents ?? 0) - (data.counts.published ?? 0))
