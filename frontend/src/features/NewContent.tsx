@@ -53,7 +53,7 @@ export default function NewContent() {
       const created = await create.mutateAsync(payload);
       navigate(`/contents/${(created as { id: string }).id}`);
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Falha ao criar job.");
+      setFormError(err instanceof ApiError ? err.message : "Falha ao criar demanda.");
     }
   };
 
@@ -62,9 +62,9 @@ export default function NewContent() {
   return (
     <div>
       <PageHeader
-        title="Novo job"
-        subtitle="Crie um job e envie para revisão interna"
-        crumbs={[{ label: "Jobs", to: "/contents" }, { label: "Novo job" }]}
+        title="Nova demanda"
+        subtitle="Crie uma demanda e envie para revisão interna"
+        crumbs={[{ label: "Demandas", to: "/contents" }, { label: "Nova demanda" }]}
       />
 
       {clients && clients.length === 0 && (
@@ -80,7 +80,7 @@ export default function NewContent() {
             <h3 className="section-title mb-4">Informações básicas</h3>
             <div className="space-y-4">
               <div>
-                <label className="label">Título do job</label>
+                <label className="label">Título da demanda</label>
                 <input
                   className="input"
                   value={form.title}
@@ -128,7 +128,7 @@ export default function NewContent() {
                   className="input min-h-[140px]"
                   value={form.caption}
                   onChange={(e) => set("caption", e.target.value)}
-                  placeholder="Escreva a legenda do job…"
+                  placeholder="Escreva a legenda da demanda…"
                 />
               </div>
 

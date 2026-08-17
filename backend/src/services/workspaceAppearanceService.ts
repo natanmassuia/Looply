@@ -29,7 +29,8 @@ const APPEARANCE_SELECT = {
 export interface UpdateAppearanceInput {
   preset?: AppearancePreset;
   mode?: AppearanceMode;
-  customColors?: CustomColors;
+  // `null` (or absence) means "no custom palette" — the canonical clear.
+  customColors?: CustomColors | null;
 }
 
 function normalizeCustomColors(colors: CustomColors): CustomColors {
@@ -64,11 +65,16 @@ export async function updateAppearance(
 
   let customColors: CustomColors | null = current.customColors;
 
-  if (input.customColors !== undefined) {
+  // F14: `null` is always an explicit "clear custom palette" intent. A
+  // provided object is only meaningful when the resolved preset is CUSTOM;
+  // preset switches below already normalize the stored value to `null`.
+  if (input.customColors !== undefined && input.customColors !== null) {
     if (preset !== "CUSTOM") {
       throw badRequest("Cores customizadas são válidas apenas no preset CUSTOM");
     }
     customColors = normalizeCustomColors(input.customColors);
+  } else if (input.customColors === null) {
+    customColors = null;
   }
 
   // CUSTOM must always land with a complete set of six colors.

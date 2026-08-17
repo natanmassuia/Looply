@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { readFileSync } from "node:fs";
 import ContentDetail from "../features/ContentDetail";
 import ContentsList from "../features/ContentsList";
 import * as apiModule from "../lib/api";
@@ -158,7 +159,7 @@ describe("Jobs Feature — B4 Metadata Editing + Ungroup Wiring", () => {
       fireEvent.click(editBtn);
 
       // Verify modal opened and pre-filled
-      expect(screen.getByText("Editar detalhes do job")).toBeInTheDocument();
+      expect(screen.getByText("Editar detalhes da demanda")).toBeInTheDocument();
       const titleInput = screen.getByDisplayValue("Post Cardápio de Verão");
       expect(titleInput).toBeInTheDocument();
       expect(screen.getByDisplayValue("Focar nos drinks tropicais")).toBeInTheDocument();
@@ -206,12 +207,12 @@ describe("Jobs Feature — B4 Metadata Editing + Ungroup Wiring", () => {
       );
 
       fireEvent.click(screen.getAllByRole("button", { name: /Editar/i })[0]);
-      expect(screen.getByText("Editar detalhes do job")).toBeInTheDocument();
+      expect(screen.getByText("Editar detalhes da demanda")).toBeInTheDocument();
 
       const cancelBtn = screen.getByRole("button", { name: "Cancelar" });
       fireEvent.click(cancelBtn);
 
-      expect(screen.queryByText("Editar detalhes do job")).not.toBeInTheDocument();
+      expect(screen.queryByText("Editar detalhes da demanda")).not.toBeInTheDocument();
       expect(updateJobMutate).not.toHaveBeenCalled();
     });
 
@@ -269,10 +270,10 @@ describe("Jobs Feature — B4 Metadata Editing + Ungroup Wiring", () => {
 
       renderWithProviders(<ContentsList />);
 
-      expect(screen.getByText("Agrupados (1)")).toBeInTheDocument();
+      expect(screen.getByText("Demandas agrupadas (1)")).toBeInTheDocument();
       expect(screen.getByText("Reels Making-of Verão")).toBeInTheDocument();
 
-      const ungroupBtn = screen.getByLabelText("Desagrupar Reels Making-of Verão");
+      const ungroupBtn = screen.getByRole("button", { name: "Desagrupar demandas" });
       expect(ungroupBtn).toBeInTheDocument();
 
       fireEvent.click(ungroupBtn);
@@ -305,9 +306,9 @@ describe("Jobs Feature — B4 Metadata Editing + Ungroup Wiring", () => {
         "/contents/job-child-1",
       );
 
-      expect(screen.getByText("Este job faz parte de um agrupamento de conteúdos.")).toBeInTheDocument();
+      expect(screen.getByText("Este conteúdo faz parte de um agrupamento de demandas.")).toBeInTheDocument();
 
-      const ungroupBtn = screen.getByRole("button", { name: "Desagrupar job" });
+      const ungroupBtn = screen.getByRole("button", { name: "Desagrupar demanda" });
       fireEvent.click(ungroupBtn);
 
       expect(ungroupMutate).toHaveBeenCalledWith("job-child-1");
@@ -332,8 +333,179 @@ describe("Jobs Feature — B4 Metadata Editing + Ungroup Wiring", () => {
         "/contents/job-1",
       );
 
-      expect(screen.queryByText("Este job faz parte de um agrupamento de conteúdos.")).not.toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "Desagrupar job" })).not.toBeInTheDocument();
+      expect(screen.queryByText("Este conteúdo faz parte de um agrupamento de demandas.")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Desagrupar demanda" })).not.toBeInTheDocument();
+    });
+  });
+
+  // F14.4 — Kanban → scheduling handoff: drop into Agendado from Aprovado
+  // opens a scheduling modal and does NOT commit a status until confirmed.
+  describe("scheduling handoff", () => {
+    function renderWithApproved() {
+      const approved = [
+        {
+          id: "job-approved",
+          title: "Post Aprovado",
+          clientId: "cli-1",
+          format: "POST" as const,
+          status: "APPROVED" as const,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          client: mockClients[0],
+          versions: [],
+        },
+      ];
+      vi.spyOn(apiModule, "useContents").mockReturnValue({
+        data: approved,
+        isLoading: false,
+        isError: false,
+        refetch: vi.fn(),
+      } as any);
+      vi.spyOn(apiModule, "useClients").mockReturnValue({ data: mockClients } as any);
+      vi.spyOn(apiModule, "useGroupContent").mockReturnValue({ mutate: vi.fn() } as any);
+      vi.spyOn(apiModule, "useUngroupContent").mockReturnValue({ mutateAsync: vi.fn() } as any);
+      vi.spyOn(apiModule, "useCreateAppointment").mockReturnValue({
+        mutateAsync: vi.fn().mockResolvedValue({ id: "apt-1" }),
+        isPending: false,
+      } as any);
+      return renderWithProviders(<ContentsList />);
+    }
+
+    function dragApprovedToScheduled() {
+      const card = screen.getByText("Post Aprovado");
+      fireEvent.dragStart(card, { dataTransfer: { setData: vi.fn(), effectAllowed: "move" } });
+      // The Agendado column header + body contain the status label "Agendado".
+      const agendadoColumn = screen.getByText("Agendado").closest("div");
+      fireEvent.drop(agendadoColumn!, { dataTransfer: { getData: vi.fn().mockReturnValue("job-approved") } });
+      fireEvent.dragEnd(card);
+    }
+
+    it("drop into Agendado opens the scheduling modal (no direct status commit)", () => {
+      renderWithApproved();
+      dragApprovedToScheduled();
+      // Modal opens (title) and exposes date/time controls.
+      expect(screen.getByRole("heading", { name: "Agendar conteúdo" })).toBeInTheDocument();
+      expect(screen.getByLabelText("Data")).toBeInTheDocument();
+      expect(screen.getByLabelText("Horário")).toBeInTheDocument();
+    });
+
+    it("cancel leaves the card in the original column (no status change, no appointment)", () => {
+      const scheduleMutate = vi.fn().mockResolvedValue({ id: "apt-1" });
+      vi.spyOn(apiModule, "useCreateAppointment").mockReturnValue({
+        mutateAsync: scheduleMutate,
+        isPending: false,
+      } as any);
+      renderWithApproved();
+      dragApprovedToScheduled();
+      fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+      expect(scheduleMutate).not.toHaveBeenCalled();
+    });
+
+    it("exposes an explicit 'Agendar' action for keyboard/mobile (non-drag alternative)", () => {
+      renderWithApproved();
+      expect(screen.getByRole("button", { name: "Agendar Post Aprovado" })).toBeInTheDocument();
+    });
+
+    // F14.4.1 — reproduces the real-runtime race where dragend clears the
+    // reactive draggedId BEFORE the column drop is processed. The drop must
+    // still open the scheduling modal by reading the id from dataTransfer.
+    it("drop opens the scheduling modal even if reactive draggedId was cleared by dragend", () => {
+      renderWithApproved();
+      // Do NOT fire dragStart (so draggedId stays null, as if dragend already
+      // ran) — the column drop reads the id from dataTransfer instead.
+      const agendadoColumn = screen.getByText("Agendado").closest("div");
+      fireEvent.drop(agendadoColumn!, {
+        dataTransfer: { getData: vi.fn().mockReturnValue("job-approved") },
+      });
+      expect(screen.getByRole("heading", { name: "Agendar conteúdo" })).toBeInTheDocument();
+      expect(screen.getByLabelText("Data")).toBeInTheDocument();
+      expect(screen.getByLabelText("Horário")).toBeInTheDocument();
+    });
+  });
+
+  // F14.3 — rich client filter replaces the native <select> on Demandas.
+  describe("rich client filter", () => {
+    function renderList() {
+      vi.spyOn(apiModule, "useContents").mockReturnValue({
+        data: mockContentsList,
+        isLoading: false,
+        isError: false,
+        refetch: vi.fn(),
+      } as any);
+      vi.spyOn(apiModule, "useClients").mockReturnValue({
+        data: [
+          { id: "cli-1", name: "Restaurante Aurora", brandColor: "#e11d48", status: "ACTIVE", channels: [], createdAt: "" },
+          { id: "cli-2", name: "Café Solar", brandColor: "#f59e0b", status: "ACTIVE", channels: [], createdAt: "" },
+        ],
+      } as any);
+      vi.spyOn(apiModule, "useGroupContent").mockReturnValue({ mutate: vi.fn() } as any);
+      vi.spyOn(apiModule, "useUngroupContent").mockReturnValue({ mutateAsync: vi.fn() } as any);
+      renderWithProviders(<ContentsList />);
+    }
+
+    it("no native client <select> remains; uses a rich trigger + sheet", () => {
+      renderList();
+      expect(document.querySelector("select")).toBeNull();
+      expect(screen.getByRole("button", { name: "Todos os clientes" })).toBeInTheDocument();
+    });
+
+    it("selecting a client from the sheet filters and shows selection", () => {
+      renderList();
+      fireEvent.click(screen.getByRole("button", { name: "Todos os clientes" }));
+      expect(screen.getByLabelText("Buscar cliente")).toBeInTheDocument();
+      fireEvent.click(screen.getByText("Café Solar"));
+      expect(screen.getByRole("button", { name: /Café Solar/ })).toBeInTheDocument();
+    });
+  });
+
+  // F14.1 — grouped demand containment: child cards + long status badges must
+  // stay inside the bordered group card. Source contract pins the layout
+  // primitives that prevent the "Aguardando cliente" badge from escaping.
+  describe("grouped demand containment contract", () => {
+    const CONTENTS_LIST_SRC = readFileSync(`${process.cwd()}/src/features/ContentsList.tsx`, "utf8");
+
+    it("child demand card uses shrink-safe flex (min-w-0) and w-full family", () => {
+      expect(CONTENTS_LIST_SRC).toContain("min-w-0 flex-1");
+      // metadata row wraps so long status pills never force the card wider
+      expect(CONTENTS_LIST_SRC).toMatch(
+        /flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0\.5/,
+      );
+    });
+
+    it("grouped child wrapper is bordered and contained (no absolute/negative positioning)", () => {
+      expect(CONTENTS_LIST_SRC).toMatch(
+        /rounded-lg border border-\[var\(--looply-color-border-default\)\]/,
+      );
+      expect(CONTENTS_LIST_SRC).not.toMatch(/Demandas agrupadas[\s\S]{0,400}absolute/);
+    });
+
+    it("long titles inside grouped child cards clamp to 2 lines instead of overflowing", () => {
+      expect(CONTENTS_LIST_SRC).toMatch(
+        /line-clamp-2 text-\[11px\] font-medium leading-snug text-\[var\(--looply-color-text-primary\)\]/,
+      );
+    });
+
+    it("Desagrupar demandas renders exactly once per group (no duplicates)", () => {
+      const occurrences = CONTENTS_LIST_SRC.match(/aria-label="Desagrupar demandas"/g) ?? [];
+      expect(occurrences).toHaveLength(1);
+    });
+  });
+
+  describe("status pill containment contract", () => {
+    const PILL_SRC = readFileSync(`${process.cwd()}/src/components/StatusPill.tsx`, "utf8");
+
+    it("status pill allows shrinking + wrapping so long labels stay contained", () => {
+      expect(PILL_SRC).toContain("min-w-0 max-w-full");
+      expect(PILL_SRC).toMatch(/whitespace-normal/);
+      expect(PILL_SRC).toMatch(/shrink-0 rounded-full/); // dot stays fixed, label wraps
+    });
+
+    it("status pill never hides or truncates the readable status text", () => {
+      // The label span is a real span with the full label text (no sr-only
+      // visual swap, no width-clipping class).
+      expect(PILL_SRC).toMatch(/<span className="min-w-0 whitespace-normal">/);
+      expect(PILL_SRC).not.toContain("sr-only");
+      expect(PILL_SRC).not.toMatch(/truncate|max-h-|overflow-hidden/);
     });
   });
 });

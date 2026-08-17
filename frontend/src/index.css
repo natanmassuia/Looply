@@ -414,7 +414,8 @@
     padding: 0.25rem 0.625rem;
     font-size: 0.75rem;
     font-weight: 500;
-    line-height: 1;
+    line-height: 1.15;
+    text-align: left;
   }
 
   /* ── Section headers ── */

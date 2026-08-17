@@ -6,6 +6,7 @@ import NewContent from "./features/NewContent";
 import ContentDetail from "./features/ContentDetail";
 import Calendar from "./features/Calendar";
 import Clients from "./features/Clients";
+import ClientDetail from "./features/ClientDetail";
 import Team from "./features/Team";
 import Settings from "./features/Settings";
 import PublicApproval from "./features/PublicApproval";
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="/contents/:id" element={<ContentDetail />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/clients" element={<Clients />} />
+          <Route path="/clients/:id" element={<ClientDetail />} />
           <Route path="/team" element={<Team />} />
           <Route path="/settings" element={<Settings />} />
         </Route>

@@ -47,4 +47,29 @@ describe.skipIf(!process.env.DATABASE_URL)("legacy /api/team user creation is cl
     const res = await request(app).get("/api/team");
     expect([200, 401]).toContain(res.status); // 401 without cookie is correct too
   });
+
+  // F14.1.1 — identity media projection: /api/team members and /api/auth/me
+  // workspace must expose avatarUrl/logoUrl so UIs can render photos.
+  it("GET /api/team projects avatarUrl for members (identity propagation)", async () => {
+    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const res = await request(app)
+      .get("/api/team")
+      .set("Cookie", `${SESSION_COOKIE}=${session.token}`);
+    expect(res.status).toBe(200);
+    const me = res.body.team.find((u: any) => u.email === "natan@looply.dev");
+    expect(me).toBeDefined();
+    expect(me).toHaveProperty("avatarUrl");
+    await logout(prisma, session.token);
+  });
+
+  it("GET /api/auth/me workspace exposes logoUrl (company identity propagation)", async () => {
+    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const res = await request(app)
+      .get("/api/auth/me")
+      .set("Cookie", `${SESSION_COOKIE}=${session.token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.user).toHaveProperty("avatarUrl");
+    expect(res.body.workspace).toHaveProperty("logoUrl");
+    await logout(prisma, session.token);
+  });
 });

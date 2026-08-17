@@ -159,4 +159,27 @@ describe("User Credential Management — resetMemberPassword", () => {
       resetMemberPassword(db as unknown as DB, "c1", "u-member", "MEMBER", "m-admin"),
     ).rejects.toThrow(/Sem permissão/i);
   });
+
+  it("supports company business phone and logoUrl updates in fake DB", async () => {
+    const db = makeFakeDB();
+    await db.company.update({
+      where: { id: "c1" },
+      data: { phone: "+55 11 98888-7777", logoUrl: "https://example.com/logo.png" },
+    });
+    const c1 = await db.company.findUnique({ where: { id: "c1" } });
+    expect(c1.phone).toBe("+55 11 98888-7777");
+    expect(c1.logoUrl).toBe("https://example.com/logo.png");
+  });
+
+  it("supports user self-service profile update with personal phone", async () => {
+    const db = makeFakeDB();
+    await db.user.update({
+      where: { id: "u-member" },
+      data: { name: "Member Updated", phone: "+55 11 99999-1234", avatarUrl: "https://example.com/avatar.jpg" },
+    });
+    const u = await db.user.findUnique({ where: { id: "u-member" } });
+    expect(u.name).toBe("Member Updated");
+    expect(u.phone).toBe("+55 11 99999-1234");
+    expect(u.avatarUrl).toBe("https://example.com/avatar.jpg");
+  });
 });

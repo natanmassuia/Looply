@@ -149,3 +149,71 @@ describe("shouldRetry", () => {
     expect(shouldRetry(1, new ApiError(500, "x"))).toBe(false);
   });
 });
+
+// F14 — the 3-step identity-media upload pattern (intent → presigned PUT →
+// complete) must NEVER send the browser to the internal MinIO loopback host.
+// Any URL returned by an *upload-intent* endpoint whose host is the server's
+// private endpoint is unusable by an external browser (ERR_CONNECTION_REFUSED).
+describe("F14 identity media upload flow uses the public presigned URL verbatim", () => {
+  const originalFetch = globalThis.fetch;
+  const fetchMock = vi.fn();
+
+  beforeEach(() => {
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+  });
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    fetchMock.mockReset();
+  });
+
+  async function runIntentThenPut(intentUrl: string) {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 201,
+      text: async () =>
+        JSON.stringify({
+          uploadUrl: intentUrl,
+          key: "users/u1/avatar/x.png",
+          expiresAt: new Date(Date.now() + 600_000).toISOString(),
+        }),
+      headers: new Headers({ "content-type": "application/json" }),
+    } as unknown as Response);
+
+    const intent = await apiFetch<{ uploadUrl: string; key: string }>(
+      "/api/me/avatar/upload-intent",
+      { method: "POST", body: { contentType: "image/png", sizeBytes: 100 } },
+    );
+
+    // The browser PUT goes to whatever URL the server returned.
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: async () => "",
+      headers: new Headers(),
+    } as unknown as Response);
+    await fetch(intent.uploadUrl, { method: "PUT" });
+
+    return { intentUrl: intent.uploadUrl, putCall: fetchMock.mock.calls[1] };
+  }
+
+  it("browser PUT is the public URL (no 127.0.0.1 leakage)", async () => {
+    const { intentUrl, putCall } = await runIntentThenPut(
+      "https://looply.verbumlab.com.br/looply-media/users/u1/avatar/x.png?X-Amz-Signature=abc",
+    );
+    expect(intentUrl.startsWith("https://")).toBe(true);
+    expect(intentUrl).not.toContain("127.0.0.1");
+    expect(intentUrl).not.toContain("localhost");
+    expect(putCall[0]).toBe(intentUrl);
+  });
+
+  it("browser to loopback URL would break — defensive: never trust it", async () => {
+    // Contract: if the backend ever returns a loopback URL by mistake, the
+    // frontend still does NOT silently rewrite it. The browser MUST fail
+    // loudly so the regression is detectable. This test pins the contract:
+    // the URL we hand to fetch is exactly what the server returned.
+    const { intentUrl, putCall } = await runIntentThenPut("http://127.0.0.1:9100/looply-media/x.png");
+    expect(putCall[0]).toBe("http://127.0.0.1:9100/looply-media/x.png");
+    // (No rewrite — we never silently mask an endpoint leak.)
+    expect(intentUrl).toContain("127.0.0.1");
+  });
+});

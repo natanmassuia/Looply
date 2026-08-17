@@ -52,6 +52,7 @@ export const createClientSchema = z.object({
   primaryContactEmail: z.string().email().max(160).optional().or(z.literal("")).optional(),
   primaryContactPhone: z.string().max(40).optional(),
   channels: z.array(z.string().max(60)).max(10).optional(),
+  logoUrl: z.string().max(2000).optional().or(z.literal("")).nullable(),
 });
 export type CreateClientInput = z.infer<typeof createClientSchema>;
 
@@ -61,22 +62,30 @@ export type CreateClientInput = z.infer<typeof createClientSchema>;
 
 const hexColor = z.string().regex(HEX_COLOR_RE);
 
+// F14: explicit `null` is a valid clear. The frontend always sends
+// `customColors: null` when the selected preset is not CUSTOM, so the schema
+// must accept both an object (set custom palette) and null (use preset colors).
 export const customColorsSchema = z
-  .object({
-    primary: hexColor,
-    secondary: hexColor,
-    accent: hexColor,
-    surface: hexColor,
-    text: hexColor,
-    border: hexColor,
-  })
-  .strict();
+  .union([
+    z
+      .object({
+        primary: hexColor,
+        secondary: hexColor,
+        accent: hexColor,
+        surface: hexColor,
+        text: hexColor,
+        border: hexColor,
+      })
+      .strict(),
+    z.null(),
+  ])
+  .optional();
 
 export const updateAppearanceSchema = z
   .object({
     preset: z.enum(APPEARANCE_PRESETS).optional(),
     mode: z.enum(APPEARANCE_MODES).optional(),
-    customColors: customColorsSchema.optional(),
+    customColors: customColorsSchema,
   })
   .strict();
 export type UpdateAppearancePayload = z.infer<typeof updateAppearanceSchema>;

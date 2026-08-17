@@ -23,7 +23,7 @@ export interface NavItem {
 export const NAV: NavItem[] = [
   { to: "/dashboard", label: "Visão geral", short: "Visão geral", Icon: IconDashboard, end: true, mobilePlacement: "primary" },
   { to: "/clients", label: "Clientes", short: "Clientes", Icon: IconClients, end: true, mobilePlacement: "primary" },
-  { to: "/contents", label: "Jobs", short: "Jobs", Icon: IconContents, end: false, mobilePlacement: "primary" },
+  { to: "/contents", label: "Demandas", short: "Demandas", Icon: IconContents, end: false, mobilePlacement: "primary" },
   { to: "/calendar", label: "Agenda", short: "Agenda", Icon: IconCalendar, end: true, mobilePlacement: "primary" },
   { to: "/team", label: "Equipe", short: "Equipe", Icon: IconTeam, end: true, mobilePlacement: "secondary" },
   { to: "/settings", label: "Configurações", short: "Configurações", Icon: IconSettings, end: true, mobilePlacement: "secondary" },
@@ -53,13 +53,19 @@ function initials(name: string): string {
 export default function Sidebar({
   user,
   role,
+  workspaceName,
+  companyLogoUrl,
   onLogout,
   logoutPending = false,
+  onOpenMyAccount,
 }: {
-  user?: { name: string; email?: string } | null;
+  user?: { name: string; email?: string; avatarUrl?: string | null } | null;
   role?: string;
+  workspaceName?: string | null;
+  companyLogoUrl?: string | null;
   onLogout?: () => void;
   logoutPending?: boolean;
+  onOpenMyAccount?: () => void;
 }) {
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -81,22 +87,46 @@ export default function Sidebar({
         sidebarCollapsed ? "w-[72px]" : "w-60"
       }`}
     >
-      {/* Brand — Logo links to Home (/dashboard) */}
-      <div className={`flex items-center ${sidebarCollapsed ? "justify-center px-3" : "gap-2.5 px-5"} py-5`}>
+      {/* Brand — fixed Looply product mark links to Home. NEVER replaced by
+          the workspace/company logo (V1 is not white-label). */}
+      <div className={`flex items-center ${sidebarCollapsed ? "justify-center px-3" : "px-5"} py-4`}>
         <Link
           to="/dashboard"
-          aria-label="Looply"
-          className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
+          aria-label="Ir para Visão geral"
+          title="Ir para Visão geral"
+          className={`flex cursor-pointer items-center rounded-lg transition-colors hover:bg-[var(--looply-color-bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] ${sidebarCollapsed ? "justify-center px-3" : "-mx-2 gap-2.5 px-2"}`}
         >
-          <Logo size={42} wordmark={false} />
+          <Logo size={38} wordmark={false} />
           {!sidebarCollapsed && (
-            <div className="flex-1">
-              <div className="text-[14px] font-bold tracking-tight text-[var(--looply-color-text-primary)]">Looply</div>
-              <div className="text-[10.5px] font-medium text-[var(--looply-color-text-muted)]">Fluxo de conteúdo</div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[14px] font-bold tracking-tight text-[var(--looply-color-text-primary)]">Looply</div>
             </div>
           )}
         </Link>
       </div>
+
+      {/* Workspace identity — separate row below the product brand. Company
+          logo/initials + name are workspace identity, clearly distinct. */}
+      {!sidebarCollapsed && (
+        <div className="mx-3 mb-2 flex items-center gap-2.5 rounded-lg border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)]/40 px-2.5 py-2">
+          {companyLogoUrl ? (
+            <img
+              src={companyLogoUrl}
+              alt={workspaceName || "Logo da empresa"}
+              className="h-7 w-7 shrink-0 rounded object-contain border border-[var(--looply-color-border-default)]"
+            />
+          ) : (
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-[10px] font-bold text-[var(--looply-color-text-brand)]">
+              {workspaceName ? initials(workspaceName) : "W"}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[12px] font-semibold text-[var(--looply-color-text-primary)]">
+              {workspaceName || "Workspace"}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Navigation */}
       <nav aria-label="Navegação" className="mt-2 flex-1 space-y-0.5 px-2.5">
@@ -160,8 +190,18 @@ export default function Sidebar({
           aria-label="Menu da conta"
           className={`flex w-full items-center ${sidebarCollapsed ? "justify-center px-1" : "gap-2.5 px-2"} py-2 rounded-lg transition-colors hover:bg-[var(--looply-color-bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] text-left`}
         >
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--looply-color-bg-subtle)] text-[10px] font-bold text-[var(--looply-color-text-brand)]">
-            {name ? initials(name) : "·"}
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--looply-color-bg-subtle)]">
+            {user?.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span className="text-[10px] font-bold text-[var(--looply-color-text-brand)]">
+                {name ? initials(name) : "·"}
+              </span>
+            )}
           </div>
           {!sidebarCollapsed && (
             <div className="min-w-0 flex-1">
@@ -191,8 +231,8 @@ export default function Sidebar({
               }`}
             >
               <div className="border-b border-[var(--looply-color-border-default)] px-3 py-2">
-                <div className="text-[12px] font-bold text-[var(--looply-color-text-primary)]">
-                  Minha conta
+                <div className="truncate text-[12px] font-bold text-[var(--looply-color-text-primary)]">
+                  {name ?? "Minha conta"}
                 </div>
                 {user?.email && (
                   <div className="truncate text-[11px] text-[var(--looply-color-text-muted)]">
@@ -201,10 +241,21 @@ export default function Sidebar({
                 )}
               </div>
 
+              <button
+                type="button"
+                onClick={() => {
+                  setAccountMenuOpen(false);
+                  onOpenMyAccount?.();
+                }}
+                className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-medium text-[var(--looply-color-text-primary)] hover:bg-[var(--looply-color-bg-subtle)] transition-colors text-left"
+              >
+                Minha conta
+              </button>
+
               <Link
                 to="/settings"
                 onClick={() => setAccountMenuOpen(false)}
-                className="mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-medium text-[var(--looply-color-text-primary)] hover:bg-[var(--looply-color-bg-subtle)] transition-colors"
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-medium text-[var(--looply-color-text-primary)] hover:bg-[var(--looply-color-bg-subtle)] transition-colors"
               >
                 Configurações
               </Link>

@@ -27,7 +27,10 @@ describe.skipIf(!process.env.DATABASE_URL)("Calendar projection", () => {
 
   it("returns separate events for separate canonical dates and supports filters", async () => {
     const session = await login(prisma, "natan@looply.dev", "looply123");
-    const client = await prisma.client.findFirst({ where: { companyId: session.user.companyId! }, select: { id: true } });
+    // Deterministic: Aurora (lowest seeded id) is the only client with both a
+    // SCHEDULED and a PUBLICATION_TARGET event inside the fixed range — bare
+    // findFirst follows heap order and flakes after unrelated row updates.
+    const client = await prisma.client.findFirst({ where: { companyId: session.user.companyId! }, orderBy: { id: "asc" }, select: { id: true } });
     const response = await request(app)
       .get(`/api/calendar?from=2026-08-16T00:00:00.000Z&to=2026-08-24T00:00:00.000Z&clientId=${client!.id}`)
       .set("Cookie", `${SESSION_COOKIE}=${session.token}`);

@@ -29,6 +29,7 @@ import assistantRouter from "./routes/assistant";
 import whatsappIdentitiesRouter from "./routes/whatsappIdentities";
 import whatsappWebhookRouter from "./routes/whatsappWebhook";
 import gupshupWebhookRouter from "./routes/whatsappGupshupWebhook";
+import mediaRouter from "./routes/media";
 import { csrfOriginGuard } from "./middleware/csrf";
 
 const app = express();
@@ -72,6 +73,7 @@ app.use("/api/members", membersRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api/contents", contentsRouter);
 app.use("/api/publications", publicationsRouter);
+app.use("/api", mediaRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

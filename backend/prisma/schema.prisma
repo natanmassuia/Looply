@@ -130,6 +130,7 @@ model User {
   email              String   @unique
   role               UserRole @default(EDITOR)
   avatarUrl          String?
+  phone              String?
   active             Boolean  @default(true)
   passwordHash       String?  // null until the user sets a password (demo users)
   mustChangePassword Boolean  @default(false) // true after provisioning/invite temp credential
@@ -158,6 +159,7 @@ model Company {
   slug              String?          @unique
   workspaceTemplate WorkspaceTemplate?
   isActive          Boolean          @default(true)
+  logoUrl           String?
   // Onboarding data (B4). onboardedAt = null until guided onboarding completes.
   legalName         String?
   document          String?
@@ -294,6 +296,7 @@ model Client {
   primaryContactEmail String?
   primaryContactPhone String?
   channels           String[]     // e.g. ["Instagram","TikTok"]
+  logoUrl            String?
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 

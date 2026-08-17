@@ -5,6 +5,7 @@ import {
   createClient,
   updateClient,
   deleteClient,
+  normalizeChannels,
 } from "../src/services/clientService";
 import type { DB } from "../src/lib/db";
 
@@ -130,5 +131,73 @@ describe("deleteClient", () => {
     await deleteClient(db, "cA", "a2"); // no contents
     expect(state.clients.find((c: any) => c.id === "a2")).toBeUndefined();
     await expect(deleteClient(db, "cA", "b1")).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+// ── F14 — channel normalization (server authority) ──────────────────────
+describe("normalizeChannels", () => {
+  it("trims whitespace, drops empties, and dedupes case-insensitively", () => {
+    expect(
+      normalizeChannels([" Instagram ", "TikTok", "  ", "INSTAGRAM", "Pinterest"]),
+    ).toEqual(["Instagram", "TikTok", "Pinterest"]);
+  });
+
+  it("undefined / empty / null coerces to empty array", () => {
+    expect(normalizeChannels(undefined)).toEqual([]);
+    expect(normalizeChannels(null)).toEqual([]);
+    expect(normalizeChannels([])).toEqual([]);
+  });
+
+  it("rejects more than 10 channels", () => {
+    expect(() => normalizeChannels(Array(11).fill("Instagram"))).toThrow(
+      expect.objectContaining({ status: 400 }),
+    );
+  });
+
+  it("rejects entries longer than 60 chars", () => {
+    expect(() => normalizeChannels(["x".repeat(61)])).toThrow(
+      expect.objectContaining({ status: 400 }),
+    );
+  });
+
+  it("rejects non-string entries", () => {
+    expect(() => normalizeChannels([42 as unknown as string])).toThrow(
+      expect.objectContaining({ status: 400 }),
+    );
+  });
+
+  it("createClient persists the normalized array", async () => {
+    const { db, state } = world();
+    const c = await createClient(db, "cA", {
+      name: "Cliente Canais",
+      channels: [" Instagram ", "INSTAGRAM", "WhatsApp"],
+    });
+    expect(c.channels).toEqual(["Instagram", "WhatsApp"]);
+    expect(state.clients.find((x: any) => x.id === (c as any).id)!.channels).toEqual([
+      "Instagram",
+      "WhatsApp",
+    ]);
+  });
+
+  it("updateClient replaces stored channels with the normalized array", async () => {
+    const { db, state } = world();
+    const c = await updateClient(db, "cA", "a1", {
+      channels: ["TikTok", "TIKTOK", "E-mail"],
+    });
+    expect((c as any).channels).toEqual(["TikTok", "E-mail"]);
+    expect(state.clients.find((x: any) => x.id === "a1")!.channels).toEqual([
+      "TikTok",
+      "E-mail",
+    ]);
+  });
+
+  it("updateClient leaves other fields untouched when only channels change", async () => {
+    const { db, state } = world();
+    const before = state.clients.find((x: any) => x.id === "a1");
+    await updateClient(db, "cA", "a1", { channels: ["WhatsApp"] });
+    const after = state.clients.find((x: any) => x.id === "a1");
+    expect(after!.name).toBe(before!.name);
+    expect(after!.status).toBe(before!.status);
+    expect(after!.channels).toEqual(["WhatsApp"]);
   });
 });

@@ -1,0 +1,222 @@
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
+import Settings from "../features/Settings";
+import MyAccountModal from "../features/MyAccountModal";
+import * as apiModule from "../lib/api";
+
+const mockSession = {
+  user: {
+    id: "user-1",
+    name: "Natan Massuia",
+    email: "natan@looply.com",
+    phone: "+55 11 99999-1111",
+    avatarUrl: "https://example.com/avatar.jpg",
+    role: "ADMIN" as const,
+    active: true,
+    createdAt: new Date().toISOString(),
+  },
+  activeCompanyId: "comp-1",
+  memberships: [
+    {
+      companyId: "comp-1",
+      companyName: "Looply Agência",
+      role: "ADMIN" as const,
+    },
+  ],
+  workspace: {
+    id: "comp-1",
+    name: "Looply Agência",
+    logoUrl: "https://example.com/logo.png",
+    template: "MARKETING_AGENCY" as const,
+    capabilities: ["CLIENTS" as const, "JOBS" as const],
+    status: "ACTIVE" as const,
+  },
+};
+
+const mockCompanySettings = {
+  id: "comp-1",
+  name: "Looply Agência",
+  slug: "looply-agencia",
+  logoUrl: "https://example.com/logo.png",
+  timezone: "America/Sao_Paulo",
+  locale: "pt-BR",
+  legalName: "Looply LTDA",
+  document: "00.000.000/0001-00",
+  email: "contato@looply.com",
+  phone: "+55 11 3000-0000",
+  website: "https://looply.com",
+  onboardedAt: new Date().toISOString(),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+function renderWithClient(ui: React.ReactElement) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+describe("Settings Feature — F12.2 Profile and Company Data", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(apiModule, "useMe").mockReturnValue({
+      data: mockSession,
+      isLoading: false,
+    } as any);
+    vi.spyOn(apiModule, "useCompanySettings").mockReturnValue({
+      data: mockCompanySettings,
+      isLoading: false,
+    } as any);
+    // Identity media hooks — no-op mocks (upload handled independently)
+    const noopMutation = { mutateAsync: vi.fn(), isPending: false } as any;
+    vi.spyOn(apiModule, "useUploadUserAvatar").mockReturnValue(noopMutation);
+    vi.spyOn(apiModule, "useDeleteUserAvatar").mockReturnValue(noopMutation);
+    vi.spyOn(apiModule, "useUploadCompanyLogo").mockReturnValue(noopMutation);
+    vi.spyOn(apiModule, "useDeleteCompanyLogo").mockReturnValue(noopMutation);
+  });
+
+  it("renders 'Minha conta' tab with user profile data and personal phone", () => {
+    renderWithClient(<Settings />);
+
+    expect(screen.getByText("Minha conta")).toBeInTheDocument();
+    expect(screen.getAllByText("Natan Massuia").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("natan@looply.com").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("+55 11 99999-1111")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Editar perfil" })).toBeInTheDocument();
+  });
+
+  it("opens MyAccountModal and allows editing profile name and personal phone", async () => {
+    const updateProfileMutate = vi.fn().mockResolvedValue({
+      user: {
+        id: "user-1",
+        name: "Natan M. Updated",
+        email: "natan@looply.com",
+        phone: "+55 11 98888-2222",
+      },
+    });
+
+    vi.spyOn(apiModule, "useUpdateProfile").mockReturnValue({
+      mutateAsync: updateProfileMutate,
+      isPending: false,
+    } as any);
+
+    renderWithClient(<MyAccountModal isOpen={true} onClose={vi.fn()} />);
+
+    // Click Editar button on modal
+    const editBtn = screen.getByRole("button", { name: "Editar" });
+    fireEvent.click(editBtn);
+
+    const nameInput = screen.getByLabelText("Nome completo");
+    fireEvent.change(nameInput, { target: { value: "Natan M. Updated" } });
+
+    const phoneInput = screen.getByLabelText("Telefone pessoal");
+    fireEvent.change(phoneInput, { target: { value: "16994050998" } });
+
+    const saveBtn = screen.getByRole("button", { name: "Salvar Perfil" });
+    fireEvent.click(saveBtn);
+
+    expect(updateProfileMutate).toHaveBeenCalledWith({
+      name: "Natan M. Updated",
+      email: "natan@looply.com",
+      phone: "16994050998",
+    });
+  });
+
+  it("renders Empresa tab with institutional business phone and logoUrl", async () => {
+    const updateCompanyMutate = vi.fn().mockResolvedValue({
+      company: { ...mockCompanySettings, phone: "+55 11 3555-5555" },
+    });
+
+    vi.spyOn(apiModule, "useUpdateCompanySettings").mockReturnValue({
+      mutateAsync: updateCompanyMutate,
+      isPending: false,
+    } as any);
+
+    renderWithClient(<Settings />);
+
+    // Switch to Empresa tab
+    const empresaTab = screen.getByRole("button", { name: "Empresa" });
+    fireEvent.click(empresaTab);
+
+    expect(screen.getByLabelText("Telefone empresarial")).toBeInTheDocument();
+    expect(screen.getByText("Usado nos dados institucionais e documentos da empresa.")).toBeInTheDocument();
+
+    const phoneInput = screen.getByLabelText("Telefone empresarial");
+    fireEvent.change(phoneInput, { target: { value: "1633224455" } });
+
+    const saveBtn = screen.getByRole("button", { name: "Salvar dados da empresa" });
+    fireEvent.click(saveBtn);
+
+    // PhoneInput normalizes to raw digits for the canonical API value.
+    expect(updateCompanyMutate).toHaveBeenCalledWith({
+      name: "Looply Agência",
+      timezone: "America/Sao_Paulo",
+      phone: "1633224455",
+    });
+  });
+
+  // F14 — appearance save sends ALL three of preset/mode/colors ONLY when the
+  // preset is CUSTOM; a non-CUSTOM preset omits customColors so the strict
+  // backend validator does not reject the request with "Erro de validação".
+  it("appearance save: non-CUSTOM preset omits customColors (avoids 400)", async () => {
+    const updateAppearanceMutate = vi.fn().mockResolvedValue({
+      appearance: { preset: "FLUX", mode: "LIGHT", customColors: null },
+    });
+    vi.spyOn(apiModule, "useUpdateSettingsAppearance").mockReturnValue({
+      mutateAsync: updateAppearanceMutate,
+      isPending: false,
+    } as any);
+
+    renderWithClient(<Settings />);
+    fireEvent.click(screen.getByRole("button", { name: "Aparência" }));
+    fireEvent.click(screen.getByRole("button", { name: /Flux/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar aparência" }));
+
+    expect(updateAppearanceMutate).toHaveBeenCalledWith({
+      preset: "FLUX",
+      mode: "LIGHT",
+    });
+    const body = updateAppearanceMutate.mock.calls[0][0];
+    expect(body).not.toHaveProperty("customColors");
+  });
+
+  it("appearance save: CUSTOM preset includes the six-color payload", async () => {
+    const updateAppearanceMutate = vi.fn().mockResolvedValue({
+      appearance: {
+        preset: "CUSTOM",
+        mode: "LIGHT",
+        customColors: {
+          primary: "#111111",
+          secondary: "#222222",
+          accent: "#333333",
+          surface: "#444444",
+          text: "#555555",
+          border: "#666666",
+        },
+      },
+    });
+    vi.spyOn(apiModule, "useUpdateSettingsAppearance").mockReturnValue({
+      mutateAsync: updateAppearanceMutate,
+      isPending: false,
+    } as any);
+
+    renderWithClient(<Settings />);
+    fireEvent.click(screen.getByRole("button", { name: "Aparência" }));
+    fireEvent.click(screen.getByRole("button", { name: /Customizado/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar aparência" }));
+
+    const body = updateAppearanceMutate.mock.calls[0][0];
+    expect(body.preset).toBe("CUSTOM");
+    expect(body.customColors).toBeTruthy();
+    expect(Object.keys(body.customColors).sort()).toEqual(
+      ["accent", "border", "primary", "secondary", "surface", "text"].sort(),
+    );
+  });
+});

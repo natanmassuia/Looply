@@ -127,7 +127,7 @@ describe("AuthShell — Final Figma Visual Contract", () => {
       "text-inverse",
     );
     expect(
-      screen.getByText("Clientes, jobs, agenda e aprovações conectados no mesmo fluxo.").className,
+      screen.getByText("Clientes, demandas, agenda e aprovações conectados no mesmo fluxo.").className,
     ).toContain("text-inverse-secondary");
     expect(screen.queryByText(/Looply — um produto Verbum Lab/i)).toBeNull();
   });
@@ -140,7 +140,7 @@ describe("AuthShell — Final Figma Visual Contract", () => {
 
     expect(screen.getByText("O que precisa da sua atenção hoje.")).toBeTruthy();
     expect(screen.getByText("18")).toBeTruthy();
-    expect(screen.getByText("Jobs ativos")).toBeTruthy();
+    expect(screen.getByText("Demandas ativas")).toBeTruthy();
     expect(screen.getByText("4")).toBeTruthy();
     expect(screen.getByText("Em aprovação")).toBeTruthy();
     expect(screen.getByText("3")).toBeTruthy();
@@ -159,27 +159,27 @@ describe("AuthShell — Final Figma Visual Contract", () => {
 
     expect(screen.getByText("Quem precisa de atenção agora.")).toBeTruthy();
     expect(screen.getByText("Aurora Clínica")).toBeTruthy();
-    expect(screen.getByText("Ana Martins · 3 jobs")).toBeTruthy();
+    expect(screen.getByText("Ana Martins · 3 demandas")).toBeTruthy();
     expect(screen.getByText("Mova Studio")).toBeTruthy();
-    expect(screen.getByText("Lucas Costa · 2 jobs")).toBeTruthy();
+    expect(screen.getByText("Lucas Costa · 2 demandas")).toBeTruthy();
     expect(screen.getByText("Nexo Educação")).toBeTruthy();
-    expect(screen.getByText("Natan Massuia · 1 job")).toBeTruthy();
+    expect(screen.getByText("Natan Massuia · 1 demanda")).toBeTruthy();
     expect(screen.getByText("12 clientes ativos · 3 precisam de atenção")).toBeTruthy();
     expect(assignSpy).not.toHaveBeenCalled();
   });
 
-  it("switches to Jobs view with canonical jobs and status OPERAÇÃO EM DIA", async () => {
+  it("switches to Demandas view with canonical demandas and status OPERAÇÃO EM DIA", async () => {
     const user = userEvent.setup();
     render(<Login />);
     const previewNav = screen.getByRole("navigation", { name: "Demonstração do produto" });
-    await user.click(within(previewNav).getByRole("button", { name: "Jobs" }));
+    await user.click(within(previewNav).getByRole("button", { name: "Demandas" }));
 
     expect(screen.getByText("Hoje, sem perder o contexto.")).toBeTruthy();
     expect(screen.getByText("Peças de agosto")).toBeTruthy();
     expect(screen.getByText("Mova Studio · Lucas")).toBeTruthy();
     expect(screen.getByText("Landing institucional")).toBeTruthy();
     expect(screen.getByText("Kit de anúncios")).toBeTruthy();
-    expect(screen.getByText("12 clientes · 8 jobs ativos · 3 aprovações")).toBeTruthy();
+    expect(screen.getByText("12 clientes · 8 demandas ativas · 3 aprovações")).toBeTruthy();
     expect(screen.getByText("OPERAÇÃO EM DIA")).toBeTruthy();
     expect(assignSpy).not.toHaveBeenCalled();
   });
