@@ -93,12 +93,19 @@ export default function AppLayout() {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Desktop navigation (md+). Below md the mobile shell renders instead. */}
-      <Sidebar user={data?.user} role={activeRole} />
+      <Sidebar
+        user={data?.user}
+        role={activeRole}
+        onLogout={() => logout.mutate()}
+        logoutPending={logout.isPending}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile top bar: brand + account menu (compact by design) */}
         <header className="flex shrink-0 items-center justify-between border-b border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-4 py-2.5 md:hidden">
-          <Logo size={32} />
+          <NavLink to="/dashboard" aria-label="Looply" className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] rounded-md">
+            <Logo size={32} />
+          </NavLink>
           <AccountMenu
             firstName={firstName}
             onLogout={() => logout.mutate()}
