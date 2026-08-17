@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
 import Clients from "../features/Clients";
 import * as apiModule from "../lib/api";
 import type { Client } from "../lib/types";
@@ -36,7 +37,11 @@ function renderWithClient(ui: React.ReactElement) {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   });
-  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </QueryClientProvider>,
+  );
 }
 
 describe("Clients Feature — B3 Functional Wiring", () => {
@@ -88,7 +93,8 @@ describe("Clients Feature — B3 Functional Wiring", () => {
     expect(screen.getByDisplayValue("Restaurante Aurora")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Ana Gerente")).toBeInTheDocument();
     expect(screen.getByDisplayValue("ana@aurora.com")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Instagram, Facebook")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Instagram$/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /^Facebook$/ })).toHaveAttribute("aria-pressed", "true");
 
     // Edit Name and Status
     const nameInput = screen.getByDisplayValue("Restaurante Aurora");
@@ -155,11 +161,11 @@ describe("Clients Feature — B3 Functional Wiring", () => {
     fireEvent.click(screen.getByLabelText("Excluir Café Solar"));
 
     // Verify modal content
-    expect(screen.getByText(/Tem certeza que deseja excluir o cliente/i)).toBeInTheDocument();
+    expect(screen.getByText(/Confirma a exclusão de/i)).toBeInTheDocument();
     expect(screen.getAllByText("Café Solar").length).toBeGreaterThanOrEqual(1);
 
     // Confirm deletion
-    const confirmBtn = screen.getByRole("button", { name: "Excluir cliente" });
+    const confirmBtn = screen.getByRole("button", { name: "Confirmar exclusão" });
     fireEvent.click(confirmBtn);
 
     expect(deleteMutate).toHaveBeenCalledWith("cli-2");
@@ -181,7 +187,7 @@ describe("Clients Feature — B3 Functional Wiring", () => {
     renderWithClient(<Clients />);
 
     fireEvent.click(screen.getByLabelText("Excluir Restaurante Aurora"));
-    const confirmBtn = screen.getByRole("button", { name: "Excluir cliente" });
+    const confirmBtn = screen.getByRole("button", { name: "Confirmar exclusão" });
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {
@@ -199,10 +205,245 @@ describe("Clients Feature — B3 Functional Wiring", () => {
 
     renderWithClient(<Clients />);
 
-    const searchInput = screen.getByPlaceholderText(/Buscar clientes por nome/i);
+    const searchInput = screen.getByPlaceholderText(/Buscar cliente por nome/i);
     fireEvent.change(searchInput, { target: { value: "Solar" } });
 
     expect(screen.getByText("Café Solar")).toBeInTheDocument();
     expect(screen.queryByText("Restaurante Aurora")).not.toBeInTheDocument();
+  });
+
+  it("renders interactive Demandas ativas counter and opens ClientDemandsModal on click", async () => {
+    vi.spyOn(apiModule, "useClients").mockReturnValue({
+      data: mockClients,
+      isLoading: false,
+    } as any);
+
+    vi.spyOn(apiModule, "useContents").mockReturnValue({
+      data: [
+        {
+          id: "cnt-1",
+          clientId: "cli-1",
+          title: "Post Promoção de Verão",
+          format: "POST",
+          status: "IN_REVIEW",
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      isLoading: false,
+    } as any);
+
+    renderWithClient(<Clients />);
+
+    const countBtn = screen.getByLabelText("3 demandas ativas de Restaurante Aurora");
+    expect(countBtn).toBeInTheDocument();
+    fireEvent.click(countBtn);
+
+    expect(screen.getByText("Demandas — Restaurante Aurora")).toBeInTheDocument();
+    expect(screen.getByText("Post Promoção de Verão")).toBeInTheDocument();
+  });
+
+  it("renders 'Abrir' action linking directly to /clients/:id and not dashboard", async () => {
+    vi.spyOn(apiModule, "useClients").mockReturnValue({
+      data: mockClients,
+      isLoading: false,
+    } as any);
+
+    renderWithClient(<Clients />);
+
+    const openLinks = screen.getAllByRole("link", { name: "Abrir" });
+    expect(openLinks.length).toBe(2);
+    // Order is name-sorted (Café Solar before Restaurante Aurora); assert by href set.
+    const hrefs = openLinks.map((l) => l.getAttribute("href"));
+    expect(hrefs).toContain("/clients/cli-1");
+    expect(hrefs).toContain("/clients/cli-2");
+  });
+
+  it("create form uses structured channel picker with Outro custom channel", async () => {
+    vi.spyOn(apiModule, "useClients").mockReturnValue({
+      data: mockClients,
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    const createMutate = vi.fn().mockResolvedValue({ id: "cli-new" });
+    vi.spyOn(apiModule, "useCreateClient").mockReturnValue({
+      mutateAsync: createMutate,
+      isPending: false,
+    } as any);
+
+    renderWithClient(<Clients />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Novo cliente/i }));
+
+    // Default blank form ships Instagram selected; toggle it off, TikTok on
+    fireEvent.click(screen.getByRole("button", { name: /^Instagram$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^TikTok$/ }));
+
+    // Outro reveals the custom channel input; add Pinterest
+    fireEvent.click(screen.getByRole("button", { name: /^Outro$/ }));
+    const customInput = screen.getByLabelText("Qual canal?");
+    fireEvent.change(customInput, { target: { value: "Pinterest" } });
+    fireEvent.click(screen.getByRole("button", { name: "Adicionar canal personalizado" }));
+
+    // Duplicate (case-insensitive) custom entry is dropped
+    fireEvent.change(customInput, { target: { value: "pinterest" } });
+    fireEvent.click(screen.getByRole("button", { name: "Adicionar canal personalizado" }));
+    expect(screen.getAllByText("Pinterest").length).toBe(1);
+
+    fireEvent.change(screen.getByPlaceholderText("Ex.: Restaurante Aurora"), { target: { value: "Cliente Canais" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cadastrar" }));
+
+    await waitFor(() => {
+      expect(createMutate).toHaveBeenCalledWith(
+        expect.objectContaining({ channels: ["TikTok", "Pinterest"] }),
+      );
+    });
+  });
+
+  it("unchecking Outro discards custom channels but keeps predefined ones", async () => {
+    vi.spyOn(apiModule, "useClients").mockReturnValue({
+      data: [
+        { ...mockClients[0], channels: ["WhatsApp", "Telegram"] },
+      ],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    const updateMutate = vi.fn().mockResolvedValue(null);
+    vi.spyOn(apiModule, "useUpdateClient").mockReturnValue({
+      mutateAsync: updateMutate,
+      isPending: false,
+    } as any);
+
+    renderWithClient(<Clients />);
+
+    fireEvent.click(screen.getByLabelText("Editar Restaurante Aurora"));
+    // Edit form opens with WhatsApp (predefined) + Telegram (custom, so Outro is open)
+    expect(screen.getByLabelText("Qual canal?")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Outro$/ }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Salvar alterações" }));
+
+    await waitFor(() => {
+      expect(updateMutate).toHaveBeenCalledWith(
+        expect.objectContaining({ body: expect.objectContaining({ channels: ["WhatsApp"] }) }),
+      );
+    });
+  });
+
+  // F14.1.1 — unified client editor contract.
+  it("renders client logo on list cards when logoUrl is present", () => {
+    vi.spyOn(apiModule, "useClients").mockReturnValue({
+      data: [
+        { ...mockClients[0], logoUrl: "/api/media/file?key=company%2Fc%2Fclients%2Fcli-1%2Flogo%2F1.png" },
+      ],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    renderWithClient(<Clients />);
+
+    const logo = screen.getByAltText("Restaurante Aurora");
+    expect(logo.tagName).toBe("IMG");
+    expect(logo).toHaveAttribute(
+      "src",
+      "/api/media/file?key=company%2Fc%2Fclients%2Fcli-1%2Flogo%2F1.png",
+    );
+  });
+
+  it("opens the canonical editor with image upload from the list", () => {
+    vi.spyOn(apiModule, "useClients").mockReturnValue({
+      data: mockClients,
+      isLoading: false,
+    } as any);
+    vi.spyOn(apiModule, "useUpdateClient").mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue({}),
+      isPending: false,
+    } as any);
+
+    renderWithClient(<Clients />);
+    fireEvent.click(screen.getByLabelText("Editar Restaurante Aurora"));
+
+    // Canonical editor exposes photo upload + channel picker + all fields.
+    expect(screen.getByText("Logo do cliente")).toBeInTheDocument();
+    expect(screen.getByLabelText("Canais")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Instagram$/ })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  // F14.3 — operational filters.
+  it("status filter: only ACTIVE clients shown when 'Ativos' selected", () => {
+    vi.spyOn(apiModule, "useClients").mockReturnValue({
+      data: mockClients,
+      isLoading: false,
+    } as any);
+
+    renderWithClient(<Clients />);
+    fireEvent.click(screen.getByRole("button", { name: "Ativos" }));
+
+    expect(screen.getByText("Restaurante Aurora")).toBeInTheDocument(); // ACTIVE
+    expect(screen.queryByText("Café Solar")).not.toBeInTheDocument(); // PROSPECT
+  });
+
+  it("pending-demand filter: only clients with activeContents > 0 shown", () => {
+    vi.spyOn(apiModule, "useClients").mockReturnValue({
+      data: [
+        { ...mockClients[0], activeContents: 3 },
+        { ...mockClients[1], activeContents: 0 },
+      ],
+      isLoading: false,
+    } as any);
+
+    renderWithClient(<Clients />);
+    fireEvent.click(screen.getByRole("button", { name: "Com demandas pendentes" }));
+
+    expect(screen.getByText("Restaurante Aurora")).toBeInTheDocument();
+    expect(screen.queryByText("Café Solar")).not.toBeInTheDocument();
+  });
+
+  it("channel filter via 'Mais filtros' sheet narrows results", () => {
+    vi.spyOn(apiModule, "useClients").mockReturnValue({
+      data: mockClients,
+      isLoading: false,
+    } as any);
+
+    renderWithClient(<Clients />);
+    fireEvent.click(screen.getByRole("button", { name: /Mais filtros/ }));
+    fireEvent.change(screen.getByLabelText("Filtrar por canal"), { target: { value: "Facebook" } });
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+
+    // Only Restaurante Aurora has Facebook in channels.
+    expect(screen.getByText("Restaurante Aurora")).toBeInTheDocument();
+    expect(screen.queryByText("Café Solar")).not.toBeInTheDocument();
+  });
+
+  it("sort by demand count puts the busiest client first", () => {
+    vi.spyOn(apiModule, "useClients").mockReturnValue({
+      data: [
+        { ...mockClients[0], activeContents: 1 },
+        { ...mockClients[1], activeContents: 5 },
+      ],
+      isLoading: false,
+    } as any);
+
+    renderWithClient(<Clients />);
+    fireEvent.change(screen.getByLabelText("Ordenar clientes"), { target: { value: "demand-desc" } });
+
+    const cards = screen.getAllByRole("link", { name: "Abrir" });
+    expect(cards[0]).toHaveAttribute("href", "/clients/cli-2"); // Café Solar (5 demands)
+    expect(cards[1]).toHaveAttribute("href", "/clients/cli-1");
+  });
+
+  it("clear filters resets to all clients", () => {
+    vi.spyOn(apiModule, "useClients").mockReturnValue({
+      data: mockClients,
+      isLoading: false,
+    } as any);
+
+    renderWithClient(<Clients />);
+    fireEvent.click(screen.getByRole("button", { name: "Ativos" }));
+    fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+
+    expect(screen.getByText("Restaurante Aurora")).toBeInTheDocument();
+    expect(screen.getByText("Café Solar")).toBeInTheDocument();
   });
 });

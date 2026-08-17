@@ -61,8 +61,10 @@ router.get("/summary", requireCapability(Capability.WORKFLOW), asyncHandler(asyn
 }));
 
 router.get("/:id/activity", requireCapability(Capability.ACTIVITY), asyncHandler(async (req, res) => {
-  const activities = await listJobActivities(prisma, req.auth!.companyId, req.params.id);
-  res.json({ activities });
+  const limit = typeof req.query.limit === "string" ? Number(req.query.limit) : undefined;
+  const offset = typeof req.query.offset === "string" ? Number(req.query.offset) : undefined;
+  const result = await listJobActivities(prisma, req.auth!.companyId, req.params.id, { limit, offset });
+  res.json(result);
 }));
 
 router.get("/:id", asyncHandler(async (req, res) => {

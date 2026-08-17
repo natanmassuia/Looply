@@ -20,12 +20,25 @@ export async function createActivity(
   });
 }
 
-export async function listJobActivities(db: DB, companyId: string, jobId: string) {
+export async function listJobActivities(
+  db: DB,
+  companyId: string,
+  jobId: string,
+  opts?: { limit?: number; offset?: number },
+) {
   const job = await db.job.findFirst({ where: { id: jobId, companyId }, select: { id: true } });
   if (!job) throw notFound("Job não encontrado");
-  return db.activity.findMany({
-    where: { companyId, jobId },
-    orderBy: { createdAt: "asc" },
-    select: { id: true, jobId: true, actorUserId: true, type: true, metadata: true, createdAt: true },
-  });
+  const limit = opts?.limit && opts.limit > 0 ? Math.min(opts.limit, 100) : 50;
+  const offset = opts?.offset && opts.offset > 0 ? opts.offset : 0;
+  const [activities, total] = await Promise.all([
+    db.activity.findMany({
+      where: { companyId, jobId },
+      orderBy: { createdAt: "desc" },
+      skip: offset,
+      take: limit,
+      select: { id: true, jobId: true, actorUserId: true, type: true, metadata: true, createdAt: true },
+    }),
+    db.activity.count({ where: { companyId, jobId } }),
+  ]);
+  return { activities, total, limit, offset };
 }

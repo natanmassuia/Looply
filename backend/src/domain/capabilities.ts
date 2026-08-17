@@ -89,6 +89,8 @@ export function hasCapability(
 export interface WorkspaceContext {
   id: string;
   name: string;
+  logoUrl?: string | null;
+  timezone?: string | null;
   template: WorkspaceTemplate | null;
   capabilities: Capability[];
   status: "UNCONFIGURED" | "ACTIVE";
@@ -98,11 +100,15 @@ export interface WorkspaceContext {
 export function resolveWorkspaceContext(company: {
   id: string;
   name: string;
+  logoUrl?: string | null;
+  timezone?: string | null;
   workspaceTemplate: WorkspaceTemplate | null;
 } & Partial<AppearanceColumns>): WorkspaceContext {
   return {
     id: company.id,
     name: company.name,
+    logoUrl: company.logoUrl ?? null,
+    timezone: company.timezone ?? null,
     template: company.workspaceTemplate,
     capabilities: capabilitiesForTemplate(company.workspaceTemplate),
     status: company.workspaceTemplate ? "ACTIVE" : "UNCONFIGURED",

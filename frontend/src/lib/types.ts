@@ -57,6 +57,7 @@ export interface CompanySettings {
   id: string;
   name: string;
   slug: string | null;
+  logoUrl?: string | null;
   timezone: string;
   locale: string;
   legalName: string | null;
@@ -72,10 +73,12 @@ export interface CompanySettings {
 export interface WorkspaceContext {
   id: string;
   name: string;
+  logoUrl?: string | null;
+  timezone?: string | null;
   template: WorkspaceTemplate | null;
-  capabilities: Capability[];
-  status: "ACTIVE" | "UNCONFIGURED";
-  appearance?: WorkspaceAppearance | null;
+  capabilities: string[];
+  status: "UNCONFIGURED" | "ACTIVE";
+  appearance?: WorkspaceAppearance;
 }
 
 export type ContentStatus =
@@ -99,6 +102,7 @@ export interface User {
   email: string;
   role: UserRole;
   avatarUrl?: string | null;
+  phone?: string | null;
   active: boolean;
   createdAt: string;
 }
@@ -112,6 +116,7 @@ export interface CompanyMember {
     id: string;
     name: string;
     email: string;
+    avatarUrl?: string | null;
     active: boolean;
   };
 }
@@ -140,6 +145,7 @@ export interface CreateInvitationResponse {
 export interface Client {
   id: string;
   name: string;
+  logoUrl?: string | null;
   brandColor?: string | null;
   status: ClientStatus;
   primaryContactName?: string | null;
@@ -306,6 +312,18 @@ export interface AppointmentListResponse {
   pages: number;
 }
 
+export interface DashboardUpcomingEvent {
+  id: string;
+  jobId?: string;
+  appointmentId?: string;
+  type: string;
+  at: string;
+  title: string;
+  client?: { id: string; name: string; brandColor?: string | null } | null;
+  lifecycleStatus?: string | null;
+  currentStage?: { id: string; name: string; position: number } | null;
+}
+
 export interface Dashboard {
   counts: {
     totalContents: number;
@@ -321,4 +339,11 @@ export interface Dashboard {
   };
   recentContents: ContentListItem[];
   needingAttention: ContentListItem[];
+  workspace?: { timezone?: string | null };
+  upcoming?: {
+    timezone?: string;
+    events: DashboardUpcomingEvent[];
+    totalEvents: number;
+    truncated: boolean;
+  };
 }

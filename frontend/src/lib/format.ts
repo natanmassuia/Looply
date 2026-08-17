@@ -81,6 +81,52 @@ export function formatDateTime(iso?: string | null): string {
   }
 }
 
+// F14.2 — timezone-aware date/time formatting using the workspace/company
+// timezone (Company.timezone), NOT the browser's implicit zone.
+export function formatInTimeZone(iso: string, timeZone: string | null | undefined, opts: Intl.DateTimeFormatOptions): string {
+  if (!iso) return "—";
+  try {
+    const tz = timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return new Intl.DateTimeFormat("pt-BR", { timeZone: tz, ...opts }).format(new Date(iso));
+  } catch {
+    try {
+      return new Intl.DateTimeFormat("pt-BR", opts).format(new Date(iso));
+    } catch {
+      return "—";
+    }
+  }
+}
+
+// Current wall-clock in the workspace timezone (used by the Dashboard clock).
+export function formatClock(now: Date, timeZone: string | null | undefined): string {
+  try {
+    const tz = timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return new Intl.DateTimeFormat("pt-BR", { timeZone: tz, hour: "2-digit", minute: "2-digit" }).format(now);
+  } catch {
+    return now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  }
+}
+
+// Short appointment line, e.g. "18 ago · 14:00".
+export function formatAppointmentLine(iso: string, timeZone: string | null | undefined): string {
+  const date = formatInTimeZone(iso, timeZone, { day: "2-digit", month: "short" });
+  const time = formatInTimeZone(iso, timeZone, { hour: "2-digit", minute: "2-digit" });
+  return `${date} · ${time}`;
+}
+
+// Human-friendly GMT offset for the workspace timezone label.
+export function gmtOffsetLabel(timeZone: string | null | undefined): string {
+  try {
+    const tz = timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "shortOffset" }).formatToParts(now);
+    const name = parts.find((p) => p.type === "timeZoneName")?.value;
+    return name ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export function relativeTime(iso?: string | null): string {
   if (!iso) return "—";
   const diff = Date.now() - new Date(iso).getTime();

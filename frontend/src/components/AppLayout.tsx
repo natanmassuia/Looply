@@ -1,23 +1,28 @@
 import { useState, useEffect } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import Sidebar, { NAV } from "./Sidebar";
 import { Logo } from "./Logo";
+import { IconDashboard, IconSettings } from "./Icons";
 import { useLogout, useMe } from "../lib/api";
+import MyAccountModal from "../features/MyAccountModal";
 
 // Derive mobile primary and secondary navigation from canonical NAV registry.
 const MOBILE_PRIMARY = NAV.filter((n) => n.mobilePlacement === "primary");
 const MOBILE_SECONDARY = NAV.filter((n) => n.mobilePlacement === "secondary");
 
-// Compact account menu (mobile top bar): Equipe + Sair. No focus trap —
-// Escape closes, backdrop closes, links close on navigate.
+// Compact account menu (mobile top bar): Minha conta + Equipe/Configurações + Sair.
 function AccountMenu({
   firstName,
+  avatarUrl,
   onLogout,
   logoutPending,
+  onOpenMyAccount,
 }: {
   firstName?: string;
+  avatarUrl?: string | null;
   onLogout: () => void;
   logoutPending: boolean;
+  onOpenMyAccount: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
@@ -39,9 +44,12 @@ function AccountMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Conta"
-        className="rounded-full bg-[var(--looply-color-bg-subtle)] px-3 py-1.5 text-[13px] font-semibold text-[var(--looply-color-text-primary)] transition-colors hover:text-[var(--looply-color-text-brand)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
+        className="flex items-center gap-1.5 rounded-full bg-[var(--looply-color-bg-subtle)] px-2 py-1 text-[13px] font-semibold text-[var(--looply-color-text-primary)] transition-colors hover:text-[var(--looply-color-text-brand)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
       >
-        {firstName ?? "Conta"}
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="" className="h-6 w-6 rounded-full object-cover" />
+        ) : null}
+        <span className="px-0.5">{firstName ?? "Conta"}</span>
       </button>
       {open && (
         <>
@@ -57,6 +65,16 @@ function AccountMenu({
                 {firstName}
               </p>
             )}
+            <button
+              type="button"
+              onClick={() => {
+                close();
+                onOpenMyAccount();
+              }}
+              className="block w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium text-[var(--looply-color-text-primary)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
+            >
+              Minha conta
+            </button>
             {MOBILE_SECONDARY.map(({ to, label }) => (
               <NavLink
                 key={to}
@@ -71,7 +89,7 @@ function AccountMenu({
               type="button"
               onClick={onLogout}
               disabled={logoutPending}
-              className="block w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium text-[var(--looply-color-text-primary)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] disabled:opacity-50"
+              className="block w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium text-[var(--looply-color-status-danger)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] disabled:opacity-50"
             >
               {logoutPending ? "Saindo..." : "Sair"}
             </button>
@@ -84,56 +102,93 @@ function AccountMenu({
 
 export default function AppLayout() {
   const logout = useLogout();
+  const navigate = useNavigate();
   const { data } = useMe();
+  const [myAccountOpen, setMyAccountOpen] = useState(false);
   const activeRole = data?.memberships?.find(
     (m) => m.companyId === data.activeCompanyId,
   )?.role;
   const firstName = data?.user?.name?.split(" ")[0];
+  const workspaceName = data?.workspace?.name ?? data?.memberships?.[0]?.companyName;
+
+  // Logout: server revokes the session, all private cache is cleared, then we
+  // navigate to /login immediately — no F5, no second navigation.
+  const handleLogout = () => {
+    logout.mutate(undefined, {
+      onSuccess: () => navigate("/login", { replace: true }),
+      onError: () => navigate("/login", { replace: true }),
+    });
+  };
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-dvh overflow-hidden">
       {/* Desktop navigation (md+). Below md the mobile shell renders instead. */}
       <Sidebar
         user={data?.user}
         role={activeRole}
-        onLogout={() => logout.mutate()}
+        workspaceName={workspaceName}
+        companyLogoUrl={data?.workspace?.logoUrl}
+        onLogout={handleLogout}
         logoutPending={logout.isPending}
+        onOpenMyAccount={() => setMyAccountOpen(true)}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Mobile top bar: brand + account menu (compact by design) */}
+        {/* Mobile top bar: brand + home affordance + account menu */}
         <header className="flex shrink-0 items-center justify-between border-b border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-4 py-2.5 md:hidden">
-          <NavLink to="/dashboard" aria-label="Looply" className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] rounded-md">
-            <Logo size={32} />
+          <NavLink
+            to="/dashboard"
+            aria-label="Ir para Visão geral"
+            title="Ir para Visão geral"
+            className="flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-0.5 transition-colors hover:bg-[var(--looply-color-bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
+          >
+            <Logo size={28} />
+            <IconDashboard className="h-4 w-4 text-[var(--looply-color-text-brand)]" aria-hidden="true" />
+            <span className="sr-only">Ir para Visão geral</span>
           </NavLink>
-          <AccountMenu
-            firstName={firstName}
-            onLogout={() => logout.mutate()}
-            logoutPending={logout.isPending}
-          />
+          <div className="flex shrink-0 items-center gap-1">
+            <NavLink
+              to="/settings"
+              aria-label="Configurações"
+              title="Configurações"
+              className={({ isActive }) =>
+                `flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-[var(--looply-color-bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] ${
+                  isActive
+                    ? "text-[var(--looply-color-text-brand)]"
+                    : "text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
+                }`
+              }
+            >
+              <IconSettings className="h-[18px] w-[18px]" aria-hidden="true" />
+            </NavLink>
+            <AccountMenu
+              firstName={firstName}
+              avatarUrl={data?.user?.avatarUrl}
+              onLogout={handleLogout}
+              logoutPending={logout.isPending}
+              onOpenMyAccount={() => setMyAccountOpen(true)}
+            />
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto bg-[var(--looply-color-bg-canvas)]">
           <div className="mx-auto w-full px-4 py-4 md:px-6 md:py-6 lg:px-8">
-            <div className="mb-4 hidden items-center justify-end gap-3 text-sm md:flex">
-              <span className="text-[var(--looply-color-text-muted)]">{data?.user?.name}</span>
-              <button
-                onClick={() => logout.mutate()}
-                disabled={logout.isPending}
-                className="btn-secondary btn-sm"
-              >
-                Sair
-              </button>
-            </div>
             <Outlet />
           </div>
         </main>
 
+        <MyAccountModal
+          isOpen={myAccountOpen}
+          onClose={() => setMyAccountOpen(false)}
+        />
+
         {/* Mobile primary navigation — in flow (no fixed overlay, content is
-            never hidden behind it) */}
+            never hidden behind it). Sticky-by-position via shrink-0 inside the
+            locked h-dvh shell: always reachable without scrolling. Safe-area
+            inset padding so iOS/Android gesture bar never overlaps. */}
         <nav
           aria-label="Navegação principal"
-          className="flex shrink-0 border-t border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] md:hidden"
+          className="flex shrink-0 border-t border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] pb-[env(safe-area-inset-bottom)] md:hidden"
         >
           {MOBILE_PRIMARY.map(({ to, short, Icon, end }) => (
             <NavLink

@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../lib/db";
-import { asyncHandler, unauthorized } from "../lib/errors";
-import { tooManyRequests } from "../lib/errors";
+import { asyncHandler, unauthorized, badRequest, conflict, tooManyRequests } from "../lib/errors";
 import { z } from "zod";
 import { parse } from "../lib/parse";
 import { setSessionCookie, clearSessionCookie, cookiesFromReq, SESSION_COOKIE } from "../lib/session";
@@ -21,6 +20,13 @@ const loginSchema = z.object({
 });
 
 const switchSchema = z.object({ companyId: z.string().min(1).max(64) });
+
+const updateProfileSchema = z.object({
+  name: z.string().min(1).max(120).optional(),
+  email: z.string().email().max(160).optional(),
+  phone: z.string().max(40).nullable().optional(),
+  avatarUrl: z.string().url().max(500).nullable().optional(),
+});
 
 router.post(
   "/login",
@@ -103,7 +109,7 @@ router.get(
     const [user, memberships, company] = await Promise.all([
       prisma.user.findUnique({
         where: { id: auth.userId },
-        select: { id: true, name: true, email: true, active: true },
+        select: { id: true, name: true, email: true, phone: true, avatarUrl: true, active: true },
       }),
       prisma.companyMember.findMany({
         where: { userId: auth.userId, isActive: true, company: { isActive: true } },
@@ -118,6 +124,8 @@ router.get(
         select: {
           id: true,
           name: true,
+          logoUrl: true,
+          timezone: true,
           workspaceTemplate: true,
           appearancePreset: true,
           appearanceMode: true,
@@ -132,7 +140,13 @@ router.get(
     ]);
     if (!user || !user.active) throw unauthorized();
     res.json({
-      user: { id: user.id, name: user.name, email: user.email },
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        avatarUrl: user.avatarUrl,
+      },
       activeCompanyId: auth.companyId,
       mustChangePassword: req.mustChangePassword === true,
       memberships: memberships.map((m) => ({
@@ -142,6 +156,43 @@ router.get(
       })),
       workspace: company ? resolveWorkspaceContext(company) : null,
     });
+  }),
+);
+
+router.patch(
+  "/me",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const auth = req.auth;
+    if (!auth) throw unauthorized();
+    const input = parse(updateProfileSchema, req.body);
+
+    if (input.name !== undefined && !input.name.trim()) {
+      throw badRequest("Nome não pode ser vazio");
+    }
+
+    if (input.email !== undefined) {
+      const normalizedEmail = input.email.toLowerCase().trim();
+      const existing = await prisma.user.findFirst({
+        where: { email: normalizedEmail, NOT: { id: auth.userId } },
+      });
+      if (existing) {
+        throw conflict("Já existe um usuário cadastrado com este e-mail");
+      }
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: auth.userId },
+      data: {
+        ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+        ...(input.email !== undefined ? { email: input.email.toLowerCase().trim() } : {}),
+        ...(input.phone !== undefined ? { phone: input.phone ? input.phone.trim() : null } : {}),
+        ...(input.avatarUrl !== undefined ? { avatarUrl: input.avatarUrl } : {}),
+      },
+      select: { id: true, name: true, email: true, phone: true, avatarUrl: true, role: true },
+    });
+
+    res.json({ user: updated });
   }),
 );
 

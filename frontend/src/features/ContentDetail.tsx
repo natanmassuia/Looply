@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import {
   useContent,
@@ -12,6 +12,7 @@ import {
   useDownloadJobFile,
   useDeleteJobFile,
   useJobActivity,
+  useJobActivityPage,
   ApiError,
 } from "../lib/api";
 import {
@@ -23,6 +24,7 @@ import {
   relativeTime,
 } from "../lib/format";
 import { Card, ErrorState, MediaPreview, PageHeader, Spinner } from "../components/common";
+import ModalOrSheet from "../components/ModalOrSheet";
 import StatusPill from "../components/StatusPill";
 import {
   IconCheck,
@@ -36,7 +38,7 @@ import {
   IconFileText,
   IconTrash,
 } from "../components/Icons";
-import type { ActivityType, ContentVersion } from "../lib/types";
+import type { ActivityType, ContentVersion, JobActivity } from "../lib/types";
 
 export default function ContentDetail() {
   const { id = "" } = useParams();
@@ -110,7 +112,7 @@ export default function ContentDetail() {
     if (!content) return;
     setEditErr(null);
     if (!editForm.title.trim()) {
-      setEditErr("Informe o título do job.");
+      setEditErr("Informe o título da demanda.");
       return;
     }
 
@@ -127,11 +129,11 @@ export default function ContentDetail() {
         },
       });
       setShowEditModal(false);
-      setEditSuccessNotice("Detalhes do job atualizados com sucesso.");
+      setEditSuccessNotice("Detalhes da demanda atualizados com sucesso.");
       setTimeout(() => setEditSuccessNotice(null), 4000);
       refetch();
     } catch (e) {
-      setEditErr(e instanceof ApiError ? e.message : "Falha ao atualizar detalhes do job.");
+      setEditErr(e instanceof ApiError ? e.message : "Falha ao atualizar detalhes da demanda.");
     }
   };
 
@@ -140,11 +142,11 @@ export default function ContentDetail() {
     setErr(null);
     try {
       await ungroupMutation.mutateAsync(content.id);
-      setEditSuccessNotice("Job desagrupado com sucesso.");
+      setEditSuccessNotice("Demanda desagrupada com sucesso.");
       setTimeout(() => setEditSuccessNotice(null), 4000);
       refetch();
     } catch (e) {
-      setErr(e instanceof ApiError ? e.message : "Falha ao desagrupar job.");
+      setErr(e instanceof ApiError ? e.message : "Falha ao desagrupar demanda.");
     }
   };
 
@@ -170,9 +172,9 @@ export default function ContentDetail() {
     }
   };
 
-  if (isLoading) return <Spinner label="Carregando job…" />;
+  if (isLoading) return <Spinner label="Carregando demanda…" />;
   if (isError) return <ErrorState message={(error as Error)?.message} />;
-  if (!content || !currentVersion) return <ErrorState message="Job não encontrado." />;
+  if (!content || !currentVersion) return <ErrorState message="Demanda não encontrada." />;
 
   const onSendApproval = async () => {
     const res = (await run(sendApproval)) as { approvalUrl?: string } | null;
@@ -189,7 +191,7 @@ export default function ContentDetail() {
       <PageHeader
         title={content.title}
         subtitle={`${FORMAT_LABEL[content.format]} · ${content.client?.name} · Versão ${currentVersion.versionNumber}`}
-        crumbs={[{ label: "Jobs", to: "/contents" }, { label: content.title }]}
+        crumbs={[{ label: "Demandas", to: "/contents" }, { label: content.title }]}
         actions={
           <div className="flex items-center gap-2">
             <button
@@ -220,102 +222,94 @@ export default function ContentDetail() {
       {/* Grouped state banner */}
       {content.parentId && (
         <div className="mb-5 flex flex-col gap-2 rounded-lg border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between text-xs text-[var(--looply-color-text-muted)]">
-          <span>Este job faz parte de um agrupamento de conteúdos.</span>
+          <span>Este conteúdo faz parte de um agrupamento de demandas.</span>
           <button
             type="button"
             className="btn-ghost btn-sm text-xs font-medium text-[var(--looply-color-action-primary)] hover:bg-[var(--looply-color-action-primary)]/10 w-fit"
             disabled={ungroupMutation.isPending}
             onClick={handleUngroup}
           >
-            {ungroupMutation.isPending ? "Desagrupando…" : "Desagrupar job"}
+            {ungroupMutation.isPending ? "Desagrupando…" : "Desagrupar demanda"}
           </button>
         </div>
       )}
 
-      {/* Edit Job Details Modal */}
-      {showEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <Card className="w-full max-w-lg shadow-looply-lg">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="section-title">Editar detalhes do job</h3>
-              <button
-                className="btn-ghost btn-sm"
-                onClick={() => setShowEditModal(false)}
-                aria-label="Fechar"
-              >
-                <IconX className="h-3.5 w-3.5" />
-              </button>
+      {/* Edit Demand Details Modal / Bottom Sheet */}
+      <ModalOrSheet
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Editar detalhes da demanda"
+        subtitle="Atualize os dados e notas operacionais desta demanda"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-3.5">
+          <div>
+            <label className="label">Título</label>
+            <input
+              className="input"
+              value={editForm.title}
+              onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label className="label">Cliente</label>
+            <select
+              className="input"
+              value={editForm.clientId}
+              onChange={(e) => setEditForm((f) => ({ ...f, clientId: e.target.value }))}
+            >
+              {clients?.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">Publicação prevista</label>
+            <input
+              className="input"
+              type="date"
+              value={editForm.publicationTarget}
+              onChange={(e) =>
+                setEditForm((f) => ({ ...f, publicationTarget: e.target.value }))
+              }
+            />
+          </div>
+          <div>
+            <label className="label">Notas internas</label>
+            <textarea
+              className="input min-h-[80px] resize-none"
+              value={editForm.notes}
+              onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+              placeholder="Observações e notas sobre esta demanda…"
+            />
+          </div>
+          {editErr && (
+            <div className="rounded-lg bg-[var(--looply-color-status-danger)]/10 px-3 py-2 text-sm text-[var(--looply-color-status-danger)]">
+              {editErr}
             </div>
-            <div className="space-y-3 text-sm">
-              <div>
-                <label className="label">Título</label>
-                <input
-                  className="input"
-                  value={editForm.title}
-                  onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="label">Cliente</label>
-                <select
-                  className="input"
-                  value={editForm.clientId}
-                  onChange={(e) => setEditForm((f) => ({ ...f, clientId: e.target.value }))}
-                >
-                  {clients?.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="label">Publicação prevista</label>
-                <input
-                  className="input"
-                  type="date"
-                  value={editForm.publicationTarget}
-                  onChange={(e) =>
-                    setEditForm((f) => ({ ...f, publicationTarget: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <label className="label">Notas internas</label>
-                <textarea
-                  className="input min-h-[80px] resize-none"
-                  value={editForm.notes}
-                  onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
-                  placeholder="Observações e notas sobre este job…"
-                />
-              </div>
-            </div>
-            {editErr && (
-              <div className="mt-3 rounded-lg bg-[var(--looply-color-status-danger)]/10 px-3 py-2 text-sm text-[var(--looply-color-status-danger)]">
-                {editErr}
-              </div>
-            )}
-            <div className="mt-5 flex justify-end gap-2 border-t border-[var(--looply-color-border-default)] pt-4">
-              <button
-                type="button"
-                className="btn-secondary"
-                disabled={updateJob.isPending}
-                onClick={() => setShowEditModal(false)}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={updateJob.isPending}
-                onClick={saveJobEdit}
-              >
-                {updateJob.isPending ? "Salvando…" : "Salvar alterações"}
-              </button>
-            </div>
-          </Card>
+          )}
+          <div className="flex justify-end gap-2 border-t border-[var(--looply-color-border-default)] pt-4">
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              disabled={updateJob.isPending}
+              onClick={() => setShowEditModal(false)}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="btn-primary btn-sm"
+              disabled={updateJob.isPending}
+              onClick={saveJobEdit}
+            >
+              {updateJob.isPending ? "Salvando…" : "Salvar alterações"}
+            </button>
+          </div>
         </div>
-      )}
+      </ModalOrSheet>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         {/* Left: preview + content (~65%) */}
@@ -419,7 +413,7 @@ export default function ContentDetail() {
               <div className="py-2 text-xs text-[var(--looply-color-text-muted)]">Carregando arquivos…</div>
             ) : !jobFiles?.files || jobFiles.files.length === 0 ? (
               <div className="rounded-lg border border-dashed border-[var(--looply-color-border-default)] p-4 text-center text-xs text-[var(--looply-color-text-muted)]">
-                Nenhum arquivo anexado a este job. Clique em "Enviar arquivo" para fazer upload.
+                Nenhum arquivo anexado a esta demanda. Clique em "Enviar arquivo" para fazer upload.
               </div>
             ) : (
               <div className="divide-y divide-[var(--looply-color-border-default)]">
@@ -844,17 +838,17 @@ function VersionHistory({ versions }: { versions?: ContentVersion[] }) {
 function activityCopy(type: ActivityType): { title: string; defaultActor: string } {
   switch (type) {
     case "JOB_CREATED":
-      return { title: "criou este job", defaultActor: "Sistema" };
+      return { title: "criou esta demanda", defaultActor: "Sistema" };
     case "JOB_UPDATED":
-      return { title: "atualizou os detalhes do job", defaultActor: "Membro da equipe" };
+      return { title: "atualizou os detalhes da demanda", defaultActor: "Membro da equipe" };
     case "JOB_STAGE_CHANGED":
-      return { title: "alterou a etapa do job", defaultActor: "Membro da equipe" };
+      return { title: "alterou a etapa da demanda", defaultActor: "Membro da equipe" };
     case "JOB_COMPLETED":
-      return { title: "marcou o job como concluído", defaultActor: "Membro da equipe" };
+      return { title: "marcou a demanda como concluída", defaultActor: "Membro da equipe" };
     case "JOB_CANCELLED":
-      return { title: "cancelou este job", defaultActor: "Membro da equipe" };
+      return { title: "cancelou esta demanda", defaultActor: "Membro da equipe" };
     case "APPROVAL_REQUESTED":
-      return { title: "enviou o job para aprovação do cliente", defaultActor: "Membro da equipe" };
+      return { title: "enviou a demanda para aprovação do cliente", defaultActor: "Membro da equipe" };
     case "APPROVAL_APPROVED":
       return { title: "aprovou o conteúdo", defaultActor: "Cliente" };
     case "APPROVAL_CHANGES_REQUESTED":
@@ -896,6 +890,7 @@ function JobActivityTimeline({
   responsibleName?: string;
 }) {
   const { data, isLoading, isError, refetch } = useJobActivity(jobId);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -927,40 +922,138 @@ function JobActivityTimeline({
   }
 
   const activities = data?.activities ?? [];
+  const total = data?.total ?? activities.length;
 
   return (
-    <Card>
-      <h3 className="section-title mb-4">Histórico de atividades ({activities.length})</h3>
-      {activities.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-[var(--looply-color-border-default)] p-4 text-center text-xs text-[var(--looply-color-text-muted)]">
-          Nenhuma atividade registrada neste job ainda.
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {[...activities].reverse().map((act) => {
-            const { title, defaultActor } = activityCopy(act.type);
-            const actor = responsibleName || defaultActor;
-            return (
-              <div
-                key={act.id}
-                className="flex items-start gap-2.5 rounded-lg border border-[var(--looply-color-border-default)] p-3 text-xs"
+    <>
+      <Card>
+        <h3 className="section-title mb-4">Histórico de atividades ({total})</h3>
+        {total === 0 ? (
+          <div className="rounded-lg border border-dashed border-[var(--looply-color-border-default)] p-4 text-center text-xs text-[var(--looply-color-text-muted)]">
+            Nenhuma atividade registrada neste job ainda.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {activities.map((act) => (
+              <ActivityRow key={act.id} act={act} responsibleName={responsibleName} />
+            ))}
+            {total > activities.length && (
+              <button
+                type="button"
+                onClick={() => setHistoryOpen(true)}
+                className="w-full rounded-lg border border-[var(--looply-color-border-default)] px-3 py-2 text-xs font-semibold text-[var(--looply-color-action-primary)] transition-colors hover:bg-[var(--looply-color-bg-subtle)]"
               >
-                <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--looply-color-bg-subtle)]">
-                  <ActivityIcon type={act.type} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[var(--looply-color-text-primary)]">
-                    <span className="font-semibold">{actor}</span> {title}
-                  </div>
-                  <div className="mt-1 text-[11px] text-[var(--looply-color-text-muted)]">
-                    {relativeTime(act.createdAt)} · {formatDateTime(act.createdAt)}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                Ver todo o histórico
+              </button>
+            )}
+          </div>
+        )}
+      </Card>
+
+      <FullActivityHistory
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        jobId={jobId}
+        responsibleName={responsibleName}
+      />
+    </>
+  );
+}
+
+function ActivityRow({ act, responsibleName }: { act: JobActivity; responsibleName?: string }) {
+  const { title, defaultActor } = activityCopy(act.type);
+  const actor = responsibleName || defaultActor;
+  return (
+    <div
+      className="flex items-start gap-2.5 rounded-lg border border-[var(--looply-color-border-default)] p-3 text-xs"
+    >
+      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--looply-color-bg-subtle)]">
+        <ActivityIcon type={act.type} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[var(--looply-color-text-primary)]">
+          <span className="font-semibold">{actor}</span> {title}
         </div>
-      )}
-    </Card>
+        <div className="mt-1 text-[11px] text-[var(--looply-color-text-muted)]">
+          {relativeTime(act.createdAt)} · {formatDateTime(act.createdAt)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// F14.2 — full activity history in a scrollable modal/sheet, paginated.
+const ACTIVITY_PAGE_SIZE = 20;
+
+function FullActivityHistory({
+  open,
+  onClose,
+  jobId,
+  responsibleName,
+}: {
+  open: boolean;
+  onClose: () => void;
+  jobId: string;
+  responsibleName?: string;
+}) {
+  const [offset, setOffset] = useState(0);
+  const { data, isLoading, isError, refetch } = useJobActivityPage(open ? jobId : "", offset, ACTIVITY_PAGE_SIZE);
+
+  // Reset to the first page when the modal opens.
+  useEffect(() => {
+    if (open) setOffset(0);
+  }, [open]);
+
+  const items = data?.activities ?? [];
+  const total = data?.total ?? 0;
+  const hasMore = items.length < total;
+  const loadingMore = isLoading && offset > 0;
+
+  return (
+    <ModalOrSheet
+      isOpen={open}
+      onClose={onClose}
+      title={`Histórico de atividades (${total})`}
+      subtitle="Todas as atividades registradas nesta demanda"
+      maxWidth="max-w-lg"
+    >
+      <div className="flex max-h-[65vh] flex-col">
+        <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+          {isError && (
+            <div className="rounded-lg bg-[var(--looply-color-status-danger)]/10 p-3 text-xs text-[var(--looply-color-status-danger)]">
+              Falha ao carregar o histórico.
+              <button type="button" className="ml-2 font-semibold underline" onClick={() => refetch()}>
+                Tentar novamente
+              </button>
+            </div>
+          )}
+          {!isError && items.length === 0 && !isLoading && (
+            <div className="rounded-lg border border-dashed border-[var(--looply-color-border-default)] p-4 text-center text-xs text-[var(--looply-color-text-muted)]">
+              Nenhuma atividade registrada.
+            </div>
+          )}
+          {items.map((act) => (
+            <ActivityRow key={act.id} act={act} responsibleName={responsibleName} />
+          ))}
+          {loadingMore && (
+            <div className="py-2 text-center text-xs text-[var(--looply-color-text-muted)]">
+              Carregando…
+            </div>
+          )}
+        </div>
+        {hasMore && (
+          <div className="border-t border-[var(--looply-color-border-default)] pt-3">
+            <button
+              type="button"
+              onClick={() => setOffset((o) => o + ACTIVITY_PAGE_SIZE)}
+              disabled={loadingMore}
+              className="w-full rounded-lg border border-[var(--looply-color-border-default)] px-3 py-2 text-xs font-semibold text-[var(--looply-color-action-primary)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] disabled:opacity-50"
+            >
+              {loadingMore ? "Carregando…" : "Carregar mais"}
+            </button>
+          </div>
+        )}
+      </div>
+    </ModalOrSheet>
   );
 }

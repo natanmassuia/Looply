@@ -150,7 +150,7 @@ export interface SessionMembership {
 }
 
 export interface SessionInfo {
-  user: { id: string; name: string; email: string };
+  user: { id: string; name: string; email: string; phone?: string | null; avatarUrl?: string | null };
   activeCompanyId: string;
   mustChangePassword: boolean;
   memberships: SessionMembership[];
@@ -168,7 +168,13 @@ export function useLogout() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => apiFetch<{ ok: true }>("/api/auth/logout", { method: "POST" }),
-    onSuccess: () => qc.clear(),
+    onSuccess: () => {
+      // Security boundary: cancel in-flight private queries (so stale
+      // responses cannot repopulate the cache after logout) and clear ALL
+      // authenticated/private server-state cache.
+      qc.cancelQueries();
+      qc.clear();
+    },
   });
 }
 
@@ -290,6 +296,7 @@ export function useUpdateCompanySettings() {
     mutationFn: (body: {
       name?: string;
       timezone?: string;
+      logoUrl?: string | null;
       legalName?: string | null;
       document?: string | null;
       email?: string | null;
@@ -303,6 +310,27 @@ export function useUpdateCompanySettings() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["companySettings"] });
       qc.invalidateQueries({ queryKey: ["me"] });
+    },
+  });
+}
+
+export function useUpdateProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      name?: string;
+      email?: string;
+      phone?: string | null;
+      avatarUrl?: string | null;
+    }) =>
+      apiFetch<{ user: import("./types").User }>("/api/auth/me", {
+        method: "PATCH",
+        body,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["me"] });
+      qc.invalidateQueries({ queryKey: ["team"] });
+      qc.invalidateQueries({ queryKey: ["members"] });
     },
   });
 }
@@ -342,6 +370,13 @@ export const useClients = () =>
   useQuery({
     queryKey: ["clients"],
     queryFn: () => apiFetch<{ clients: Client[] }>("/api/clients").then((r) => r.clients),
+  });
+
+export const useClient = (id: string) =>
+  useQuery({
+    queryKey: ["client", id],
+    queryFn: () => apiFetch<Client>(`/api/clients/${id}`),
+    enabled: !!id,
   });
 
 export const useTeam = () =>
@@ -705,16 +740,155 @@ export function useDeleteJobFile(jobId: string) {
   });
 }
 
+// ── Identity Media Uploads (F13) ───────────────────────────────────────────
+// Shared 3-step pattern: intent → PUT to storage → complete
+
+const ALLOWED_IMAGE_MIME = ["image/jpeg", "image/png", "image/webp"] as const;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+
+export function validateImageFile(file: File): void {
+  if (!ALLOWED_IMAGE_MIME.includes(file.type as typeof ALLOWED_IMAGE_MIME[number])) {
+    throw new ApiError(400, "Use uma imagem JPG, PNG ou WebP.");
+  }
+  if (file.size > MAX_IMAGE_SIZE) {
+    throw new ApiError(400, "Escolha uma imagem de até 5 MB.");
+  }
+}
+
+async function uploadIdentityImage(
+  intentUrl: string,
+  completeUrl: string,
+  file: File,
+) {
+  validateImageFile(file);
+
+  const intent = await apiFetch<{ uploadUrl: string; key: string; expiresAt: string }>(intentUrl, {
+    method: "POST",
+    body: { contentType: file.type, sizeBytes: file.size, originalName: file.name },
+  });
+
+  const res = await fetch(intent.uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": file.type, "Content-Length": String(file.size) },
+    body: file,
+  });
+  if (!res.ok) throw new ApiError(res.status, "Falha ao enviar imagem para o armazenamento");
+
+  return apiFetch<any>(completeUrl, { method: "POST", body: { key: intent.key } });
+}
+
+// User avatar
+export function useUploadUserAvatar() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) =>
+      uploadIdentityImage("/api/me/avatar/upload-intent", "/api/me/avatar/complete", file),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["me"] });
+      qc.invalidateQueries({ queryKey: ["team"] });
+      qc.invalidateQueries({ queryKey: ["members"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useDeleteUserAvatar() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch<{ ok: boolean }>("/api/me/avatar", { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["me"] });
+      qc.invalidateQueries({ queryKey: ["team"] });
+      qc.invalidateQueries({ queryKey: ["members"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+// Company logo
+export function useUploadCompanyLogo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) =>
+      uploadIdentityImage(
+        "/api/settings/company/logo/upload-intent",
+        "/api/settings/company/logo/complete",
+        file,
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["me"] });
+      qc.invalidateQueries({ queryKey: ["companySettings"] });
+    },
+  });
+}
+
+export function useDeleteCompanyLogo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch<{ ok: boolean }>("/api/settings/company/logo", { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["me"] });
+      qc.invalidateQueries({ queryKey: ["companySettings"] });
+    },
+  });
+}
+
+// Client logo
+export function useUploadClientLogo(clientId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) =>
+      uploadIdentityImage(
+        `/api/clients/${clientId}/logo/upload-intent`,
+        `/api/clients/${clientId}/logo/complete`,
+        file,
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+    },
+  });
+}
+
+export function useDeleteClientLogo(clientId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ ok: boolean }>(`/api/clients/${clientId}/logo`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+    },
+  });
+}
+
 // ── Job Activity Feed (B6) ──────────────────────────────────────────────────
+export interface JobActivityPage {
+  activities: JobActivity[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export function useJobActivity(
   jobId: string,
-  options?: UseQueryOptions<{ activities: JobActivity[] }>,
+  options?: UseQueryOptions<JobActivityPage>,
 ) {
-  return useQuery<{ activities: JobActivity[] }>({
+  return useQuery<JobActivityPage>({
     queryKey: ["jobActivity", jobId],
-    queryFn: () => apiFetch<{ activities: JobActivity[] }>(`/api/jobs/${jobId}/activity`),
+    queryFn: () => apiFetch<JobActivityPage>(`/api/jobs/${jobId}/activity?limit=5&offset=0`),
     enabled: Boolean(jobId),
     ...options,
+  });
+}
+
+// F14.2 — full activity history, paginated, newest first.
+export function useJobActivityPage(jobId: string, offset: number, limit = 20) {
+  return useQuery<JobActivityPage>({
+    queryKey: ["jobActivity", jobId, "page", offset, limit],
+    queryFn: () =>
+      apiFetch<JobActivityPage>(`/api/jobs/${jobId}/activity?limit=${limit}&offset=${offset}`),
+    enabled: Boolean(jobId),
   });
 }
 

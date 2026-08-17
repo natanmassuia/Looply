@@ -58,6 +58,7 @@ router.post(
       primaryContactEmail: input.primaryContactEmail ?? undefined,
       primaryContactPhone: input.primaryContactPhone ?? undefined,
       channels: input.channels ?? [],
+      logoUrl: input.logoUrl ?? undefined,
     });
     res.status(201).json(client);
   }),

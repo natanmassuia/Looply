@@ -1,5 +1,5 @@
 import type { DB } from "../lib/db";
-import { notFound, conflict, AppError } from "../lib/errors";
+import { notFound, conflict, AppError, badRequest } from "../lib/errors";
 
 // ── Tenant-scoped Client domain (B5) ─────────────────────────────────────
 // companyId ALWAYS comes from the authenticated tenant context (req.auth).
@@ -9,6 +9,28 @@ import { notFound, conflict, AppError } from "../lib/errors";
 const ACTIVE_CONTENT_STATUSES = [
   "DRAFT", "IN_REVIEW", "AWAITING_CLIENT", "CHANGES_REQUESTED", "APPROVED", "SCHEDULED",
 ] as const;
+
+// F14 — defensive channel normalization. The frontend already dedupes +
+// trims, but the backend is the authority. Enforces trim, emptiness reject,
+// hard cap (60 chars), case-insensitive dedupe, and a max of 10 entries.
+export function normalizeChannels(input: unknown): string[] {
+  if (input === undefined || input === null) return [];
+  if (!Array.isArray(input)) throw badRequest("Canais inválidos");
+  if (input.length > 10) throw badRequest("Limite máximo de 10 canais por cliente");
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of input) {
+    if (typeof raw !== "string") throw badRequest("Cada canal deve ser um texto");
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    if (trimmed.length > 60) throw badRequest("Cada canal pode ter no máximo 60 caracteres");
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(trimmed);
+  }
+  return out;
+}
 
 export async function listClients(db: DB, companyId: string, opts?: { status?: string; search?: string }) {
   const clients = await db.client.findMany({
@@ -31,6 +53,7 @@ export async function listClients(db: DB, companyId: string, opts?: { status?: s
     primaryContactEmail: c.primaryContactEmail,
     primaryContactPhone: c.primaryContactPhone,
     channels: c.channels,
+    logoUrl: c.logoUrl,
     activeContents: c._count.jobs,
     createdAt: c.createdAt,
   }));
@@ -58,6 +81,7 @@ export interface CreateClientInput {
   primaryContactEmail?: string;
   primaryContactPhone?: string;
   channels?: string[];
+  logoUrl?: string | null;
 }
 
 export async function createClient(db: DB, companyId: string, input: CreateClientInput) {
@@ -75,7 +99,8 @@ export async function createClient(db: DB, companyId: string, input: CreateClien
       primaryContactName: input.primaryContactName ?? null,
       primaryContactEmail: input.primaryContactEmail ?? null,
       primaryContactPhone: input.primaryContactPhone ?? null,
-      channels: input.channels ?? [],
+      channels: normalizeChannels(input.channels),
+      logoUrl: input.logoUrl ?? null,
     },
   });
 }
@@ -96,9 +121,12 @@ export async function updateClient(db: DB, companyId: string, id: string, input:
   const data: Record<string, unknown> = {};
   for (const key of [
     "name", "brandColor", "status", "primaryContactName",
-    "primaryContactEmail", "primaryContactPhone", "channels",
+    "primaryContactEmail", "primaryContactPhone", "logoUrl",
   ] as const) {
     if (input[key] !== undefined) data[key] = input[key];
+  }
+  if (input.channels !== undefined) {
+    data.channels = normalizeChannels(input.channels);
   }
   const updated = await db.client.updateMany({ where: { id, companyId }, data });
   if (updated.count === 0) throw notFound("Cliente não encontrado");

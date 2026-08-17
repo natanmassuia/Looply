@@ -55,22 +55,24 @@ describe("shared component foundation consumes semantic tokens", () => {
     }
   });
 
-  it("Dashboard.tsx enforces canonical Figma copy and CTA (Novo job)", () => {
+  it("Dashboard.tsx enforces canonical Figma copy and CTA (no Nova demanda; Ver demandas)", () => {
     const DASHBOARD_SRC = readFileSync(`${process.cwd()}/src/features/Dashboard.tsx`, "utf8");
-    expect(DASHBOARD_SRC).toContain("Novo job");
+    // F14.6 — creation lives in Demandas; Dashboard keeps "Ver demandas" and no "Nova demanda".
+    expect(DASHBOARD_SRC).toContain("Ver demandas");
+    expect(DASHBOARD_SRC).not.toContain("Nova demanda");
     expect(DASHBOARD_SRC).not.toContain("Novo conteúdo");
     expect(DASHBOARD_SRC).toContain("Atenção agora");
-    expect(DASHBOARD_SRC).toContain("Jobs ativos");
+    expect(DASHBOARD_SRC).toContain("Demandas ativas");
     expect(DASHBOARD_SRC).toContain("Em aprovação");
     expect(DASHBOARD_SRC).toContain("Clientes ativos");
   });
 
-  it("Clients.tsx never references a legacy --looply-* alias and uses Jobs vocabulary", () => {
+  it("Clients.tsx never references a legacy --looply-* alias and uses Demandas vocabulary", () => {
     const CLIENTS_SRC = readFileSync(`${process.cwd()}/src/features/Clients.tsx`, "utf8");
     for (const alias of LEGACY_ALIASES) {
       expect(CLIENTS_SRC).not.toContain(alias);
     }
-    expect(CLIENTS_SRC).toContain("Jobs ativos");
+    expect(CLIENTS_SRC).toContain("Demandas ativas");
     expect(CLIENTS_SRC).not.toContain("Conteúdos ativos");
   });
 
@@ -85,19 +87,19 @@ describe("shared component foundation consumes semantic tokens", () => {
       expect(NEW_SRC).not.toContain(alias);
     }
 
-    expect(LIST_SRC).toContain("Novo job");
+    expect(LIST_SRC).toContain("Nova demanda");
     expect(LIST_SRC).not.toContain("Novo conteúdo");
-    expect(DETAIL_SRC).toContain('crumbs={[{ label: "Jobs", to: "/contents" }');
-    expect(NEW_SRC).toContain('title="Novo job"');
+    expect(DETAIL_SRC).toContain('crumbs={[{ label: "Demandas", to: "/contents" }');
+    expect(NEW_SRC).toContain('title="Nova demanda"');
   });
 
-  it("Calendar.tsx never references legacy --looply-* aliases and uses Agenda and Job vocabulary", () => {
+  it("Calendar.tsx never references legacy --looply-* aliases and uses Agenda and Demandas vocabulary", () => {
     const CAL_SRC = readFileSync(`${process.cwd()}/src/features/Calendar.tsx`, "utf8");
     for (const alias of LEGACY_ALIASES) {
       expect(CAL_SRC).not.toContain(alias);
     }
     expect(CAL_SRC).toContain('title="Agenda"');
-    expect(CAL_SRC).toContain("Jobs aprovados");
+    expect(CAL_SRC).toContain("Demandas aprovadas");
     expect(CAL_SRC).not.toContain("Conteúdos aprovados");
   });
 
@@ -176,5 +178,41 @@ describe("CSS component primitives use semantic tokens", () => {
     expect(CSS).toMatch(/\.btn:disabled\s*\{[^}]*opacity: 0\.5/);
     expect(CSS).toMatch(/\.btn:focus-visible/);
     expect(CSS).toMatch(/\.input:disabled/);
+  });
+});
+
+// F14.1.1 — unified client editor + identity media propagation contracts.
+describe("F14.1.1 unified client editor and identity propagation", () => {
+  const CLIENTS_SRC = readFileSync(`${process.cwd()}/src/features/Clients.tsx`, "utf8");
+  const DETAIL_SRC = readFileSync(`${process.cwd()}/src/features/ClientDetail.tsx`, "utf8");
+  const EDITOR_SRC = readFileSync(`${process.cwd()}/src/components/ClientEditor.tsx`, "utf8");
+  const SIDEBAR_SRC = readFileSync(`${process.cwd()}/src/components/Sidebar.tsx`, "utf8");
+  const TEAM_SRC = readFileSync(`${process.cwd()}/src/features/Team.tsx`, "utf8");
+
+  it("one canonical ClientEditor used by both Clients list and Client Detail", () => {
+    expect(CLIENTS_SRC).toContain('from "../components/ClientEditor"');
+    expect(DETAIL_SRC).toContain('from "../components/ClientEditor"');
+    expect(CLIENTS_SRC).not.toContain('ChannelPicker');
+    expect(DETAIL_SRC).not.toContain('ImageUpload');
+  });
+
+  it("canonical editor exposes image upload, channels and full field set", () => {
+    expect(EDITOR_SRC).toContain("Logo do cliente");
+    expect(EDITOR_SRC).toContain("<ImageUpload");
+    expect(EDITOR_SRC).toContain("<ChannelPicker");
+    expect(EDITOR_SRC).toContain("Ex.: Restaurante Aurora");
+    expect(EDITOR_SRC).toContain("Salvar alterações");
+    expect(EDITOR_SRC).toContain("Cadastrar");
+  });
+
+  it("Sidebar account identity renders avatarUrl with initials fallback", () => {
+    expect(SIDEBAR_SRC).toMatch(/user\?\.avatarUrl/);
+    expect(SIDEBAR_SRC).toContain("<img");
+    expect(SIDEBAR_SRC).toContain("initials(name)");
+  });
+
+  it("Team renders avatarUrl for members and team fallback to initials", () => {
+    expect(TEAM_SRC).toMatch(/u\.avatarUrl/);
+    expect(TEAM_SRC).toContain("initials(u.name");
   });
 });

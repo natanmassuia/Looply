@@ -1,8 +1,12 @@
-import { useState } from "react";
-import { useClients, useCreateClient, useUpdateClient, useDeleteClient, ApiError } from "../lib/api";
+import { useState, useMemo } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { useClients, useDeleteClient, ApiError } from "../lib/api";
 import type { Client, ClientStatus } from "../lib/types";
 import { Card, EmptyState, ErrorState, PageHeader, Spinner } from "../components/common";
-import { IconPlus, IconX, IconEdit, IconTrash } from "../components/Icons";
+import { IconPlus, IconEdit, IconTrash, IconChevronDown, IconX } from "../components/Icons";
+import ModalOrSheet from "../components/ModalOrSheet";
+import ClientEditor from "../components/ClientEditor";
+import ClientDemandsModal from "./ClientDemandsModal";
 
 const CLIENT_STATUS: Record<ClientStatus, { label: string; cls: string }> = {
   ACTIVE: {
@@ -19,110 +23,41 @@ const CLIENT_STATUS: Record<ClientStatus, { label: string; cls: string }> = {
   },
 };
 
-const blankForm = {
-  name: "",
-  brandColor: "#2563eb",
-  status: "ACTIVE" as ClientStatus,
-  primaryContactName: "",
-  primaryContactEmail: "",
-  primaryContactPhone: "",
-  channels: "Instagram",
-};
+const CHANNEL_OPTIONS = ["Instagram", "TikTok", "Facebook", "LinkedIn", "YouTube", "WhatsApp", "E-mail", "Site"];
+
+type SortKey = "name-asc" | "name-desc" | "demand-desc" | "demand-asc";
+
+function parseSort(v: string | null): SortKey {
+  return (["name-asc", "name-desc", "demand-desc", "demand-asc"] as SortKey[]).includes(v as SortKey)
+    ? (v as SortKey)
+    : "name-asc";
+}
 
 export default function Clients() {
   const { data: clients, isLoading, isError, error } = useClients();
-  const createClient = useCreateClient();
-  const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
 
-  const [showForm, setShowForm] = useState(false);
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const status = searchParams.get("status") ?? "";
+  const demandActivity = searchParams.get("demandActivity") ?? "";
+  const channel = searchParams.get("channel") ?? "";
+  const sort = parseSort(searchParams.get("sort"));
+
+  const [editor, setEditor] = useState<{ open: boolean; client: Client | null }>({ open: false, client: null });
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
+  const [demandsModalClient, setDemandsModalClient] = useState<Client | null>(null);
   const [search, setSearch] = useState("");
-  const [form, setForm] = useState(blankForm);
-  const [err, setErr] = useState<string | null>(null);
   const [deleteErr, setDeleteErr] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
 
-  const set = <K extends keyof typeof blankForm>(k: K, v: (typeof blankForm)[K]) =>
-    setForm((f) => ({ ...f, [k]: v }));
+  const openCreate = () => setEditor({ open: true, client: null });
+  const openEdit = (c: Client) => setEditor({ open: true, client: c });
+  const closeForm = () => setEditor({ open: false, client: null });
 
-  const openCreate = () => {
-    setEditingClient(null);
-    setForm(blankForm);
-    setErr(null);
-    setShowForm(true);
-  };
-
-  const openEdit = (c: Client) => {
-    setEditingClient(c);
-    setForm({
-      name: c.name,
-      brandColor: c.brandColor ?? "#2563eb",
-      status: c.status ?? "ACTIVE",
-      primaryContactName: c.primaryContactName ?? "",
-      primaryContactEmail: c.primaryContactEmail ?? "",
-      primaryContactPhone: c.primaryContactPhone ?? "",
-      channels: (c.channels ?? []).join(", "),
-    });
-    setErr(null);
-    setShowForm(true);
-  };
-
-  const closeForm = () => {
-    setShowForm(false);
-    setEditingClient(null);
-    setErr(null);
-  };
-
-  const submit = async () => {
-    setErr(null);
-    setSuccessNotice(null);
-    if (!form.name.trim()) {
-      setErr("Informe o nome do cliente.");
-      return;
-    }
-    const channels = form.channels
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    try {
-      if (editingClient) {
-        await updateClient.mutateAsync({
-          id: editingClient.id,
-          body: {
-            name: form.name.trim(),
-            brandColor: form.brandColor,
-            status: form.status,
-            primaryContactName: form.primaryContactName || undefined,
-            primaryContactEmail: form.primaryContactEmail || undefined,
-            primaryContactPhone: form.primaryContactPhone || undefined,
-            channels,
-          },
-        });
-        const clientName = form.name.trim();
-        closeForm();
-        setSuccessNotice(`Cliente "${clientName}" atualizado com sucesso.`);
-        setTimeout(() => setSuccessNotice(null), 4000);
-      } else {
-        await createClient.mutateAsync({
-          name: form.name.trim(),
-          brandColor: form.brandColor,
-          status: form.status,
-          primaryContactName: form.primaryContactName || undefined,
-          primaryContactEmail: form.primaryContactEmail || undefined,
-          primaryContactPhone: form.primaryContactPhone || undefined,
-          channels,
-        });
-        const clientName = form.name.trim();
-        closeForm();
-        setSuccessNotice(`Cliente "${clientName}" cadastrado com sucesso.`);
-        setTimeout(() => setSuccessNotice(null), 4000);
-      }
-    } catch (e) {
-      setErr(e instanceof ApiError ? e.message : "Falha ao salvar cliente.");
-    }
+  const notifySaved = (clientName: string, created: boolean) => {
+    setSuccessNotice(`Cliente "${clientName}" ${created ? "cadastrado" : "atualizado"} com sucesso.`);
+    setTimeout(() => setSuccessNotice(null), 4000);
   };
 
   const confirmDelete = async () => {
@@ -139,18 +74,74 @@ export default function Clients() {
     }
   };
 
-  const filteredClients = (clients ?? []).filter((c) => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (
-      c.name.toLowerCase().includes(q) ||
-      (c.primaryContactName?.toLowerCase().includes(q) ?? false) ||
-      (c.primaryContactEmail?.toLowerCase().includes(q) ?? false) ||
-      c.channels.some((ch) => ch.toLowerCase().includes(q))
-    );
-  });
+  const setParam = (key: string, value: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    setSearchParams(next, { replace: true });
+  };
 
-  const isPending = createClient.isPending || updateClient.isPending;
+  const clearFilters = () => {
+    const next = new URLSearchParams();
+    setSearchParams(next, { replace: true });
+    setSearch("");
+  };
+
+  const appliedFilterCount =
+    (status ? 1 : 0) + (demandActivity ? 1 : 0) + (channel ? 1 : 0);
+
+  const filteredClients = useMemo(() => {
+    const list = (clients ?? []).filter((c) => {
+      // Search
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const match =
+          c.name.toLowerCase().includes(q) ||
+          (c.primaryContactName?.toLowerCase().includes(q) ?? false) ||
+          (c.primaryContactEmail?.toLowerCase().includes(q) ?? false) ||
+          c.channels.some((ch) => ch.toLowerCase().includes(q));
+        if (!match) return false;
+      }
+      // Status
+      if (status && c.status !== status) return false;
+      // Demand activity
+      if (demandActivity === "pending" && (c.activeContents ?? 0) <= 0) return false;
+      if (demandActivity === "none" && (c.activeContents ?? 0) > 0) return false;
+      // Channel
+      if (channel && !c.channels.some((ch) => ch.toLowerCase() === channel.toLowerCase())) return false;
+      return true;
+    });
+    // Sort
+    const sorted = [...list];
+    switch (sort) {
+      case "name-desc":
+        sorted.sort((a, b) => b.name.localeCompare(a.name));
+        break;
+      case "demand-desc":
+        sorted.sort((a, b) => (b.activeContents ?? 0) - (a.activeContents ?? 0));
+        break;
+      case "demand-asc":
+        sorted.sort((a, b) => (a.activeContents ?? 0) - (b.activeContents ?? 0));
+        break;
+      default: // name-asc
+        sorted.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return sorted;
+  }, [clients, search, status, demandActivity, channel, sort]);
+
+  // Unique channels across all clients (predefined + custom).
+  const availableChannels = useMemo(() => {
+    const set = new Set<string>();
+    (clients ?? []).forEach((c) => c.channels.forEach((ch) => set.add(ch)));
+    return [...set].sort((a, b) => {
+      const ai = CHANNEL_OPTIONS.indexOf(a);
+      const bi = CHANNEL_OPTIONS.indexOf(b);
+      if (ai === -1 && bi === -1) return a.localeCompare(b);
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
+  }, [clients]);
 
   return (
     <div>
@@ -171,179 +162,255 @@ export default function Clients() {
         </div>
       )}
 
-      {showForm && (
-        <Card className="mb-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="section-title">
-              {editingClient ? "Editar cliente" : "Novo cliente"}
-            </h3>
-            <button className="btn-ghost btn-sm" onClick={closeForm} aria-label="Fechar formulário">
-              <IconX className="h-3.5 w-3.5" />
-            </button>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label className="label">Nome</label>
-              <input
-                className="input"
-                value={form.name}
-                onChange={(e) => set("name", e.target.value)}
-                placeholder="Ex.: Restaurante Aurora"
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className="label">Cor da marca</label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  className="h-9 w-14 cursor-pointer rounded-lg border border-[var(--looply-color-border-default)]"
-                  value={form.brandColor}
-                  onChange={(e) => set("brandColor", e.target.value)}
-                />
-                <span className="text-xs font-mono text-[var(--looply-color-text-muted)]">
-                  {form.brandColor}
-                </span>
-              </div>
-            </div>
-            <div>
-              <label className="label">Status</label>
-              <select
-                className="input"
-                value={form.status}
-                onChange={(e) => set("status", e.target.value as ClientStatus)}
-              >
-                <option value="ACTIVE">Ativo</option>
-                <option value="INACTIVE">Inativo</option>
-                <option value="PROSPECT">Prospect</option>
-              </select>
-            </div>
-            <div>
-              <label className="label">Contato principal</label>
-              <input
-                className="input"
-                value={form.primaryContactName}
-                onChange={(e) => set("primaryContactName", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="label">E-mail</label>
-              <input
-                className="input"
-                value={form.primaryContactEmail}
-                onChange={(e) => set("primaryContactEmail", e.target.value)}
-                type="email"
-              />
-            </div>
-            <div>
-              <label className="label">Telefone</label>
-              <input
-                className="input"
-                value={form.primaryContactPhone}
-                onChange={(e) => set("primaryContactPhone", e.target.value)}
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="label">Canais (separados por vírgula)</label>
-              <input
-                className="input"
-                value={form.channels}
-                onChange={(e) => set("channels", e.target.value)}
-                placeholder="Instagram, TikTok"
-              />
-            </div>
-          </div>
-          {err && (
-            <div className="mt-3 rounded-lg bg-[var(--looply-color-status-danger)]/10 px-3 py-2 text-sm text-[var(--looply-color-status-danger)]">
-              {err}
+      {/* Quick Edit / Create — canonical client editor (single contract) */}
+      <ClientEditor
+        isOpen={editor.open}
+        client={editor.client}
+        onClose={closeForm}
+        onSaved={(saved, created) => notifySaved(saved.name, created)}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ModalOrSheet
+        isOpen={!!deletingClient}
+        onClose={() => setDeletingClient(null)}
+        title="Excluir cliente"
+        subtitle={`Confirma a exclusão de "${deletingClient?.name}"?`}
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-[var(--looply-color-text-muted)] leading-relaxed">
+            Esta ação removerá o cliente e todo o histórico associado. Esta operação não pode ser desfeita.
+          </p>
+          {deleteErr && (
+            <div className="rounded-lg bg-[var(--looply-color-status-danger)]/10 px-3 py-2 text-sm text-[var(--looply-color-status-danger)]">
+              {deleteErr}
             </div>
           )}
-          <div className="mt-4 flex justify-end gap-2 border-t border-[var(--looply-color-border-default)] pt-4">
-            <button className="btn-secondary" onClick={closeForm}>
+          <div className="flex items-center justify-end gap-2 border-t border-[var(--looply-color-border-default)] pt-3">
+            <button
+              className="btn-secondary btn-sm"
+              onClick={() => setDeletingClient(null)}
+              disabled={deleteClient.isPending}
+            >
               Cancelar
             </button>
-            <button className="btn-primary" disabled={isPending} onClick={submit}>
-              {isPending
-                ? "Salvando…"
-                : editingClient
-                  ? "Salvar alterações"
-                  : "Salvar cliente"}
+            <button
+              className="btn-sm rounded-lg bg-[var(--looply-color-status-danger)] text-white hover:opacity-90 font-medium disabled:opacity-50"
+              onClick={confirmDelete}
+              disabled={deleteClient.isPending}
+            >
+              {deleteClient.isPending ? "Excluindo…" : "Confirmar exclusão"}
             </button>
           </div>
-        </Card>
-      )}
-
-      {/* Delete confirmation dialog */}
-      {deletingClient && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <Card className="w-full max-w-md shadow-looply-lg">
-            <h3 className="section-title text-[var(--looply-color-status-danger)]">
-              Excluir cliente
-            </h3>
-            <p className="mt-2 text-sm text-[var(--looply-color-text-primary)]">
-              Tem certeza que deseja excluir o cliente{" "}
-              <strong className="font-semibold">{deletingClient.name}</strong>?
-            </p>
-            <p className="mt-1 text-xs text-[var(--looply-color-text-muted)]">
-              Esta ação remove o cadastro do cliente. Clientes com conteúdos vinculados não podem ser excluídos.
-            </p>
-            {deleteErr && (
-              <div className="mt-3 rounded-lg bg-[var(--looply-color-status-danger)]/10 px-3 py-2 text-sm text-[var(--looply-color-status-danger)]">
-                {deleteErr}
-              </div>
-            )}
-            <div className="mt-5 flex justify-end gap-2 border-t border-[var(--looply-color-border-default)] pt-4">
-              <button
-                type="button"
-                className="btn-secondary"
-                disabled={deleteClient.isPending}
-                onClick={() => {
-                  setDeletingClient(null);
-                  setDeleteErr(null);
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="btn-danger"
-                disabled={deleteClient.isPending}
-                onClick={confirmDelete}
-              >
-                {deleteClient.isPending ? "Excluindo…" : "Excluir cliente"}
-              </button>
-            </div>
-          </Card>
         </div>
-      )}
+      </ModalOrSheet>
 
-      {/* Search toolbar */}
+      {/* Client Active Demands Modal */}
+      <ClientDemandsModal
+        client={demandsModalClient}
+        isOpen={!!demandsModalClient}
+        onClose={() => setDemandsModalClient(null)}
+      />
+
+      {/* Search + Filter toolbar */}
       {clients && clients.length > 0 && (
-        <div className="mb-4 flex items-center gap-2">
-          <div className="relative max-w-sm flex-1">
-            <input
-              className="input pl-9"
-              placeholder="Buscar clientes por nome, contato ou canal…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[var(--looply-color-text-muted)]">
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="11" cy="11" r="8" />
-                <path d="M21 21l-4.35-4.35" />
-              </svg>
+        <>
+        <div className="mb-5 space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative w-full max-w-sm">
+              <input
+                className="input pl-9"
+                placeholder="Buscar cliente por nome, contato, canal…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[var(--looply-color-text-muted)]">
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="M21 21l-4.35-4.35" />
+                </svg>
+              </div>
             </div>
           </div>
+
+          {/* Quick filter toolbar */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap gap-1.5">
+              {(
+                [
+                  ["", "Todos"],
+                  ["ACTIVE", "Ativos"],
+                  ["INACTIVE", "Inativos"],
+                  ["PROSPECT", "Prospect"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={status === value}
+                  onClick={() => setParam("status", value)}
+                  className={`rounded-full border px-3 py-1 text-[12.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] ${
+                    status === value
+                      ? "border-[var(--looply-color-text-brand)] bg-[var(--looply-color-text-brand)]/10 text-[var(--looply-color-text-brand)]"
+                      : "border-[var(--looply-color-border-default)] text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+              <button
+                type="button"
+                aria-pressed={demandActivity === "pending"}
+                onClick={() => setParam("demandActivity", demandActivity === "pending" ? "" : "pending")}
+                className={`rounded-full border px-3 py-1 text-[12.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] ${
+                  demandActivity === "pending"
+                    ? "border-[var(--looply-color-text-brand)] bg-[var(--looply-color-text-brand)]/10 text-[var(--looply-color-text-brand)]"
+                    : "border-[var(--looply-color-border-default)] text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
+                }`}
+              >
+                Com demandas pendentes
+              </button>
+            </div>
+
+            <button
+              type="button"
+              aria-expanded={moreFiltersOpen}
+              onClick={() => setMoreFiltersOpen(true)}
+              className="inline-flex items-center gap-1 rounded-full border border-[var(--looply-color-border-default)] px-3 py-1 text-[12.5px] font-medium text-[var(--looply-color-text-muted)] transition-colors hover:text-[var(--looply-color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
+            >
+              <IconChevronDown className="h-3.5 w-3.5" />
+              Mais filtros
+              {appliedFilterCount > 0 && (
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--looply-color-text-brand)] px-1 text-[10px] font-bold text-white">
+                  {appliedFilterCount}
+                </span>
+              )}
+            </button>
+
+            <div className="relative">
+              <select
+                aria-label="Ordenar clientes"
+                value={sort}
+                onChange={(e) => setParam("sort", e.target.value)}
+                className="input w-auto min-w-[160px] text-[12.5px]"
+              >
+                <option value="name-asc">Nome A–Z</option>
+                <option value="name-desc">Nome Z–A</option>
+                <option value="demand-desc">Mais demandas</option>
+                <option value="demand-asc">Menos demandas</option>
+              </select>
+            </div>
+
+            {(appliedFilterCount > 0 || search) && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-[var(--looply-color-action-primary)] hover:underline"
+              >
+                <IconX className="h-3.5 w-3.5" />
+                Limpar filtros
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* More filters sheet */}
+        <ModalOrSheet
+          isOpen={moreFiltersOpen}
+          onClose={() => setMoreFiltersOpen(false)}
+          title="Filtrar clientes"
+          subtitle="Combinar com busca e status"
+          maxWidth="max-w-sm"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="label">Status</label>
+              <div className="flex flex-wrap gap-1.5">
+                {(
+                  [
+                    ["", "Todos"],
+                    ["ACTIVE", "Ativos"],
+                    ["INACTIVE", "Inativos"],
+                    ["PROSPECT", "Prospect"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={status === value}
+                    onClick={() => setParam("status", value)}
+                    className={`rounded-full border px-3 py-1 text-[12.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] ${
+                      status === value
+                        ? "border-[var(--looply-color-text-brand)] bg-[var(--looply-color-text-brand)]/10 text-[var(--looply-color-text-brand)]"
+                        : "border-[var(--looply-color-border-default)] text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Demandas</label>
+              <div className="flex flex-wrap gap-1.5">
+                {(
+                  [
+                    ["", "Todas"],
+                    ["pending", "Com pendentes"],
+                    ["none", "Sem pendentes"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={demandActivity === value}
+                    onClick={() => setParam("demandActivity", value)}
+                    className={`rounded-full border px-3 py-1 text-[12.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] ${
+                      demandActivity === value
+                        ? "border-[var(--looply-color-text-brand)] bg-[var(--looply-color-text-brand)]/10 text-[var(--looply-color-text-brand)]"
+                        : "border-[var(--looply-color-border-default)] text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Canal</label>
+              <select
+                aria-label="Filtrar por canal"
+                value={channel}
+                onChange={(e) => setParam("channel", e.target.value)}
+                className="input w-full"
+              >
+                <option value="">Todos os canais</option>
+                {availableChannels.map((ch) => (
+                  <option key={ch} value={ch}>{ch}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex justify-end border-t border-[var(--looply-color-border-default)] pt-3">
+              <button type="button" className="btn-primary btn-sm" onClick={() => setMoreFiltersOpen(false)}>
+                Aplicar
+              </button>
+            </div>
+          </div>
+        </ModalOrSheet>
+        </>
       )}
 
       {isLoading && <Spinner label="Carregando clientes…" />}
@@ -352,7 +419,7 @@ export default function Clients() {
       {clients && clients.length === 0 && (
         <EmptyState
           title="Nenhum cliente cadastrado"
-          description="Cadastre seu primeiro cliente para começar a organizar jobs e publicações."
+          description="Cadastre seu primeiro cliente para começar a organizar demandas e publicações."
           action={
             <button className="btn-primary" onClick={openCreate}>
               <IconPlus className="h-4 w-4" />
@@ -373,15 +440,26 @@ export default function Clients() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filteredClients.map((c) => {
             const st = CLIENT_STATUS[c.status] ?? CLIENT_STATUS.ACTIVE;
+            const demandCount = c.activeContents ?? 0;
+            const demandCountText = demandCount === 1 ? "1 demanda" : `${demandCount} demandas`;
+
             return (
               <Card key={c.id} className="transition-shadow hover:shadow-looply-md">
                 <div className="flex items-start gap-3">
-                  <span
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-sm"
-                    style={{ backgroundColor: c.brandColor ?? "#475569" }}
-                  >
-                    {c.name.slice(0, 2).toUpperCase()}
-                  </span>
+                  {c.logoUrl ? (
+                    <img
+                      src={c.logoUrl}
+                      alt={c.name}
+                      className="h-10 w-10 shrink-0 rounded-xl object-cover border border-[var(--looply-color-border-default)]"
+                    />
+                  ) : (
+                    <span
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-sm"
+                      style={{ backgroundColor: c.brandColor ?? "#475569" }}
+                    >
+                      {c.name.slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <div className="truncate text-sm font-semibold text-[var(--looply-color-text-primary)]">
@@ -402,10 +480,21 @@ export default function Clients() {
                 </div>
 
                 <dl className="mt-4 space-y-1.5 text-sm">
-                  <div className="flex justify-between">
-                    <dt className="text-[var(--looply-color-text-muted)]">Jobs ativos</dt>
-                    <dd className="font-semibold text-[var(--looply-color-text-primary)]">
-                      {c.activeContents ?? 0}
+                  <div className="flex justify-between items-center">
+                    <dt className="text-[var(--looply-color-text-muted)]">Demandas ativas</dt>
+                    <dd>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDemandsModalClient(c);
+                        }}
+                        className="inline-flex items-center gap-1 font-semibold text-[var(--looply-color-action-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] rounded px-1 -mx-1 transition-colors"
+                        aria-label={`${demandCountText} ativas de ${c.name}`}
+                      >
+                        <span>{demandCountText}</span>
+                        <span aria-hidden="true">→</span>
+                      </button>
                     </dd>
                   </div>
                   <div className="flex justify-between">
@@ -424,29 +513,38 @@ export default function Clients() {
                   )}
                 </dl>
 
-                {/* Card Actions: Edit & Delete */}
-                <div className="mt-4 flex items-center justify-end gap-2 border-t border-[var(--looply-color-border-default)] pt-3">
-                  <button
-                    type="button"
-                    className="btn-ghost btn-sm flex items-center gap-1"
-                    aria-label={`Editar ${c.name}`}
-                    onClick={() => openEdit(c)}
+                {/* Card Actions: Open, Edit & Delete */}
+                <div className="mt-4 flex items-center justify-between gap-2 border-t border-[var(--looply-color-border-default)] pt-3">
+                  <Link
+                    to={`/clients/${c.id}`}
+                    className="btn-ghost btn-sm font-semibold text-[var(--looply-color-action-primary)] hover:underline"
                   >
-                    <IconEdit className="h-3.5 w-3.5" />
-                    <span>Editar</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-ghost btn-sm flex items-center gap-1 text-[var(--looply-color-status-danger)] hover:bg-[var(--looply-color-status-danger)]/10"
-                    aria-label={`Excluir ${c.name}`}
-                    onClick={() => {
-                      setDeleteErr(null);
-                      setDeletingClient(c);
-                    }}
-                  >
-                    <IconTrash className="h-3.5 w-3.5" />
-                    <span>Excluir</span>
-                  </button>
+                    Abrir
+                  </Link>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="btn-ghost btn-sm flex items-center gap-1"
+                      aria-label={`Editar ${c.name}`}
+                      onClick={() => openEdit(c)}
+                    >
+                      <IconEdit className="h-3.5 w-3.5" />
+                      <span>Editar</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost btn-sm flex items-center gap-1 text-[var(--looply-color-status-danger)] hover:bg-[var(--looply-color-status-danger)]/10"
+                      aria-label={`Excluir ${c.name}`}
+                      onClick={() => {
+                        setDeleteErr(null);
+                        setDeletingClient(c);
+                      }}
+                    >
+                      <IconTrash className="h-3.5 w-3.5" />
+                      <span>Excluir</span>
+                    </button>
+                  </div>
                 </div>
               </Card>
             );

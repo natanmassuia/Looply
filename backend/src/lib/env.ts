@@ -23,6 +23,9 @@ export const env = {
   // Public frontend origin used to build client approval URLs (/approve/:token).
   PUBLIC_APP_URL: (process.env.PUBLIC_APP_URL ?? "http://localhost:5173").replace(/\/$/, ""),
   STORAGE_ENDPOINT: process.env.STORAGE_ENDPOINT,
+  // Browser-reachable base for presigned URLs (Nginx-proxied S3 API). Falls
+  // back to STORAGE_ENDPOINT when unset (single-host dev without a proxy).
+  STORAGE_PUBLIC_ENDPOINT: process.env.STORAGE_PUBLIC_ENDPOINT,
   STORAGE_REGION: process.env.STORAGE_REGION ?? "us-east-1",
   STORAGE_BUCKET: process.env.STORAGE_BUCKET,
   STORAGE_ACCESS_KEY: process.env.STORAGE_ACCESS_KEY,

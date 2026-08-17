@@ -11,12 +11,12 @@ import {
 } from "../lib/api";
 import { FORMAT_LABEL } from "../lib/format";
 import { Card, EmptyState, ErrorState, PageHeader, Spinner } from "../components/common";
+import ModalOrSheet from "../components/ModalOrSheet";
 import type { ContentListItem, Appointment } from "../lib/types";
 import {
   IconChevronLeft,
   IconChevronRight,
   IconPlus,
-  IconX,
 } from "../components/Icons";
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -358,9 +358,9 @@ export default function Calendar() {
                                 onClick={(e) => e.stopPropagation()}
                                 className="block truncate rounded px-1.5 py-0.5 text-[11px] font-medium text-white transition-opacity hover:opacity-90"
                                 style={{ backgroundColor: p.client?.brandColor ?? "#475569" }}
-                                title={`${p.client?.name ?? "Job"} — ${p.title}`}
+                                title={`${p.client?.name ?? "Demanda"} — ${p.title}`}
                               >
-                                {p.client?.name ?? "Job"} · {FORMAT_LABEL[p.format]}
+                                {p.client?.name ?? "Demanda"} · {FORMAT_LABEL[p.format]}
                               </Link>
                             );
                           } else {
@@ -405,7 +405,7 @@ export default function Calendar() {
         <div className="mt-4">
           <EmptyState
             title="Nada agendado"
-            description="Jobs aprovados e compromissos criados aparecerão aqui na sua agenda."
+            description="Demandas aprovadas e compromissos criados aparecerão aqui na sua agenda."
           />
         </div>
       )}
@@ -430,179 +430,172 @@ export default function Calendar() {
         ))}
       </div>
 
-      {/* Appointment Create/Edit Modal */}
-      {modalMode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <Card className="w-full max-w-lg shadow-looply-lg">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="section-title">
-                {modalMode === "create" ? "Novo compromisso" : "Detalhes do compromisso"}
-              </h3>
-              <button className="btn-ghost btn-sm" onClick={closeModal} aria-label="Fechar">
-                <IconX className="h-3.5 w-3.5" />
-              </button>
+      {/* Appointment Create/Edit Modal / Bottom Sheet */}
+      <ModalOrSheet
+        isOpen={!!modalMode}
+        onClose={closeModal}
+        title={modalMode === "create" ? "Novo compromisso" : "Detalhes do compromisso"}
+        subtitle={modalMode === "create" ? "Agende um novo compromisso na sua agenda" : "Visualize ou edite este compromisso"}
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-3.5">
+          {selectedAppointment?.status === "CANCELLED" && (
+            <div className="rounded-lg bg-[var(--looply-color-status-danger)]/10 px-3 py-2 text-xs font-semibold text-[var(--looply-color-status-danger)]">
+              Este compromisso está cancelado.
             </div>
+          )}
 
-            {selectedAppointment?.status === "CANCELLED" && (
-              <div className="mb-4 rounded-lg bg-[var(--looply-color-status-danger)]/10 px-3 py-2 text-xs font-semibold text-[var(--looply-color-status-danger)]">
-                Este compromisso está cancelado.
-              </div>
-            )}
+          <div>
+            <label className="label">Título *</label>
+            <input
+              className="input"
+              placeholder="Ex.: Reunião de alinhamento com cliente"
+              disabled={selectedAppointment?.status === "CANCELLED"}
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+            />
+          </div>
 
-            <div className="space-y-3 text-sm">
-              <div>
-                <label className="label">Título *</label>
-                <input
-                  className="input"
-                  placeholder="Ex.: Reunião de alinhamento com cliente"
-                  disabled={selectedAppointment?.status === "CANCELLED"}
-                  value={form.title}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                />
-              </div>
+          <div>
+            <label className="label">Cliente (opcional)</label>
+            <select
+              className="input"
+              disabled={selectedAppointment?.status === "CANCELLED"}
+              value={form.clientId}
+              onChange={(e) => setForm((f) => ({ ...f, clientId: e.target.value }))}
+            >
+              <option value="">Sem cliente vinculado</option>
+              {clients?.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-              <div>
-                <label className="label">Cliente (opcional)</label>
-                <select
-                  className="input"
-                  disabled={selectedAppointment?.status === "CANCELLED"}
-                  value={form.clientId}
-                  onChange={(e) => setForm((f) => ({ ...f, clientId: e.target.value }))}
-                >
-                  <option value="">Sem cliente vinculado</option>
-                  {clients?.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">Data de início *</label>
-                  <input
-                    type="date"
-                    className="input"
-                    disabled={selectedAppointment?.status === "CANCELLED"}
-                    value={form.startDate}
-                    onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="label">Horário de início</label>
-                  <input
-                    type="time"
-                    className="input"
-                    disabled={selectedAppointment?.status === "CANCELLED"}
-                    value={form.startTime}
-                    onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">Data de término</label>
-                  <input
-                    type="date"
-                    className="input"
-                    disabled={selectedAppointment?.status === "CANCELLED"}
-                    value={form.endDate}
-                    onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="label">Horário de término</label>
-                  <input
-                    type="time"
-                    className="input"
-                    disabled={selectedAppointment?.status === "CANCELLED"}
-                    value={form.endTime}
-                    onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="label">Descrição / Notas</label>
-                <textarea
-                  className="input min-h-[70px] resize-none"
-                  placeholder="Pauta, link de videochamada ou observações…"
-                  disabled={selectedAppointment?.status === "CANCELLED"}
-                  value={form.description}
-                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                />
-              </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="label">Data de início *</label>
+              <input
+                type="date"
+                className="input"
+                disabled={selectedAppointment?.status === "CANCELLED"}
+                value={form.startDate}
+                onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
+              />
             </div>
+            <div>
+              <label className="label">Horário de início</label>
+              <input
+                type="time"
+                className="input"
+                disabled={selectedAppointment?.status === "CANCELLED"}
+                value={form.startTime}
+                onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))}
+              />
+            </div>
+          </div>
 
-            {formErr && (
-              <div className="mt-3 rounded-lg bg-[var(--looply-color-status-danger)]/10 px-3 py-2 text-sm text-[var(--looply-color-status-danger)]">
-                {formErr}
-              </div>
-            )}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="label">Data de término</label>
+              <input
+                type="date"
+                className="input"
+                disabled={selectedAppointment?.status === "CANCELLED"}
+                value={form.endDate}
+                onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="label">Horário de término</label>
+              <input
+                type="time"
+                className="input"
+                disabled={selectedAppointment?.status === "CANCELLED"}
+                value={form.endTime}
+                onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))}
+              />
+            </div>
+          </div>
 
-            <div className="mt-5 flex items-center justify-between border-t border-[var(--looply-color-border-default)] pt-4">
-              {modalMode === "edit" && selectedAppointment?.status === "SCHEDULED" ? (
-                <div>
-                  {!confirmCancel ? (
-                    <button
-                      type="button"
-                      className="btn-ghost btn-sm text-xs text-[var(--looply-color-status-danger)] hover:bg-[var(--looply-color-status-danger)]/10"
-                      onClick={() => setConfirmCancel(true)}
-                    >
-                      Cancelar compromisso
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-[var(--looply-color-status-danger)] font-medium">
-                        Confirmar cancelamento?
-                      </span>
-                      <button
-                        type="button"
-                        className="btn-secondary btn-sm text-xs"
-                        onClick={() => setConfirmCancel(false)}
-                      >
-                        Não
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-primary btn-sm text-xs bg-[var(--looply-color-status-danger)] hover:bg-[var(--looply-color-status-danger)]/90"
-                        disabled={cancelAppointment.isPending}
-                        onClick={handleCancel}
-                      >
-                        {cancelAppointment.isPending ? "Cancelando…" : "Sim, cancelar"}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div />
-              )}
+          <div>
+            <label className="label">Descrição / Notas</label>
+            <textarea
+              className="input min-h-[70px] resize-none"
+              placeholder="Pauta, link de videochamada ou observações…"
+              disabled={selectedAppointment?.status === "CANCELLED"}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            />
+          </div>
 
-              <div className="flex items-center gap-2">
-                <button type="button" className="btn-secondary" onClick={closeModal}>
-                  Fechar
-                </button>
-                {selectedAppointment?.status !== "CANCELLED" && (
+          {formErr && (
+            <div className="rounded-lg bg-[var(--looply-color-status-danger)]/10 px-3 py-2 text-sm text-[var(--looply-color-status-danger)]">
+              {formErr}
+            </div>
+          )}
+
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-[var(--looply-color-border-default)] pt-4">
+            {modalMode === "edit" && selectedAppointment?.status === "SCHEDULED" ? (
+              <div>
+                {!confirmCancel ? (
                   <button
                     type="button"
-                    className="btn-primary"
-                    disabled={createAppointment.isPending || updateAppointment.isPending}
-                    onClick={handleSubmit}
+                    className="btn-ghost btn-sm text-xs text-[var(--looply-color-status-danger)] hover:bg-[var(--looply-color-status-danger)]/10"
+                    onClick={() => setConfirmCancel(true)}
                   >
-                    {createAppointment.isPending || updateAppointment.isPending
-                      ? "Salvando…"
-                      : modalMode === "create"
-                        ? "Criar compromisso"
-                        : "Salvar alterações"}
+                    Cancelar compromisso
                   </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[var(--looply-color-status-danger)] font-medium">
+                      Confirmar cancelamento?
+                    </span>
+                    <button
+                      type="button"
+                      className="btn-secondary btn-sm text-xs"
+                      onClick={() => setConfirmCancel(false)}
+                    >
+                      Não
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-primary btn-sm text-xs bg-[var(--looply-color-status-danger)] hover:bg-[var(--looply-color-status-danger)]/90"
+                      disabled={cancelAppointment.isPending}
+                      onClick={handleCancel}
+                    >
+                      {cancelAppointment.isPending ? "Cancelando…" : "Sim, cancelar"}
+                    </button>
+                  </div>
                 )}
               </div>
+            ) : (
+              <div />
+            )}
+
+            <div className="flex items-center justify-end gap-2">
+              <button type="button" className="btn-secondary btn-sm" onClick={closeModal}>
+                Fechar
+              </button>
+              {selectedAppointment?.status !== "CANCELLED" && (
+                <button
+                  type="button"
+                  className="btn-primary btn-sm"
+                  disabled={createAppointment.isPending || updateAppointment.isPending}
+                  onClick={handleSubmit}
+                >
+                  {createAppointment.isPending || updateAppointment.isPending
+                    ? "Salvando…"
+                    : modalMode === "create"
+                      ? "Criar compromisso"
+                      : "Salvar alterações"}
+                </button>
+              )}
             </div>
-          </Card>
+          </div>
         </div>
-      )}
+      </ModalOrSheet>
     </div>
   );
 }

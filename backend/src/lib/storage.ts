@@ -28,14 +28,25 @@ function storageUnavailable(): never {
 
 class S3ObjectStorage implements ObjectStorage {
   private readonly client: S3Client;
+  // Presigning client: signs against the browser-reachable endpoint so the
+  // returned URL host matches what a real browser will request (SigV4 binds
+  // the Host header). Server-side ops (head/delete) keep the internal client.
+  private readonly presignClient: S3Client;
 
   constructor() {
     if (!env.STORAGE_BUCKET || !env.STORAGE_ACCESS_KEY || !env.STORAGE_SECRET_KEY) storageUnavailable();
+    const credentials = { accessKeyId: env.STORAGE_ACCESS_KEY, secretAccessKey: env.STORAGE_SECRET_KEY };
     this.client = new S3Client({
       region: env.STORAGE_REGION,
       endpoint: env.STORAGE_ENDPOINT,
       forcePathStyle: env.STORAGE_FORCE_PATH_STYLE,
-      credentials: { accessKeyId: env.STORAGE_ACCESS_KEY, secretAccessKey: env.STORAGE_SECRET_KEY },
+      credentials,
+    });
+    this.presignClient = new S3Client({
+      region: env.STORAGE_REGION,
+      endpoint: env.STORAGE_PUBLIC_ENDPOINT ?? env.STORAGE_ENDPOINT,
+      forcePathStyle: env.STORAGE_FORCE_PATH_STYLE,
+      credentials,
     });
   }
 
@@ -47,7 +58,7 @@ class S3ObjectStorage implements ObjectStorage {
       ContentType: input.contentType,
       ContentLength: input.sizeBytes,
     });
-    return { url: await getSignedUrl(this.client, command, { expiresIn }), expiresAt: new Date(Date.now() + expiresIn * 1000) };
+    return { url: await getSignedUrl(this.presignClient, command, { expiresIn }), expiresAt: new Date(Date.now() + expiresIn * 1000) };
   }
 
   async headObject(key: string): Promise<ObjectMetadata | null> {
@@ -69,7 +80,7 @@ class S3ObjectStorage implements ObjectStorage {
       Key: input.key,
       ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(safeFilename)}`,
     });
-    return { url: await getSignedUrl(this.client, command, { expiresIn }), expiresAt: new Date(Date.now() + expiresIn * 1000) };
+    return { url: await getSignedUrl(this.presignClient, command, { expiresIn }), expiresAt: new Date(Date.now() + expiresIn * 1000) };
   }
 
   async deleteObject(key: string) {

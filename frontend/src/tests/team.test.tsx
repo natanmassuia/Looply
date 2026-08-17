@@ -281,4 +281,112 @@ describe("Team Feature — B2 Functional Wiring", () => {
     expect(screen.queryByRole("button", { name: /Convidar membro/i })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Função de Carlos Designer")).not.toBeInTheDocument();
   });
+
+  // F14.1.1 — user avatar propagates to Team: a member with avatarUrl renders
+  // a photo; a member without one keeps the initials fallback.
+  it("renders avatar photo for members with avatarUrl and initials otherwise", () => {
+    vi.spyOn(apiModule, "useMe").mockReturnValue({
+      data: mockSessionOwner,
+      isLoading: false,
+    } as any);
+
+    vi.spyOn(apiModule, "useMembers").mockReturnValue({
+      data: [
+        {
+          id: "cm-1",
+          role: "OWNER",
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          user: {
+            id: "u-owner",
+            name: "Ana Proprietária",
+            email: "ana@agencia.com",
+            avatarUrl: "/api/media/file?key=users%2Fu-owner%2Favatar%2F1.png",
+            active: true,
+          },
+        },
+        {
+          id: "cm-2",
+          role: "MEMBER",
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          user: { id: "u-carlos", name: "Carlos Designer", email: "carlos@agencia.com", active: true },
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    vi.spyOn(apiModule, "useInvitations").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as any);
+
+    renderWithClient(<Team />);
+
+    // Owner has avatar → <img>
+    const ownerAvatar = screen.getByAltText("");
+    expect(ownerAvatar.tagName).toBe("IMG");
+    expect(ownerAvatar).toHaveAttribute(
+      "src",
+      "/api/media/file?key=users%2Fu-owner%2Favatar%2F1.png",
+    );
+    // Carlos has no avatar → initials fallback text
+    expect(screen.getByText("CD")).toBeInTheDocument();
+  });
+
+  // F14.3 — Team filters.
+  it("status + role filters narrow the member list", () => {
+    vi.spyOn(apiModule, "useMe").mockReturnValue({
+      data: mockSessionOwner,
+      isLoading: false,
+    } as any);
+
+    vi.spyOn(apiModule, "useMembers").mockReturnValue({
+      data: [
+        { id: "cm-1", role: "OWNER", isActive: true, createdAt: new Date().toISOString(), user: { id: "u1", name: "Ana", email: "ana@x.com", active: true } },
+        { id: "cm-2", role: "MEMBER", isActive: false, createdAt: new Date().toISOString(), user: { id: "u2", name: "Bruno", email: "bruno@x.com", active: true } },
+        { id: "cm-3", role: "MEMBER", isActive: true, createdAt: new Date().toISOString(), user: { id: "u3", name: "Carla", email: "carla@x.com", active: true } },
+      ],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    vi.spyOn(apiModule, "useInvitations").mockReturnValue({ data: [], isLoading: false } as any);
+
+    renderWithClient(<Team />);
+
+    // Filter: only active members.
+    fireEvent.click(screen.getByRole("button", { name: "Ativos" }));
+    expect(screen.getByText("Ana")).toBeInTheDocument();
+    expect(screen.getByText("Carla")).toBeInTheDocument();
+    expect(screen.queryByText("Bruno")).not.toBeInTheDocument();
+
+    // Filter role = OWNER narrows further.
+    fireEvent.change(screen.getByLabelText("Filtrar por função"), { target: { value: "OWNER" } });
+    expect(screen.getByText("Ana")).toBeInTheDocument();
+    expect(screen.queryByText("Carla")).not.toBeInTheDocument();
+  });
+
+  it("team search composes with filters", () => {
+    vi.spyOn(apiModule, "useMe").mockReturnValue({
+      data: mockSessionOwner,
+      isLoading: false,
+    } as any);
+    vi.spyOn(apiModule, "useMembers").mockReturnValue({
+      data: [
+        { id: "cm-1", role: "OWNER", isActive: true, createdAt: new Date().toISOString(), user: { id: "u1", name: "Ana Proprietária", email: "ana@x.com", active: true } },
+        { id: "cm-2", role: "MEMBER", isActive: true, createdAt: new Date().toISOString(), user: { id: "u2", name: "Carlos Designer", email: "carlos@x.com", active: true } },
+      ],
+      isLoading: false,
+      isError: false,
+    } as any);
+    vi.spyOn(apiModule, "useInvitations").mockReturnValue({ data: [], isLoading: false } as any);
+
+    renderWithClient(<Team />);
+
+    fireEvent.change(screen.getByLabelText("Buscar membro"), { target: { value: "carlos" } });
+    expect(screen.getByText("Carlos Designer")).toBeInTheDocument();
+    expect(screen.queryByText("Ana Proprietária")).not.toBeInTheDocument();
+  });
 });

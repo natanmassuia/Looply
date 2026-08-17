@@ -1,9 +1,11 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   useMe,
   useUpdateSettingsAppearance,
   useCompanySettings,
   useUpdateCompanySettings,
+  useUploadCompanyLogo,
+  useDeleteCompanyLogo,
   ApiError,
 } from "../lib/api";
 import type { AppearanceMode, AppearancePreset, CustomColors } from "../lib/types";
@@ -11,7 +13,10 @@ import { useWorkspaceAppearance } from "../theme/react";
 import { applyTheme } from "../theme/applyTheme";
 import { resolveTheme } from "../theme/resolveTheme";
 import { Card, PageHeader, Spinner } from "../components/common";
-import { IconCheck, IconAlertCircle } from "../components/Icons";
+import { IconCheck, IconAlertCircle, IconSun, IconMoon } from "../components/Icons";
+import MyAccountModal from "./MyAccountModal";
+import ImageUpload from "../components/ImageUpload";
+import PhoneInput, { hydratePhone } from "../components/PhoneInput";
 
 const PRESETS: { value: AppearancePreset; title: string; description: string; colors: string[] }[] = [
   {
@@ -64,7 +69,8 @@ export default function Settings() {
   const currentAppearance = useWorkspaceAppearance();
   const updateAppearance = useUpdateSettingsAppearance();
 
-  const [activeTab, setActiveTab] = useState<"appearance" | "integrations" | "company">("appearance");
+  const [activeTab, setActiveTab] = useState<"account" | "company" | "appearance" | "integrations">("account");
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
 
   // Local appearance form state initialized from workspace session
   const [preset, setPreset] = useState<AppearancePreset>(currentAppearance.preset);
@@ -79,8 +85,11 @@ export default function Settings() {
   // Company Settings
   const { data: companyData, isLoading: companyLoading } = useCompanySettings(activeTab === "company");
   const updateCompany = useUpdateCompanySettings();
+  const uploadCompanyLogoMutation = useUploadCompanyLogo();
+  const deleteCompanyLogoMutation = useDeleteCompanyLogo();
   const [companyName, setCompanyName] = useState("");
   const [companyTimezone, setCompanyTimezone] = useState("America/Sao_Paulo");
+  const [companyPhone, setCompanyPhone] = useState("");
   const [companyFeedback, setCompanyFeedback] = useState<string | null>(null);
   const [companyErr, setCompanyErr] = useState<string | null>(null);
 
@@ -97,6 +106,7 @@ export default function Settings() {
     if (companyData) {
       setCompanyName(companyData.name || "");
       setCompanyTimezone(companyData.timezone || "America/Sao_Paulo");
+      setCompanyPhone(hydratePhone(companyData.phone));
     } else if (session?.workspace?.name) {
       setCompanyName(session.workspace.name);
     }
@@ -118,31 +128,39 @@ export default function Settings() {
   useEffect(() => {
     return () => {
       if (!savedRef.current) {
-        applyTheme(document.documentElement, resolveTheme(currentAppearance));
+        applyTheme(
+          document.documentElement,
+          resolveTheme({
+            preset: currentAppearance.preset,
+            mode: currentAppearance.mode,
+            customColors: currentAppearance.customColors,
+          }),
+        );
       }
     };
   }, [currentAppearance]);
 
-  const isOwnerOrAdmin = useMemo(() => {
-    const activeRole = session?.memberships?.find(
-      (m) => m.companyId === session.activeCompanyId,
-    )?.role;
-    return activeRole === "OWNER" || activeRole === "ADMIN" || !activeRole;
-  }, [session]);
+  const activeRole = session?.memberships?.find(
+    (m) => m.companyId === session.activeCompanyId,
+  )?.role;
+  const isOwnerOrAdmin = activeRole === "OWNER" || activeRole === "ADMIN" || !activeRole;
 
   const handleSaveAppearance = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErr(null);
     setFeedback(null);
+    setErr(null);
     try {
       await updateAppearance.mutateAsync({
         preset,
         mode,
-        customColors: preset === "CUSTOM" ? customColors : null,
+        // Custom colors belong ONLY to the CUSTOM preset. When a preset is in
+        // effect the backend discards any leftover custom palette anyway, so
+        // we omit the field to avoid a 400 from the strict validator.
+        ...(preset === "CUSTOM" ? { customColors } : {}),
       });
       savedRef.current = true;
-      setFeedback("Aparência atualizada com sucesso.");
-      setTimeout(() => setFeedback(null), 3000);
+      setFeedback("Aparência do workspace atualizada com sucesso.");
+      setTimeout(() => setFeedback(null), 4000);
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Falha ao salvar aparência.");
     }
@@ -150,8 +168,8 @@ export default function Settings() {
 
   const handleSaveCompany = async (e: React.FormEvent) => {
     e.preventDefault();
-    setCompanyErr(null);
     setCompanyFeedback(null);
+    setCompanyErr(null);
     if (!companyName.trim()) {
       setCompanyErr("Nome da empresa não pode ser vazio.");
       return;
@@ -160,39 +178,40 @@ export default function Settings() {
       await updateCompany.mutateAsync({
         name: companyName.trim(),
         timezone: companyTimezone,
+        phone: companyPhone.trim() || null,
       });
       setCompanyFeedback("Dados da empresa atualizados com sucesso.");
-      setTimeout(() => setCompanyFeedback(null), 3000);
+      setTimeout(() => setCompanyFeedback(null), 4000);
     } catch (e) {
       setCompanyErr(e instanceof ApiError ? e.message : "Falha ao salvar dados da empresa.");
     }
   };
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="Configurações"
-        subtitle="Personalize a identidade e recursos do seu workspace"
+        subtitle="Gerencie suas preferências de usuário, dados da empresa, aparência e integrações."
       />
 
-      {/* Tabs bar */}
-      <div className="mb-6 border-b border-[var(--looply-color-border-default)]">
-        <div className="flex gap-6">
+      {/* Tabs */}
+      <div className="border-b border-[var(--looply-color-border-default)]">
+        <div className="flex gap-6 overflow-x-auto">
           <button
             type="button"
-            onClick={() => setActiveTab("appearance")}
-            className={`pb-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
-              activeTab === "appearance"
+            onClick={() => setActiveTab("account")}
+            className={`pb-3 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
+              activeTab === "account"
                 ? "border-[var(--looply-color-action-primary)] text-[var(--looply-color-text-primary)] font-semibold"
                 : "border-transparent text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
             }`}
           >
-            Aparência
+            Minha conta
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("company")}
-            className={`pb-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            className={`pb-3 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
               activeTab === "company"
                 ? "border-[var(--looply-color-action-primary)] text-[var(--looply-color-text-primary)] font-semibold"
                 : "border-transparent text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
@@ -202,8 +221,19 @@ export default function Settings() {
           </button>
           <button
             type="button"
+            onClick={() => setActiveTab("appearance")}
+            className={`pb-3 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
+              activeTab === "appearance"
+                ? "border-[var(--looply-color-action-primary)] text-[var(--looply-color-text-primary)] font-semibold"
+                : "border-transparent text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
+            }`}
+          >
+            Aparência
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab("integrations")}
-            className={`pb-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            className={`pb-3 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
               activeTab === "integrations"
                 ? "border-[var(--looply-color-action-primary)] text-[var(--looply-color-text-primary)] font-semibold"
                 : "border-transparent text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
@@ -213,6 +243,95 @@ export default function Settings() {
           </button>
         </div>
       </div>
+
+        {/* Tab: Minha Conta */}
+      {activeTab === "account" && (
+        <div className="space-y-6">
+          <Card>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                {session?.user?.avatarUrl ? (
+                  <img
+                    src={session.user.avatarUrl}
+                    alt={session.user.name}
+                    className="h-16 w-16 rounded-full object-cover border border-[var(--looply-color-border-default)]"
+                  />
+                ) : (
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--looply-color-action-primary)]/10 text-xl font-bold text-[var(--looply-color-action-primary)]">
+                    {session?.user?.name ? session.user.name.charAt(0).toUpperCase() : "U"}
+                  </div>
+                )}
+                <div>
+                  <h3 className="section-title text-base">{session?.user?.name ?? "Usuário"}</h3>
+                  <p className="text-xs text-[var(--looply-color-text-muted)]">{session?.user?.email}</p>
+                  <div className="mt-1.5 inline-flex items-center rounded-md bg-[var(--looply-color-bg-subtle)] px-2 py-0.5 text-xs font-semibold text-[var(--looply-color-text-brand)]">
+                    {activeRole === "OWNER" ? "Proprietário" : activeRole === "ADMIN" ? "Administrador" : "Membro"}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setIsAccountModalOpen(true)}
+                  className="btn-primary text-xs"
+                >
+                  Editar perfil
+                </button>
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <h3 className="section-title mb-1">Dados Pessoais</h3>
+            <p className="text-xs text-[var(--looply-color-text-muted)] mb-4">
+              Informações do seu perfil de acesso ao Looply.
+            </p>
+
+            <div className="space-y-4 max-w-lg">
+              <div>
+                <label className="label">Nome completo</label>
+                <div className="rounded-lg border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)]/30 px-3 py-2 text-sm text-[var(--looply-color-text-primary)]">
+                  {session?.user?.name ?? "—"}
+                </div>
+              </div>
+
+              <div>
+                <label className="label">E-mail de acesso</label>
+                <div className="rounded-lg border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)]/30 px-3 py-2 text-sm text-[var(--looply-color-text-primary)]">
+                  {session?.user?.email ?? "—"}
+                </div>
+              </div>
+
+              <div>
+                <label className="label">Telefone pessoal</label>
+                <div className="rounded-lg border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)]/30 px-3 py-2 text-sm text-[var(--looply-color-text-primary)]">
+                  {session?.user?.phone || <span className="text-[var(--looply-color-text-muted)]">Não informado</span>}
+                </div>
+                <p className="mt-1 text-[11px] text-[var(--looply-color-text-muted)]">
+                  Telefone pessoal para contato direto e notificações.
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-semibold text-[var(--looply-color-text-primary)]">Segurança e Senha</h4>
+              <p className="text-xs text-[var(--looply-color-text-muted)]">
+                Altere sua senha de acesso a qualquer momento.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsAccountModalOpen(true)}
+              className="btn-secondary text-xs"
+            >
+              Gerenciar conta
+            </button>
+          </Card>
+        </div>
+      )}
 
       {/* Tab: Aparência */}
       {activeTab === "appearance" && (
@@ -262,12 +381,16 @@ export default function Settings() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-[var(--looply-color-text-muted)] mb-4 flex-1">
+                    <span className="text-xs text-[var(--looply-color-text-muted)] mb-3">
                       {p.description}
-                    </p>
-                    <div className="flex h-4 w-full gap-1 rounded-md overflow-hidden p-0.5 bg-[var(--looply-color-border-default)]/30">
+                    </span>
+                    <div className="mt-auto flex gap-1">
                       {p.colors.map((c, i) => (
-                        <span key={i} className="h-full flex-1 rounded-xs" style={{ backgroundColor: c }} />
+                        <span
+                          key={i}
+                          className="h-4 w-4 rounded-full border border-black/10 shadow-xs"
+                          style={{ backgroundColor: c }}
+                        />
                       ))}
                     </div>
                   </button>
@@ -276,67 +399,78 @@ export default function Settings() {
             </div>
           </Card>
 
-          {/* Mode Selector */}
+          {/* Mode toggle */}
           <Card>
             <h3 className="section-title mb-1">Modo de Exibição</h3>
             <p className="text-xs text-[var(--looply-color-text-muted)] mb-4">
-              Escolha entre a interface padrão clara ou escura.
+              Escolha entre o tema claro padrão ou o modo escuro.
             </p>
 
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-[var(--looply-color-text-primary)]">
-                <input
-                  type="radio"
-                  name="mode"
-                  value="LIGHT"
-                  checked={mode === "LIGHT"}
-                  onChange={() => setMode("LIGHT")}
-                  className="radio"
-                />
-                <span>Modo Claro</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-[var(--looply-color-text-primary)]">
-                <input
-                  type="radio"
-                  name="mode"
-                  value="DARK"
-                  checked={mode === "DARK"}
-                  onChange={() => setMode("DARK")}
-                  className="radio"
-                />
-                <span>Modo Escuro</span>
-              </label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setMode("LIGHT")}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-semibold border transition-all ${
+                  mode === "LIGHT"
+                    ? "border-[var(--looply-color-action-primary)] bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-primary)] ring-1 ring-[var(--looply-color-action-primary)]"
+                    : "border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] text-[var(--looply-color-text-muted)]"
+                }`}
+              >
+                <IconSun className="h-4 w-4" />
+                Modo Claro
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("DARK")}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-semibold border transition-all ${
+                  mode === "DARK"
+                    ? "border-[var(--looply-color-action-primary)] bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-primary)] ring-1 ring-[var(--looply-color-action-primary)]"
+                    : "border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] text-[var(--looply-color-text-muted)]"
+                }`}
+              >
+                <IconMoon className="h-4 w-4" />
+                Modo Escuro
+              </button>
             </div>
           </Card>
 
-          {/* Custom Colors Editor (only when CUSTOM is selected) */}
+          {/* Custom theme editor */}
           {preset === "CUSTOM" && (
             <Card>
-              <h3 className="section-title mb-1">Cores Customizadas</h3>
+              <h3 className="section-title mb-1">Cores Personalizadas</h3>
               <p className="text-xs text-[var(--looply-color-text-muted)] mb-4">
-                Personalize os 6 tons base da sua marca (#RRGGBB).
+                Defina os códigos hexadecimais das cores do seu workspace.
               </p>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {(Object.keys(DEFAULT_CUSTOM) as (keyof CustomColors)[]).map((key) => (
-                  <div key={key} className="space-y-1">
-                    <label className="label text-xs capitalize">{key}</label>
+                {(
+                  [
+                    ["primary", "Cor primária (ações e botões)"],
+                    ["secondary", "Cor secundária"],
+                    ["accent", "Destaque e fundos suaves"],
+                    ["surface", "Fundo de cartões"],
+                    ["text", "Texto principal"],
+                    ["border", "Bordas"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <div key={key}>
+                    <label className="label">{label}</label>
                     <div className="flex items-center gap-2">
                       <input
                         type="color"
                         value={customColors[key]}
                         onChange={(e) =>
-                          setCustomColors({ ...customColors, [key]: e.target.value.toUpperCase() })
+                          setCustomColors((prev) => ({ ...prev, [key]: e.target.value }))
                         }
-                        className="h-8 w-8 cursor-pointer rounded border border-[var(--looply-color-border-default)] p-0"
+                        className="h-9 w-9 rounded-lg border border-[var(--looply-color-border-default)] cursor-pointer p-0.5"
                       />
                       <input
                         type="text"
                         value={customColors[key]}
                         onChange={(e) =>
-                          setCustomColors({ ...customColors, [key]: e.target.value.toUpperCase() })
+                          setCustomColors((prev) => ({ ...prev, [key]: e.target.value }))
                         }
-                        className="input uppercase text-xs font-mono"
+                        className="input font-mono text-xs uppercase"
                         maxLength={7}
                       />
                     </div>
@@ -346,11 +480,10 @@ export default function Settings() {
             </Card>
           )}
 
-          {/* Action footer */}
           <Card className="flex items-center justify-between">
             <span className="text-xs text-[var(--looply-color-text-muted)]">
               {isOwnerOrAdmin
-                ? "Alterações serão salvas para toda a empresa."
+                ? "Alterações serão salvas para todos os membros do workspace."
                 : "Apenas proprietários e administradores podem salvar alterações."}
             </span>
             <div className="flex gap-2">
@@ -386,7 +519,7 @@ export default function Settings() {
           <Card>
             <h3 className="section-title mb-1">Dados da Empresa</h3>
             <p className="text-xs text-[var(--looply-color-text-muted)] mb-4">
-              Informações do workspace e configurações de fuso horário.
+              Informações do workspace, dados institucionais e configurações de fuso horário.
             </p>
 
             {companyLoading ? (
@@ -395,7 +528,7 @@ export default function Settings() {
               <div className="space-y-4 max-w-lg">
                 <div>
                   <label htmlFor="company-name" className="label">
-                    Nome da empresa
+                    Nome da empresa *
                   </label>
                   <input
                     id="company-name"
@@ -410,8 +543,44 @@ export default function Settings() {
                 </div>
 
                 <div>
+                  <label htmlFor="company-phone" className="label">
+                    Telefone empresarial
+                  </label>
+                  <PhoneInput
+                    id="company-phone"
+                    disabled={!isOwnerOrAdmin}
+                    value={companyPhone}
+                    onChange={setCompanyPhone}
+                    className="input"
+                    placeholder="(16) 3000-0000"
+                  />
+                  <p className="mt-1 text-[11px] text-[var(--looply-color-text-muted)]">
+                    Usado nos dados institucionais e documentos da empresa.
+                  </p>
+                </div>
+
+                <div>
+                  <p className="label mb-2">Logo da empresa</p>
+                  <ImageUpload
+                    currentUrl={companyData?.logoUrl}
+                    initials={(companyData?.name || companyName || "?")
+                      .trim()
+                      .split(/\s+/)
+                      .slice(0, 2)
+                      .map((w) => w[0] ?? "")
+                      .join("")
+                      .toUpperCase() || "?"}
+                    shape="square"
+                    size="w-16 h-16"
+                    onUpload={(file) => uploadCompanyLogoMutation.mutateAsync(file)}
+                    onDelete={() => deleteCompanyLogoMutation.mutateAsync()}
+                    disabled={!isOwnerOrAdmin || uploadCompanyLogoMutation.isPending || deleteCompanyLogoMutation.isPending}
+                  />
+                </div>
+
+                <div>
                   <label htmlFor="company-timezone" className="label">
-                    Fuso horário
+                    Fuso horário *
                   </label>
                   <select
                     id="company-timezone"
@@ -432,7 +601,7 @@ export default function Settings() {
                   <label className="label">Idioma da interface</label>
                   <input
                     type="text"
-                    className="input opacity-80"
+                    className="input opacity-80 cursor-not-allowed"
                     disabled
                     value="Português (Brasil)"
                   />
@@ -473,7 +642,7 @@ export default function Settings() {
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-[var(--looply-color-text-muted)]">
-                  Envio e aprovação automatizada de jobs via WhatsApp oficial (Meta Cloud API).
+                  Envio e aprovação automatizada de demandas via WhatsApp oficial (Meta Cloud API).
                 </p>
               </div>
             </div>
@@ -494,6 +663,11 @@ export default function Settings() {
           </Card>
         </div>
       )}
+
+      <MyAccountModal
+        isOpen={isAccountModalOpen}
+        onClose={() => setIsAccountModalOpen(false)}
+      />
     </div>
   );
 }

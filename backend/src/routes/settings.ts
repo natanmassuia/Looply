@@ -44,6 +44,7 @@ export function isValidTimezone(tz: string): boolean {
 const updateCompanySchema = z.object({
   name: z.string().min(1).max(160).optional(),
   timezone: z.string().min(1).max(64).optional(),
+  logoUrl: z.string().url().max(500).nullable().optional(),
   legalName: z.string().max(200).nullable().optional(),
   document: z.string().max(40).nullable().optional(),
   email: z.string().email().max(160).nullable().optional(),
@@ -60,6 +61,7 @@ router.get(
         id: true,
         name: true,
         slug: true,
+        logoUrl: true,
         timezone: true,
         locale: true,
         legalName: true,
@@ -96,6 +98,7 @@ router.patch(
     const data: {
       name?: string;
       timezone?: string;
+      logoUrl?: string | null;
       legalName?: string | null;
       document?: string | null;
       email?: string | null;
@@ -105,6 +108,7 @@ router.patch(
 
     if (input.name !== undefined) data.name = input.name.trim();
     if (input.timezone !== undefined) data.timezone = input.timezone;
+    if (input.logoUrl !== undefined) data.logoUrl = input.logoUrl;
     if (input.legalName !== undefined) data.legalName = input.legalName;
     if (input.document !== undefined) data.document = input.document;
     if (input.email !== undefined) data.email = input.email;
@@ -118,6 +122,7 @@ router.patch(
         id: true,
         name: true,
         slug: true,
+        logoUrl: true,
         timezone: true,
         locale: true,
         legalName: true,

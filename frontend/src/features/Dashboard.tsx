@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { useDashboard, useMe } from "../lib/api";
 import { Card, EmptyState, ErrorState, Spinner } from "../components/common";
 import StatusPill from "../components/StatusPill";
-import { FORMAT_LABEL, relativeTime } from "../lib/format";
-import { IconPlus, IconAlertCircle, IconCheck, IconClock, IconSend, IconEye, IconTrendingUp } from "../components/Icons";
+import { FORMAT_LABEL, relativeTime, formatAppointmentLine, formatClock, gmtOffsetLabel } from "../lib/format";
+import { IconAlertCircle, IconCheck, IconClock, IconSend, IconEye, IconTrendingUp, IconChevronRight } from "../components/Icons";
 import type { ReactNode } from "react";
+import type { DashboardUpcomingEvent } from "../lib/types";
 
 function getGreeting(name?: string): string {
   const h = new Date().getHours();
@@ -12,21 +14,53 @@ function getGreeting(name?: string): string {
   return name ? `${greet}, ${name.split(" ")[0]}` : greet;
 }
 
+// F14.2: Dashboard is a summary — show at most 5 active demands.
+const ACTIVE_DEMAND_LIMIT = 5;
+const UPCOMING_LIMIT = 3;
+// F14.6: pending (Atenção agora) summary shows at most 3 rows + a view-all.
+const PENDING_LIMIT = 3;
+
+function UpcomingClock({ timeZone }: { timeZone: string | null | undefined }) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  const offset = gmtOffsetLabel(timeZone);
+  return (
+    <div className="shrink-0 text-right leading-tight">
+      <div className="text-sm font-semibold tabular-nums text-[var(--looply-color-text-primary)]">
+        {formatClock(now, timeZone)}
+      </div>
+      <div className="text-[10.5px] text-[var(--looply-color-text-muted)]">
+        Horário da empresa{offset ? ` · ${offset}` : ""}
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { data, isLoading, isError, error } = useDashboard();
   const { data: me } = useMe();
   const userName = me?.user?.name;
+  const timeZone = data?.workspace?.timezone ?? me?.workspace?.timezone;
 
-  const activeJobsCount = data
+  const activeDemandsCount = data
     ? Math.max(0, (data.counts.totalContents ?? 0) - (data.counts.published ?? 0))
     : 0;
   const activeClientsCount = data ? data.counts.totalClients ?? 0 : 0;
   const inApprovalCount = data ? data.counts.awaitingClient : 0;
   const scheduledCount = data ? data.counts.scheduled : 0;
 
+  // Upcoming = future events, ascending, max 3.
+  const nowIso = new Date();
+  const upcomingEvents: DashboardUpcomingEvent[] = (data?.upcoming?.events ?? [])
+    .filter((e) => new Date(e.at).getTime() > nowIso.getTime())
+    .slice(0, UPCOMING_LIMIT);
+
   return (
     <div>
-      {/* Header with greeting */}
+      {/* Header with greeting + live workspace clock */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-[1.35rem] font-bold tracking-tight text-[var(--looply-color-text-primary)]">
@@ -38,15 +72,14 @@ export default function Dashboard() {
               : "Visão geral do fluxo de trabalho"}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Link to="/contents" className="btn-secondary">
-            <IconEye className="h-4 w-4" />
-            Ver jobs
-          </Link>
-          <Link to="/contents/new" className="btn-primary">
-            <IconPlus className="h-4 w-4" />
-            Novo job
-          </Link>
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          {data && <UpcomingClock timeZone={timeZone} />}
+          <div className="flex items-center gap-2">
+            <Link to="/contents" className="btn-secondary">
+              <IconEye className="h-4 w-4" />
+              Ver demandas
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -64,10 +97,10 @@ export default function Dashboard() {
                 <div className="flex-1 min-w-0">
                   <h2 className="text-sm font-semibold text-[var(--looply-color-text-primary)]">Atenção agora</h2>
                   <p className="mt-0.5 text-xs text-[var(--looply-color-text-muted)]">
-                    {data.needingAttention.length} {data.needingAttention.length === 1 ? "job pendente" : "jobs pendentes"}
+                    {data.needingAttention.length} {data.needingAttention.length === 1 ? "demanda pendente" : "demandas pendentes"}
                   </p>
                   <ul className="mt-3 space-y-2">
-                    {data.needingAttention.map((c) => (
+                    {data.needingAttention.slice(0, PENDING_LIMIT).map((c) => (
                       <li key={c.id}>
                         <Link
                           to={`/contents/${c.id}`}
@@ -86,6 +119,14 @@ export default function Dashboard() {
                       </li>
                     ))}
                   </ul>
+                  {data.needingAttention.length > PENDING_LIMIT && (
+                    <Link
+                      to="/contents"
+                      className="mt-3 inline-block text-xs font-semibold text-[var(--looply-color-action-primary)] hover:underline"
+                    >
+                      Ver todas as demandas
+                    </Link>
+                  )}
                 </div>
               </div>
             </Card>
@@ -98,7 +139,7 @@ export default function Dashboard() {
                 <div>
                   <h2 className="text-sm font-semibold text-[var(--looply-color-text-primary)]">Tudo em dia</h2>
                   <p className="text-xs text-[var(--looply-color-text-muted)]">
-                    Nenhum job pendente no momento.
+                    Nenhuma demanda pendente no momento.
                   </p>
                 </div>
               </div>
@@ -108,28 +149,32 @@ export default function Dashboard() {
           {/* Compact metrics row */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <CompactMetric
-              label="Jobs ativos"
-              value={activeJobsCount}
+              label="Demandas ativas"
+              value={activeDemandsCount}
               icon={<IconTrendingUp className="h-4 w-4" />}
               color="blue"
+              to="/contents"
             />
             <CompactMetric
               label="Em aprovação"
               value={inApprovalCount}
               icon={<IconClock className="h-4 w-4" />}
               color="violet"
+              to="/contents"
             />
             <CompactMetric
               label="Clientes ativos"
               value={activeClientsCount}
               icon={<IconCheck className="h-4 w-4" />}
               color="emerald"
+              to="/clients?status=ACTIVE"
             />
             <CompactMetric
               label="Agendados"
               value={scheduledCount}
               icon={<IconSend className="h-4 w-4" />}
               color="amber"
+              to="/calendar"
             />
           </div>
 
@@ -138,25 +183,28 @@ export default function Dashboard() {
             {/* Left: In progress (~65%) */}
             <div className="lg:col-span-3">
               <Card className="p-0">
-                <div className="border-b border-[var(--looply-color-border-default)] px-5 py-3.5">
-                  <h2 className="text-sm font-semibold text-[var(--looply-color-text-primary)]">Jobs em andamento</h2>
+                <div className="flex items-center justify-between border-b border-[var(--looply-color-border-default)] px-5 py-3.5">
+                  <h2 className="text-sm font-semibold text-[var(--looply-color-text-primary)]">Demandas em andamento</h2>
+                  <Link to="/contents" className="text-xs font-semibold text-[var(--looply-color-action-primary)] hover:underline">
+                    Ver todas as demandas
+                  </Link>
                 </div>
                 {data.recentContents.length === 0 ? (
                   <div className="px-5 py-10">
                     <EmptyState
-                      title="Nenhum job ainda"
-                      description="Crie seu primeiro job para começar."
+                      title="Nenhuma demanda ainda"
+                      description="As demandas aparecerão aqui."
                       action={
-                        <Link to="/contents/new" className="btn-primary">
-                          <IconPlus className="h-4 w-4" />
-                          Novo job
+                        <Link to="/contents" className="btn-primary">
+                          <IconEye className="h-4 w-4" />
+                          Ver demandas
                         </Link>
                       }
                     />
                   </div>
                 ) : (
                   <ul className="divide-y divide-[var(--looply-color-border-default)]">
-                    {data.recentContents.map((c) => (
+                    {data.recentContents.slice(0, ACTIVE_DEMAND_LIMIT).map((c) => (
                       <li key={c.id}>
                         <Link
                           to={`/contents/${c.id}`}
@@ -192,28 +240,45 @@ export default function Dashboard() {
               </Card>
             </div>
 
-            {/* Right: Upcoming (~35%) */}
+            {/* Right: Upcoming appointments (~35%) */}
             <div className="lg:col-span-2">
               <Card className="p-0">
-                <div className="border-b border-[var(--looply-color-border-default)] px-5 py-3.5">
-                  <h2 className="text-sm font-semibold text-[var(--looply-color-text-primary)]">Agenda de hoje</h2>
+                <div className="flex items-center justify-between border-b border-[var(--looply-color-border-default)] px-5 py-3.5">
+                  <h2 className="text-sm font-semibold text-[var(--looply-color-text-primary)]">Próximas agendas</h2>
+                  <Link to="/calendar" className="text-xs font-semibold text-[var(--looply-color-action-primary)] hover:underline">
+                    Ver agenda completa
+                  </Link>
                 </div>
-                {data.counts.scheduled === 0 && data.counts.approved === 0 ? (
-                  <div className="px-5 py-8 text-center">
-                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-muted)]">
-                      <IconClock className="h-5 w-5" />
+                {upcomingEvents.length === 0 ? (
+                  <div className="px-5 py-6 text-center">
+                    <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-muted)]">
+                      <IconClock className="h-4 w-4" />
                     </div>
-                    <p className="text-xs font-medium text-[var(--looply-color-text-primary)]">Nada agendado</p>
+                    <p className="text-xs font-medium text-[var(--looply-color-text-primary)]">Nenhuma agenda próxima</p>
                     <p className="mt-0.5 text-xs text-[var(--looply-color-text-muted)]">
-                      Jobs aprovados aparecerão aqui.
+                      Os próximos agendamentos aparecerão aqui.
                     </p>
                   </div>
                 ) : (
-                  <div className="px-5 py-3">
-                    <p className="text-xs text-[var(--looply-color-text-muted)]">
-                      {data.counts.scheduled} agendado{data.counts.scheduled !== 1 ? "s" : ""}
-                      {data.counts.approved > 0 && ` · ${data.counts.approved} aprovado${data.counts.approved !== 1 ? "s" : ""} pronto${data.counts.approved !== 1 ? "s" : ""} para agendar`}
-                    </p>
+                  <div className="divide-y divide-[var(--looply-color-border-default)]">
+                    {upcomingEvents.map((ev) => (
+                      <Link
+                        key={ev.id}
+                        to={ev.jobId ? `/contents/${ev.jobId}` : ev.appointmentId ? "/calendar" : "/contents"}
+                        className="flex items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-[var(--looply-color-bg-subtle)]"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[13px] font-medium text-[var(--looply-color-text-primary)]">
+                            {formatAppointmentLine(ev.at, timeZone)}
+                          </div>
+                          <div className="truncate text-xs text-[var(--looply-color-text-muted)]">
+                            {ev.title}
+                            {ev.client?.name ? ` · ${ev.client.name}` : ""}
+                          </div>
+                        </div>
+                        <IconChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--looply-color-text-muted)]" />
+                      </Link>
+                    ))}
                   </div>
                 )}
               </Card>
@@ -230,11 +295,13 @@ function CompactMetric({
   value,
   icon,
   color,
+  to,
 }: {
   label: string;
   value: number;
   icon: ReactNode;
   color: "amber" | "violet" | "emerald" | "blue";
+  to?: string;
 }) {
   const colorMap = {
     amber: "bg-[var(--looply-color-status-warning)]/10 text-[var(--looply-color-status-warning)]",
@@ -242,62 +309,67 @@ function CompactMetric({
     emerald: "bg-[var(--looply-color-status-success)]/10 text-[var(--looply-color-status-success)]",
     blue: "bg-[var(--looply-color-action-primary)]/10 text-[var(--looply-color-action-primary)]",
   };
-  return (
-    <div className="card p-3.5">
-      <div className="flex items-center gap-2.5">
-        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${colorMap[color]}`}>
-          {icon}
-        </div>
-        <div>
-          <div className="text-[0.6875rem] font-medium uppercase tracking-wide text-[var(--looply-color-text-muted)]">
-            {label}
-          </div>
-          <div className="text-lg font-bold tabular-nums text-[var(--looply-color-text-primary)]">{value}</div>
-        </div>
+  const inner = (
+    <div className="flex items-center gap-2.5">
+      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${colorMap[color]}`}>
+        {icon}
+      </div>
+      <div>
+        <div className="text-lg font-bold text-[var(--looply-color-text-primary)] leading-tight">{value}</div>
+        <div className="text-[11px] text-[var(--looply-color-text-muted)]">{label}</div>
       </div>
     </div>
   );
-}
-
-function FormatIcon({ format }: { format: string }) {
-  switch (format) {
-    case "REELS":
-    case "VIDEO":
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="4" width="20" height="16" rx="2" />
-          <path d="M10 9l5 3-5 3V9z" fill="currentColor" stroke="none" />
-        </svg>
-      );
-    case "CAROUSEL":
-    case "IMAGE":
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="3" width="18" height="18" rx="2" />
-          <circle cx="9" cy="9" r="2" />
-          <path d="M21 15l-5-5L5 21" />
-        </svg>
-      );
-    default:
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
-        </svg>
-      );
+  if (to) {
+    return (
+      <Link
+        to={to}
+        aria-label={`${label}: ${value}`}
+        className="card block p-3.5 transition-colors hover:border-[var(--looply-color-border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
+      >
+        {inner}
+      </Link>
+    );
   }
+  return <div className="card p-3.5">{inner}</div>;
 }
 
 function ClientDot({ color }: { color?: string | null }) {
   return (
     <span
-      className="h-2 w-2 shrink-0 rounded-full"
-      style={{ backgroundColor: color ?? "var(--looply-color-text-muted)" }}
+      className="inline-block h-2 w-2 rounded-full shrink-0"
+      style={{ backgroundColor: color || "#94a3b8" }}
     />
   );
 }
 
 function latestVersion(c: { versions?: { versionNumber: number }[] }): number {
-  if (!c.versions?.length) return 1;
+  if (!c.versions || c.versions.length === 0) return 1;
   return Math.max(...c.versions.map((v) => v.versionNumber));
+}
+
+function FormatIcon({ format }: { format: string }) {
+  switch (format) {
+    case "POST_FEED":
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <line x1="3" y1="9" x2="21" y2="9" />
+        </svg>
+      );
+    case "STORIES":
+    case "REELS":
+    case "TIKTOK":
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <rect x="6" y="2" width="12" height="20" rx="3" />
+        </svg>
+      );
+    default:
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <circle cx="12" cy="12" r="9" />
+        </svg>
+      );
+  }
 }

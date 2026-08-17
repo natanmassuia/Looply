@@ -97,9 +97,9 @@ describe("Job Activity Feed — B6 Wiring", () => {
     );
 
     expect(screen.getByText(/Histórico de atividades \(3\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/criou este job/i)).toBeInTheDocument();
-    expect(screen.getByText(/atualizou os detalhes do job/i)).toBeInTheDocument();
-    expect(screen.getByText(/enviou o job para aprovação do cliente/i)).toBeInTheDocument();
+    expect(screen.getByText(/criou esta demanda/i)).toBeInTheDocument();
+    expect(screen.getByText(/atualizou os detalhes da demanda/i)).toBeInTheDocument();
+    expect(screen.getByText(/enviou a demanda para aprovação do cliente/i)).toBeInTheDocument();
 
     // Verify technical enums are NOT leaked
     expect(screen.queryByText("JOB_CREATED")).not.toBeInTheDocument();
@@ -168,5 +168,118 @@ describe("Job Activity Feed — B6 Wiring", () => {
 
     fireEvent.click(retryBtn);
     expect(refetchMock).toHaveBeenCalled();
+  });
+
+  // F14.2 — summary shows only the 5 most recent activities + total count,
+  // and the full history opens in a scrollable modal with pagination.
+  it("renders only the 5 latest activities and shows total count", () => {
+    const many = Array.from({ length: 8 }, (_, i) => ({
+      id: `act-${i}`,
+      jobId: "job-1",
+      actorUserId: null,
+      type: "JOB_UPDATED" as const,
+      metadata: {},
+      createdAt: new Date(Date.UTC(2026, 7, 16, 18 + i)).toISOString(),
+    }));
+    vi.spyOn(apiModule, "useContent").mockReturnValue({
+      data: mockJobDetail,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+    vi.spyOn(apiModule, "useClients").mockReturnValue({ data: [] } as any);
+    vi.spyOn(apiModule, "useJobFiles").mockReturnValue({ data: { files: [] }, isLoading: false } as any);
+    vi.spyOn(apiModule, "useJobActivity").mockReturnValue({
+      data: { activities: many.slice(0, 5), total: 8, limit: 5, offset: 0 },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/contents/:id" element={<ContentDetail />} />
+      </Routes>,
+      "/contents/job-1",
+    );
+
+    // Total count preserved in the heading.
+    expect(screen.getByText(/Histórico de atividades \(8\)/i)).toBeInTheDocument();
+    // Only 5 activity rows rendered (5 × "atualizou os detalhes" text).
+    expect(screen.getAllByText(/atualizou os detalhes da demanda/i)).toHaveLength(5);
+    // View-all action present when total > 5.
+    expect(screen.getByRole("button", { name: "Ver todo o histórico" })).toBeInTheDocument();
+  });
+
+  it("hides 'Ver todo o histórico' when total <= 5", () => {
+    vi.spyOn(apiModule, "useContent").mockReturnValue({
+      data: mockJobDetail,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+    vi.spyOn(apiModule, "useClients").mockReturnValue({ data: [] } as any);
+    vi.spyOn(apiModule, "useJobFiles").mockReturnValue({ data: { files: [] }, isLoading: false } as any);
+    vi.spyOn(apiModule, "useJobActivity").mockReturnValue({
+      data: { activities: mockActivities, total: 3, limit: 5, offset: 0 },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/contents/:id" element={<ContentDetail />} />
+      </Routes>,
+      "/contents/job-1",
+    );
+
+    expect(screen.getByText(/Histórico de atividades \(3\)/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ver todo o histórico" })).not.toBeInTheDocument();
+  });
+
+  it("opens full activity history modal with internal scroll and pagination", async () => {
+    const many = Array.from({ length: 8 }, (_, i) => ({
+      id: `act-${i}`,
+      jobId: "job-1",
+      actorUserId: null,
+      type: "JOB_UPDATED" as const,
+      metadata: {},
+      createdAt: new Date(Date.UTC(2026, 7, 16, 18 + i)).toISOString(),
+    }));
+    vi.spyOn(apiModule, "useContent").mockReturnValue({
+      data: mockJobDetail,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+    vi.spyOn(apiModule, "useClients").mockReturnValue({ data: [] } as any);
+    vi.spyOn(apiModule, "useJobFiles").mockReturnValue({ data: { files: [] }, isLoading: false } as any);
+    vi.spyOn(apiModule, "useJobActivity").mockReturnValue({
+      data: { activities: many.slice(0, 5), total: 8, limit: 5, offset: 0 },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+    vi.spyOn(apiModule, "useJobActivityPage").mockReturnValue({
+      data: { activities: many.slice(0, 5), total: 8, limit: 5, offset: 0 },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/contents/:id" element={<ContentDetail />} />
+      </Routes>,
+      "/contents/job-1",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver todo o histórico" }));
+
+    // Modal opens with the full total + internal scrollable container.
+    expect(screen.getAllByText(/Histórico de atividades \(8\)/i).length).toBeGreaterThanOrEqual(1);
+    // Pagination control present because there are more items to load.
+    expect(screen.getByRole("button", { name: "Carregar mais" })).toBeInTheDocument();
   });
 });

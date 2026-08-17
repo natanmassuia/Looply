@@ -167,6 +167,28 @@ describe("appearance custom colors", () => {
     expect(customColorsSchema.safeParse({ ...COLORS, primary: "#FFF" }).success).toBe(false);
   });
 
+  // F14 — explicit `null` is the canonical "clear custom palette" intent
+  // sent by the frontend when the chosen preset is NOT CUSTOM. Without this,
+  // the Strict schema rejects every routine preset switch (FLUX/AURA/PULSE)
+  // because it sends `customColors: null`.
+  it("16b. explicit null accepted by the schema (canonical clear)", () => {
+    expect(customColorsSchema.safeParse(null).success).toBe(true);
+    const updateR = updateAppearanceSchema.safeParse({
+      preset: "FLUX",
+      mode: "LIGHT",
+      customColors: null,
+    });
+    expect(updateR.success).toBe(true);
+  });
+
+  it("16c. non-CUSTOM preset + explicit null clears prior CUSTOM palette", async () => {
+    const { db } = makeAppearanceDB({ companies: [{ id: "c1" }] });
+    await updateAppearance(db, "c1", { preset: "CUSTOM", customColors: COLORS });
+    const a = await updateAppearance(db, "c1", { preset: "FLUX", customColors: null });
+    expect(a.preset).toBe("FLUX");
+    expect(a.customColors).toBeNull();
+  });
+
   it("17. CSS var() rejected", () => {
     expect(customColorsSchema.safeParse({ ...COLORS, primary: "var(--primary)" }).success).toBe(false);
   });

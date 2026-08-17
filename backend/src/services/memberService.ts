@@ -17,7 +17,7 @@ export async function listMembers(db: DB, companyId: string) {
       role: true,
       isActive: true,
       createdAt: true,
-      user: { select: { id: true, name: true, email: true, active: true } },
+      user: { select: { id: true, name: true, email: true, avatarUrl: true, active: true } },
     },
     orderBy: { createdAt: "asc" },
   });

@@ -5,13 +5,14 @@ import { getCalendar } from "./calendarService";
 const RECENT_LIMIT = 10;
 const ATTENTION_LIMIT = 10;
 const UPCOMING_DAYS = 7;
+const ACTIVE_DEMAND_DASHBOARD_LIMIT = 5; // F14.2: Dashboard shows a 5-item summary only
 
 export async function getDashboardForCompany(
   db: DB,
   companyId: string,
   now = new Date(),
 ) {
-  const company = await db.company.findUnique({ where: { id: companyId }, select: { id: true, name: true, timezone: true, workspaceTemplate: true, appearancePreset: true, appearanceMode: true, appearanceCustomPrimary: true, appearanceCustomSecondary: true, appearanceCustomAccent: true, appearanceCustomSurface: true, appearanceCustomText: true, appearanceCustomBorder: true } });
+  const company = await db.company.findUnique({ where: { id: companyId }, select: { id: true, name: true, logoUrl: true, timezone: true, workspaceTemplate: true, appearancePreset: true, appearanceMode: true, appearanceCustomPrimary: true, appearanceCustomSecondary: true, appearanceCustomAccent: true, appearanceCustomSurface: true, appearanceCustomText: true, appearanceCustomBorder: true } });
   if (!company || !company.workspaceTemplate) throw new Error("Workspace não configurado");
   const capabilities = Object.values(Capability).filter((capability) => hasCapability(company.workspaceTemplate, capability));
   const can = (capability: Capability) => capabilities.includes(capability);
@@ -29,7 +30,7 @@ export async function getDashboardForCompany(
     db.companyMember.count({ where: { companyId: company.id, isActive: true } }),
     db.job.findMany({
       where: { companyId: company.id },
-      take: RECENT_LIMIT,
+      take: ACTIVE_DEMAND_DASHBOARD_LIMIT,
       orderBy: { updatedAt: "desc" },
       include: {
         client: { select: { id: true, name: true, brandColor: true } },

@@ -6,19 +6,19 @@ import { Logo } from "./Logo";
 // (650×398 interactive preview + floating signals), right light Auth Panel
 // (440px form). Mobile (390 × 844): compact hero card (358×184) above form.
 
-type PreviewTab = "overview" | "clients" | "jobs" | "calendar";
+type PreviewTab = "overview" | "clients" | "demandas" | "calendar";
 
 const PREVIEW_TABS: { id: PreviewTab; label: string }[] = [
   { id: "overview", label: "Visão geral" },
   { id: "clients", label: "Clientes" },
-  { id: "jobs", label: "Jobs" },
+  { id: "demandas", label: "Demandas" },
   { id: "calendar", label: "Agenda" },
 ];
 
 const STATUS_PILL: Record<PreviewTab, string> = {
   overview: "HOJE",
   clients: "HOJE",
-  jobs: "OPERAÇÃO EM DIA",
+  demandas: "OPERAÇÃO EM DIA",
   calendar: "HOJE",
 };
 
@@ -104,7 +104,7 @@ export function AuthProductPreview() {
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   <div className="rounded-lg border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] p-2 text-center">
                     <span className="block text-base font-extrabold text-[var(--looply-color-text-primary)]">18</span>
-                    <span className="text-[10px] text-[var(--looply-color-text-muted)]">Jobs ativos</span>
+                    <span className="text-[10px] text-[var(--looply-color-text-muted)]">Demandas ativas</span>
                   </div>
                   <div className="rounded-lg border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] p-2 text-center">
                     <span className="block text-base font-extrabold text-[var(--looply-color-action-primary)]">4</span>
@@ -142,9 +142,9 @@ export function AuthProductPreview() {
                 </p>
                 <div className="mt-3 space-y-1.5">
                   {[
-                    { name: "Aurora Clínica", detail: "Ana Martins · 3 jobs", status: "Ativo" },
-                    { name: "Mova Studio", detail: "Lucas Costa · 2 jobs", status: "Revisão" },
-                    { name: "Nexo Educação", detail: "Natan Massuia · 1 job", status: "Hoje" },
+                    { name: "Aurora Clínica", detail: "Ana Martins · 3 demandas", status: "Ativo" },
+                    { name: "Mova Studio", detail: "Lucas Costa · 2 demandas", status: "Revisão" },
+                    { name: "Nexo Educação", detail: "Natan Massuia · 1 demanda", status: "Hoje" },
                   ].map((c) => (
                     <div
                       key={c.name}
@@ -166,9 +166,9 @@ export function AuthProductPreview() {
               </div>
             )}
 
-            {activeTab === "jobs" && (
+            {activeTab === "demandas" && (
               <div>
-                <Eyebrow>Jobs</Eyebrow>
+                <Eyebrow>Demandas</Eyebrow>
                 <p className="mt-0.5 text-[15px] font-bold text-[var(--looply-color-text-primary)]">
                   Hoje, sem perder o contexto.
                 </p>
@@ -193,7 +193,7 @@ export function AuthProductPreview() {
                   ))}
                 </div>
                 <p className="mt-3 text-center text-[10.5px] text-[var(--looply-color-text-muted)]">
-                  12 clientes · 8 jobs ativos · 3 aprovações
+                  12 clientes · 8 demandas ativas · 3 aprovações
                 </p>
               </div>
             )}
@@ -259,7 +259,7 @@ export default function AuthShell({ children }: { children: ReactNode }) {
             Seu trabalho continua sem perder o contexto.
           </h1>
           <p className="mt-3 max-w-[540px] text-[15px] leading-6 text-inverse-secondary">
-            Clientes, jobs, agenda e aprovações conectados no mesmo fluxo.
+            Clientes, demandas, agenda e aprovações conectados no mesmo fluxo.
           </p>
           <div className="mt-6">
             <AuthProductPreview />
@@ -284,7 +284,7 @@ export default function AuthShell({ children }: { children: ReactNode }) {
             </p>
             <div aria-hidden="true" className="mt-3 flex items-center gap-2 border-t border-white/10 pt-3">
               <span className="rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-inverse">
-                Jobs
+                Demandas
               </span>
               <span className="rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-inverse">
                 Aprovar
