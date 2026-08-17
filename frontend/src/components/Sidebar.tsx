@@ -1,4 +1,5 @@
-import { NavLink } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { NavLink, Link } from "react-router-dom";
 import {
   IconDashboard,
   IconContents,
@@ -10,9 +11,6 @@ import {
 import { Logo } from "./Logo";
 import { useUIStore } from "../lib/store";
 
-// Single canonical navigation registry: shared between desktop Sidebar and
-// mobile AppLayout (bottom nav + account menu).
-// Mobile derives primary and secondary destinations directly via `mobilePlacement`.
 export interface NavItem {
   to: string;
   label: string;
@@ -31,8 +29,6 @@ export const NAV: NavItem[] = [
   { to: "/settings", label: "Configurações", short: "Configurações", Icon: IconSettings, end: true, mobilePlacement: "secondary" },
 ];
 
-// Session identity comes from AppLayout's useMe cache via props — no
-// duplicate query, no hardcoded demo user.
 const ROLE_LABEL: Record<string, string> = {
   OWNER: "Proprietário",
   ADMIN: "Administrador",
@@ -57,29 +53,49 @@ function initials(name: string): string {
 export default function Sidebar({
   user,
   role,
+  onLogout,
+  logoutPending = false,
 }: {
-  user?: { name: string } | null;
+  user?: { name: string; email?: string } | null;
   role?: string;
+  onLogout?: () => void;
+  logoutPending?: boolean;
 }) {
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const name = user?.name ?? null;
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAccountMenuOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [accountMenuOpen]);
 
   return (
     <aside
       aria-label="Menu principal"
-      className={`hidden shrink-0 flex-col border-r border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] transition-all duration-200 md:flex ${
+      className={`relative hidden shrink-0 flex-col border-r border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] transition-all duration-200 md:flex ${
         sidebarCollapsed ? "w-[72px]" : "w-60"
       }`}
     >
-      {/* Brand — canonical Human Relay symbol; visible text carries the name */}
+      {/* Brand — Logo links to Home (/dashboard) */}
       <div className={`flex items-center ${sidebarCollapsed ? "justify-center px-3" : "gap-2.5 px-5"} py-5`}>
-        <Logo size={42} wordmark={false} />
-        {!sidebarCollapsed && (
-          <div className="flex-1">
-            <div className="text-[14px] font-bold tracking-tight text-[var(--looply-color-text-primary)]">Looply</div>
-            <div className="text-[10.5px] font-medium text-[var(--looply-color-text-muted)]">Fluxo de conteúdo</div>
-          </div>
-        )}
+        <Link
+          to="/dashboard"
+          aria-label="Looply"
+          className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
+        >
+          <Logo size={42} wordmark={false} />
+          {!sidebarCollapsed && (
+            <div className="flex-1">
+              <div className="text-[14px] font-bold tracking-tight text-[var(--looply-color-text-primary)]">Looply</div>
+              <div className="text-[10.5px] font-medium text-[var(--looply-color-text-muted)]">Fluxo de conteúdo</div>
+            </div>
+          )}
+        </Link>
       </div>
 
       {/* Navigation */}
@@ -108,20 +124,20 @@ export default function Sidebar({
         ))}
       </nav>
 
-      {/* Collapse toggle + User area */}
-      <div className="border-t border-[var(--looply-color-border-default)] px-2 py-2">
+      {/* Collapse toggle + Account Footer Area (Figma 04 — App Shell) */}
+      <div className="relative border-t border-[var(--looply-color-border-default)] px-2 py-2">
         {/* Toggle button */}
         <button
           onClick={toggleSidebar}
           aria-label={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
           aria-expanded={!sidebarCollapsed}
-          className="flex w-full items-center justify-center rounded-lg py-2 text-[var(--looply-color-text-muted)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
+          className="flex w-full items-center justify-center rounded-lg py-1.5 text-[var(--looply-color-text-muted)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
           title={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
         >
           <svg
             aria-hidden="true"
-            width="18"
-            height="18"
+            width="16"
+            height="16"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -135,22 +151,78 @@ export default function Sidebar({
           </svg>
         </button>
 
-        {/* User area — real session identity (props from AppLayout) */}
-        <div className={`flex items-center ${sidebarCollapsed ? "justify-center px-2" : "gap-2.5 px-2"} py-2 rounded-lg`}>
+        {/* Account Menu Trigger */}
+        <button
+          type="button"
+          onClick={() => setAccountMenuOpen((o) => !o)}
+          aria-haspopup="menu"
+          aria-expanded={accountMenuOpen}
+          aria-label="Menu da conta"
+          className={`flex w-full items-center ${sidebarCollapsed ? "justify-center px-1" : "gap-2.5 px-2"} py-2 rounded-lg transition-colors hover:bg-[var(--looply-color-bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] text-left`}
+        >
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--looply-color-bg-subtle)] text-[10px] font-bold text-[var(--looply-color-text-brand)]">
             {name ? initials(name) : "·"}
           </div>
           {!sidebarCollapsed && (
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="truncate text-[12.5px] font-semibold text-[var(--looply-color-text-primary)]">
                 {name ?? "·"}
               </div>
-              <div className="text-[10.5px] text-[var(--looply-color-text-muted)]">
+              <div className="truncate text-[10.5px] text-[var(--looply-color-text-muted)]">
                 {role ? (ROLE_LABEL[role] ?? "Equipe") : "·"}
               </div>
             </div>
           )}
-        </div>
+        </button>
+
+        {/* Account Menu Dropdown */}
+        {accountMenuOpen && (
+          <>
+            <div
+              aria-hidden="true"
+              onClick={() => setAccountMenuOpen(false)}
+              className="fixed inset-0 z-40 cursor-default"
+            />
+            <div
+              role="menu"
+              aria-label="Menu da conta"
+              className={`absolute bottom-full mb-2 z-50 rounded-xl border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] p-1.5 shadow-looply-lg ${
+                sidebarCollapsed ? "left-2 w-52" : "left-2 right-2"
+              }`}
+            >
+              <div className="border-b border-[var(--looply-color-border-default)] px-3 py-2">
+                <div className="text-[12px] font-bold text-[var(--looply-color-text-primary)]">
+                  Minha conta
+                </div>
+                {user?.email && (
+                  <div className="truncate text-[11px] text-[var(--looply-color-text-muted)]">
+                    {user.email}
+                  </div>
+                )}
+              </div>
+
+              <Link
+                to="/settings"
+                onClick={() => setAccountMenuOpen(false)}
+                className="mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-medium text-[var(--looply-color-text-primary)] hover:bg-[var(--looply-color-bg-subtle)] transition-colors"
+              >
+                Configurações
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setAccountMenuOpen(false);
+                  onLogout?.();
+                }}
+                disabled={logoutPending}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-medium text-[var(--looply-color-status-danger)] hover:bg-[var(--looply-color-bg-subtle)] transition-colors disabled:opacity-50"
+              >
+                {logoutPending ? "Saindo..." : "Sair do Looply"}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </aside>
   );
