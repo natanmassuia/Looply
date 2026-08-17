@@ -157,4 +157,35 @@ router.post(
   }),
 );
 
+// ── Password Recovery & Reset ──────────────────────────────────────────────
+const recoverySchema = z.object({
+  email: z.string().email().max(160),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1).max(256),
+  password: z.string().min(1).max(200),
+});
+
+router.post(
+  "/password-recovery",
+  asyncHandler(async (req, res) => {
+    const input = parse(recoverySchema, req.body);
+    const { mailService } = await import("../services/mailService");
+    const { requestPasswordRecovery } = await import("../services/recoveryService");
+    const result = await requestPasswordRecovery(prisma, mailService, input.email, req.ip);
+    res.json(result);
+  }),
+);
+
+router.post(
+  "/password-reset",
+  asyncHandler(async (req, res) => {
+    const { token, password } = parse(resetPasswordSchema, req.body);
+    const { resetPasswordWithToken } = await import("../services/recoveryService");
+    const result = await resetPasswordWithToken(prisma, token, password);
+    res.json(result);
+  }),
+);
+
 export default router;

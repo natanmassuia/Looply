@@ -9,7 +9,6 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const login = useLogin();
 
   const submit = async (e: React.FormEvent) => {
@@ -57,25 +56,14 @@ export default function Login() {
           className="input input-lg"
           autoComplete="current-password"
         />
-        {/* Recovery exists in Figma but the backend is blocked (F4A): the
-            entry point stays honest — it explains the real path, never
-            pretends to send a reset e-mail. */}
         <div className="mt-2 text-right">
-          <button
-            type="button"
-            onClick={() =>
-              setNotice(
-                "A recuperação de senha ainda não está disponível. Fale com quem administra o Looply na sua empresa.",
-              )
-            }
+          <a
+            href="/forgot-password"
             className="text-[13px] font-medium text-[var(--looply-color-text-brand)] underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] rounded-sm"
           >
             Esqueci minha senha
-          </button>
+          </a>
         </div>
-        {notice && (
-          <p role="status" className="mt-2 text-[13px] leading-5 text-[var(--looply-color-text-muted)]">{notice}</p>
-        )}
         {error && (
           <p role="alert" className="mt-4 text-sm text-[var(--looply-color-status-danger)]">{error}</p>
         )}
