@@ -147,6 +147,7 @@ model User {
   invitationsSent Invitation[] @relation("InvitationInviter")
   createdAppointments Appointment[] @relation("AppointmentCreator")
   whatsappIdentities WhatsAppIdentity[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 // Tenant / workspace. Resources (Client, Content, ...) are NOT yet bound to
@@ -244,6 +245,20 @@ model Invitation {
 
   @@index([companyId])
   @@index([email])
+}
+
+// Password recovery token (one-time use, SHA-256 hashed, expiring).
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique // sha256(rawToken)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // Explicit WhatsApp sender → (User, Company) authorization mapping. The row
