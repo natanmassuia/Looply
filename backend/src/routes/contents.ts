@@ -126,6 +126,12 @@ router.patch(
     if (newStatus === "SCHEDULED") {
       throw conflict("Agendamento só é permitido pelo fluxo de agendamento");
     }
+    // R1.3 — APPROVED is produced only by the canonical approval decision flow
+    // (approvalService.decide). A generic status write can never approve, from
+    // any source state — same architectural rule as SCHEDULED.
+    if (newStatus === "APPROVED") {
+      throw conflict("Aprovação só é permitida pelo fluxo de aprovação");
+    }
 
     // Move parent + all children to the same column (cards move together)
     await prisma.$transaction([
@@ -139,9 +145,7 @@ router.patch(
       }),
     ]);
     // R1.2 — keep the workflow stage coherent with protected semantics set here.
-    if (newStatus === "APPROVED") {
-      await syncJobStageToSemantic(prisma, req.auth!.companyId, req.params.id, "APPROVED");
-    } else if (newStatus === "PUBLISHED") {
+    if (newStatus === "PUBLISHED") {
       await syncJobStageToSemantic(prisma, req.auth!.companyId, req.params.id, "COMPLETED");
     }
     res.json({ id: req.params.id, status: newStatus });

@@ -221,6 +221,7 @@ export interface ContentListItem {
   title: string;
   clientId: string;
   parentId?: string | null;
+  currentStageId?: string | null;
   format: ContentFormat;
   channel?: string | null;
   responsibleId?: string | null;
