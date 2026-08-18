@@ -7,8 +7,8 @@ const router = Router();
 
 router.get(
   "/",
-  asyncHandler(async (_req, res) => {
-    const team = await listTeam(prisma);
+  asyncHandler(async (req, res) => {
+    const team = await listTeam(prisma, req.auth!.companyId);
     res.json({ team });
   }),
 );
