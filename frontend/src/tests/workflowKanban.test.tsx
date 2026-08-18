@@ -8,6 +8,7 @@ import type { ContentListItem, Client, WorkflowDefinition } from "../lib/types";
 
 const clients: Client[] = [
   { id: "cli-1", name: "Restaurante Aurora", brandColor: "#e11d48", status: "ACTIVE", channels: ["Instagram"], createdAt: "" },
+  { id: "cli-2", name: "Café Solar", brandColor: "#f59e0b", status: "ACTIVE", channels: ["Instagram"], createdAt: "" },
 ];
 
 const scrambledStages = [
@@ -41,7 +42,7 @@ function makeItem(partial: Partial<ContentListItem> & { id: string; title: strin
   };
 }
 
-function renderBoard(items: ContentListItem[], stages: WorkflowDefinition["stages"], appointmentMutateAsync?: typeof vi.fn) {
+function renderBoard(items: ContentListItem[], stages: WorkflowDefinition["stages"], appointmentMutateAsync?: typeof vi.fn, initialRoute?: string) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   vi.spyOn(apiModule, "useContents").mockReturnValue({
     data: items,
@@ -63,7 +64,7 @@ function renderBoard(items: ContentListItem[], stages: WorkflowDefinition["stage
   } as any);
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter>{<ContentsList />}</MemoryRouter>
+      <MemoryRouter initialEntries={[initialRoute ?? "/"]}>{<ContentsList />}</MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -210,5 +211,59 @@ describe("Workflow Kanban (R1.3)", () => {
     fireEvent.drop(col, { dataTransfer: { getData: vi.fn().mockReturnValue("job-alpha") } });
     await waitFor(() => expect(transition).toHaveBeenCalled());
     expect(col.className).not.toContain("border-brand-400");
+  });
+});
+
+// ── F14.7 — contextual focus/highlight + canonical clear filter ───────────
+describe("F14.7 Demandas contextual focus and filters", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("focus param scrolls the target card and applies a temporary highlight", async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    renderBoard(
+      [makeItem({ id: "job-alpha", title: "Card Alfa", currentStageId: "s1" })],
+      kanbanStages,
+      undefined,
+      "/contents?focus=job-alpha",
+    );
+
+    const card = document.querySelector('[data-job-id="job-alpha"]');
+    expect(card).not.toBeNull();
+    await waitFor(() => {
+      expect(card!.className).toContain("ring-brand-400");
+    });
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+  });
+
+  it("the target highlight clears automatically", async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    renderBoard(
+      [makeItem({ id: "job-alpha", title: "Card Alfa", currentStageId: "s1" })],
+      kanbanStages,
+      undefined,
+      "/contents?focus=job-alpha",
+    );
+
+    const card = document.querySelector('[data-job-id="job-alpha"]');
+    await waitFor(() => expect(card!.className).toContain("ring-brand-400"));
+    await new Promise((r) => setTimeout(r, 2700));
+    expect(card!.className).not.toContain("ring-brand-400");
+  });
+
+  it("client filter exposes the canonical clear/reset action and restores the default", async () => {
+    renderBoard([makeItem({ id: "job-alpha", title: "Card Alfa", currentStageId: "s1" })], kanbanStages);
+
+    fireEvent.click(screen.getByRole("button", { name: "Todos os clientes" }));
+    fireEvent.click(screen.getByText("Café Solar"));
+
+    expect(screen.getByRole("button", { name: /Limpar filtros/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Café Solar/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Limpar filtros/ }));
+
+    expect(screen.getByRole("button", { name: "Todos os clientes" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Limpar filtros/ })).not.toBeInTheDocument();
   });
 });

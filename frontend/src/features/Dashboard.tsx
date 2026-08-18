@@ -28,7 +28,7 @@ function UpcomingClock({ timeZone }: { timeZone: string | null | undefined }) {
   }, []);
   const offset = gmtOffsetLabel(timeZone);
   return (
-    <div className="shrink-0 text-right leading-tight">
+    <div className="shrink-0 text-left leading-tight sm:text-right">
       <div className="text-sm font-semibold tabular-nums text-[var(--looply-color-text-primary)]">
         {formatClock(now, timeZone)}
       </div>
@@ -58,6 +58,13 @@ export default function Dashboard() {
     .filter((e) => new Date(e.at).getTime() > nowIso.getTime())
     .slice(0, UPCOMING_LIMIT);
 
+  // F14.7 — contextual navigation: when a concrete demand is the target of a
+  // dashboard action, pass it as ?focus so Demandas brings it into view.
+  const firstAttentionId = data?.needingAttention[0]?.id;
+  const firstAwaitingId = data?.needingAttention.find((c) => c.status === "AWAITING_CLIENT")?.id;
+  const attentionHref = firstAttentionId ? `/contents?focus=${firstAttentionId}` : "/contents";
+  const awaitingHref = firstAwaitingId ? `/contents?focus=${firstAwaitingId}` : "/contents";
+
   return (
     <div>
       {/* Header with greeting + live workspace clock */}
@@ -72,7 +79,9 @@ export default function Dashboard() {
               : "Visão geral do fluxo de trabalho"}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
+        {/* Clock + demand action share one header meta row; on mobile they span
+            the width (clock left, action right) instead of floating apart. */}
+        <div className="flex w-full flex-wrap items-center justify-between gap-3 sm:w-auto sm:justify-end sm:shrink-0">
           {data && <UpcomingClock timeZone={timeZone} />}
           <div className="flex items-center gap-2">
             <Link to="/contents" className="btn-secondary">
@@ -121,8 +130,8 @@ export default function Dashboard() {
                   </ul>
                   {data.needingAttention.length > PENDING_LIMIT && (
                     <Link
-                      to="/contents"
-                      className="mt-3 inline-block text-xs font-semibold text-[var(--looply-color-action-primary)] hover:underline"
+                      to={attentionHref}
+                      className="mt-3 inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-[var(--looply-color-action-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
                     >
                       Ver todas as demandas
                     </Link>
@@ -160,7 +169,7 @@ export default function Dashboard() {
               value={inApprovalCount}
               icon={<IconClock className="h-4 w-4" />}
               color="violet"
-              to="/contents"
+              to={awaitingHref}
             />
             <CompactMetric
               label="Clientes ativos"

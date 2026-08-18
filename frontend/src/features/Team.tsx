@@ -13,7 +13,7 @@ import {
 import type { MemberRole, UserRole } from "../lib/types";
 import { MEMBER_ROLE_LABEL, ROLE_LABEL, formatDate } from "../lib/format";
 import { Card, EmptyState, ErrorState, PageHeader, Spinner } from "../components/common";
-import { IconPlus, IconCheck, IconEdit } from "../components/Icons";
+import { IconPlus, IconCheck, IconEdit, IconX } from "../components/Icons";
 import ModalOrSheet from "../components/ModalOrSheet";
 
 function initials(name: string): string {
@@ -446,8 +446,9 @@ export default function Team() {
               <button
                 type="button"
                 onClick={() => { setTeamSearch(""); setTeamStatus(""); setTeamRole(""); setTeamSort("name-asc"); }}
-                className="text-[12.5px] font-semibold text-[var(--looply-color-action-primary)] hover:underline"
+                className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-[var(--looply-color-action-primary)] hover:underline"
               >
+                <IconX className="h-3.5 w-3.5" />
                 Limpar filtros
               </button>
             )}

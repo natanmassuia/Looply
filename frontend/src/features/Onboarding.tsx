@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   ApiError,
   useChangePassword,
@@ -46,7 +46,9 @@ export function AccessGate() {
   if (!isWorkspaceActive(session)) {
     return pathname === ONBOARDING_PATH ? <Outlet /> : <Navigate to={ONBOARDING_PATH} replace />;
   }
-  if (pathname === ONBOARDING_PATH || pathname === CHANGE_PASSWORD_PATH) {
+  // Onboarding stays first-access-only, but /change-password is also reachable
+  // voluntarily (Minha Conta → Alterar minha senha) for active workspaces.
+  if (pathname === ONBOARDING_PATH) {
     return <Navigate to={DEFAULT_HOME_PATH} replace />;
   }
   return <Outlet />;
@@ -60,6 +62,11 @@ export function ChangePassword() {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const change = useChangePassword();
+  const navigate = useNavigate();
+  const { data: session } = useMe();
+  // Forced = temporary credential from provisioning; voluntary = the user asked
+  // for it from Minha Conta. Both use the same canonical screen + endpoint.
+  const forced = !!session?.mustChangePassword;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +81,11 @@ export function ChangePassword() {
     setError(null);
     try {
       await change.mutateAsync({ newPassword: password });
-      // Hook invalidates ["me"]; AccessGate routes to /onboarding.
+      // Hook invalidates ["me"]; the session refetches. After a successful
+      // change an ACTIVE workspace returns to the app home — voluntary and
+      // forced alike. Non-active workspaces keep the existing onboarding
+      // contract (AccessGate routes them to /onboarding on the invalidation).
+      if (isWorkspaceActive(session)) navigate(DEFAULT_HOME_PATH);
     } catch (err) {
       setError(neutralError(err));
     }
@@ -82,12 +93,14 @@ export function ChangePassword() {
 
   return (
     <AuthShell>
-      <Eyebrow>Primeiro acesso</Eyebrow>
+      <Eyebrow>{forced ? "Primeiro acesso" : "Segurança"}</Eyebrow>
       <h1 className="mt-2 text-[28px] font-bold leading-9 tracking-tight text-[var(--looply-color-text-primary)] lg:text-[36px] lg:leading-[44px]">
-        Defina sua nova senha
+        {forced ? "Defina sua nova senha" : "Alterar minha senha"}
       </h1>
       <p className="mt-2 text-[14px] leading-5 text-[var(--looply-color-text-muted)]">
-        Proteja seu acesso antes de continuar.
+        {forced
+          ? "Proteja seu acesso antes de continuar."
+          : "Atualize a senha usada para entrar no Looply."}
       </p>
 
       <form onSubmit={submit} className="mt-8">
@@ -114,7 +127,7 @@ export function ChangePassword() {
         <ul className="mt-4 space-y-1.5 rounded-xl border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] p-4 text-[13px] leading-5 text-[var(--looply-color-text-secondary)]">
           <li>Entre 10 e 200 caracteres</li>
           <li>As duas senhas devem coincidir</li>
-          <li>As outras sessões com a senha temporária serão encerradas</li>
+          <li>As outras sessões com a senha antiga serão encerradas</li>
         </ul>
         {error && (
           <p role="alert" className="mt-4 text-sm text-[var(--looply-color-status-danger)]">{error}</p>
@@ -122,6 +135,15 @@ export function ChangePassword() {
         <button type="submit" disabled={change.isPending} className="btn-primary mt-6 h-12 w-full text-[15px] font-semibold">
           {change.isPending ? "Salvando..." : "Salvar nova senha"}
         </button>
+        {!forced && (
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="btn-secondary mt-3 h-11 w-full text-[13px] font-semibold"
+          >
+            Voltar
+          </button>
+        )}
       </form>
     </AuthShell>
   );
