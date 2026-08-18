@@ -36,6 +36,10 @@ yarn-error.log*
 # uploads (dev-only local media)
 backend/uploads/
 
+# backups (R2.1) — never commit generated backup archives
+.backups/
+ops/backup/.backups/
+
 # test / coverage
 coverage/
 *.lcov
