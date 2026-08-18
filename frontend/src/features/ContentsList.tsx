@@ -330,7 +330,7 @@ export default function ContentsList() {
     <div>
       <PageHeader
         title="Demandas"
-        subtitle="Fluxo operacional de demandas e aprovações"
+        subtitle="Acompanhe o fluxo de trabalho por etapa, cliente e responsável."
         actions={
           <Link to="/contents/new" className="btn-primary">
             <IconPlus className="h-4 w-4" />

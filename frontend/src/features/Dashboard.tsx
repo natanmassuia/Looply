@@ -75,7 +75,7 @@ export default function Dashboard() {
           </h1>
           <p className="mt-1 text-[0.8125rem] text-[var(--looply-color-text-muted)]">
             {data
-              ? "Acompanhe o que está acontecendo com sua operação."
+              ? "O que precisa da sua atenção hoje."
               : "Visão geral do fluxo de trabalho"}
           </p>
         </div>
