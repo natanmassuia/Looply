@@ -65,7 +65,7 @@ export default function ContentsList() {
     return (clients ?? []).filter((c) => !q || c.name.toLowerCase().includes(q));
   }, [clients, clientSearch]);
 
-  const topLevel = useMemo(() => filtered.filter((c) => !c.parentId), [filtered]);
+  const topLevel = useMemo(() => filtered.filter((c) => !c.parentId && c.lifecycleStatus !== "CANCELLED"), [filtered]);
 
   const byStatus = useMemo(() => {
     const map = new Map<ContentStatus, ContentListItem[]>();

@@ -249,6 +249,105 @@ describe("Jobs Feature — B4 Metadata Editing + Ungroup Wiring", () => {
     });
   });
 
+  describe("Demand Cancellation (R1)", () => {
+    function mockDetail(detail: ContentDetailType) {
+      vi.spyOn(apiModule, "useContent").mockReturnValue({
+        data: detail,
+        isLoading: false,
+        isError: false,
+        refetch: vi.fn(),
+      } as any);
+      vi.spyOn(apiModule, "useClients").mockReturnValue({ data: mockClients } as any);
+    }
+
+    it("shows Cancelar demanda and hides active-only actions", () => {
+      mockDetail(mockJobDetail);
+      vi.spyOn(apiModule, "useCancelDemand").mockReturnValue({
+        mutateAsync: vi.fn(),
+        isPending: false,
+      } as any);
+
+      renderWithProviders(
+        <Routes>
+          <Route path="/contents/:id" element={<ContentDetail />} />
+        </Routes>,
+        "/contents/job-1",
+      );
+
+      // Active action present for a DRAFT.
+      expect(screen.getByRole("button", { name: "Enviar para revisão" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Cancelar demanda/ })).toBeInTheDocument();
+    });
+
+    it("requires confirmation and calls the cancel mutation", async () => {
+      const cancelMutate = vi.fn().mockResolvedValue({ id: "job-1", lifecycleStatus: "CANCELLED" });
+      vi.spyOn(apiModule, "useCancelDemand").mockReturnValue({
+        mutateAsync: cancelMutate,
+        isPending: false,
+      } as any);
+      mockDetail(mockJobDetail);
+
+      renderWithProviders(
+        <Routes>
+          <Route path="/contents/:id" element={<ContentDetail />} />
+        </Routes>,
+        "/contents/job-1",
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /Cancelar demanda/ }));
+
+      // Confirmation dialog appears with a consequence explanation.
+      expect(screen.getAllByText("Cancelar demanda").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText(/não pode ser desfeita/i)).toBeInTheDocument();
+
+      // Confirm.
+      const confirmBtn = screen.getAllByRole("button", { name: /Cancelar demanda/ }).at(-1)!;
+      fireEvent.click(confirmBtn);
+      await waitFor(() => expect(cancelMutate).toHaveBeenCalledWith("job-1"));
+    });
+
+    it("shows cancelled banner and hides active-only actions for a cancelled demand", () => {
+      const cancelled = { ...mockJobDetail, lifecycleStatus: "CANCELLED" as const };
+      mockDetail(cancelled);
+      vi.spyOn(apiModule, "useCancelDemand").mockReturnValue({
+        mutateAsync: vi.fn(),
+        isPending: false,
+      } as any);
+
+      renderWithProviders(
+        <Routes>
+          <Route path="/contents/:id" element={<ContentDetail />} />
+        </Routes>,
+        "/contents/job-1",
+      );
+
+      expect(screen.getByText(/foi cancelada/i)).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Enviar para revisão" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Cancelar demanda/ })).not.toBeInTheDocument();
+    });
+
+    it("surfaces API error when cancel fails", async () => {
+      const cancelMutate = vi.fn().mockRejectedValue(new Error("Falha ao cancelar demanda."));
+      vi.spyOn(apiModule, "useCancelDemand").mockReturnValue({
+        mutateAsync: cancelMutate,
+        isPending: false,
+      } as any);
+      mockDetail(mockJobDetail);
+
+      renderWithProviders(
+        <Routes>
+          <Route path="/contents/:id" element={<ContentDetail />} />
+        </Routes>,
+        "/contents/job-1",
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /Cancelar demanda/ }));
+      const confirmBtn = screen.getAllByRole("button", { name: /Cancelar demanda/ }).at(-1)!;
+      fireEvent.click(confirmBtn);
+      await waitFor(() => expect(cancelMutate).toHaveBeenCalled());
+    });
+  });
+
   describe("Sub-ticket Ungroup", () => {
     it("renders ungroup button on grouped child in Kanban list and calls POST /api/contents/:id/ungroup", async () => {
       vi.spyOn(apiModule, "useContents").mockReturnValue({
