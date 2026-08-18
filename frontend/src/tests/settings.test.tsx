@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import Settings from "../features/Settings";
 import MyAccountModal from "../features/MyAccountModal";
 import * as apiModule from "../lib/api";
+import type { WorkspaceAppearance } from "../lib/types";
 
 const mockSession = {
   user: {
@@ -218,5 +219,96 @@ describe("Settings Feature — F12.2 Profile and Company Data", () => {
     expect(Object.keys(body.customColors).sort()).toEqual(
       ["accent", "border", "primary", "secondary", "surface", "text"].sort(),
     );
+  });
+
+  // F14.8 — Customizado functional completeness: editor, validation, restore,
+  // and cancel with an already-persisted custom palette.
+  describe("Customizado editor (F14.8)", () => {
+    function renderWithCustomAppearance(customColors?: WorkspaceAppearance["customColors"]) {
+      vi.spyOn(apiModule, "useMe").mockReturnValue({
+        data: {
+          ...mockSession,
+          workspace: {
+            ...mockSession.workspace,
+            appearance: {
+              preset: "CUSTOM" as const,
+              mode: "LIGHT" as const,
+              customColors: customColors ?? {
+                primary: "#B94738",
+                secondary: "#F3B84B",
+                accent: "#FFE3D7",
+                surface: "#FFFFFF",
+                text: "#2A171F",
+                border: "#E8D8D1",
+              },
+            },
+          },
+        },
+        isLoading: false,
+      } as any);
+      vi.spyOn(apiModule, "useUpdateSettingsAppearance").mockReturnValue({
+        mutateAsync: vi.fn().mockResolvedValue({}),
+        isPending: false,
+      } as any);
+      renderWithClient(<Settings />);
+      fireEvent.click(screen.getByRole("button", { name: "Aparência" }));
+      fireEvent.click(screen.getByRole("button", { name: /Customizado/ }));
+    }
+
+    it("selecting Customizado opens the six-field editor", () => {
+      renderWithCustomAppearance();
+      expect(screen.getByText("Cores Personalizadas")).toBeInTheDocument();
+      expect(screen.getByLabelText(/Cor primária \(ações e botões\) — hexadecimal/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Texto principal — hexadecimal/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Restaurar" })).toBeInTheDocument();
+    });
+
+    it("valid hex on blur is normalized and updates the preview state", () => {
+      renderWithCustomAppearance();
+      const input = screen.getByLabelText(/Cor primária \(ações e botões\) — hexadecimal/);
+      fireEvent.change(input, { target: { value: "#f06d55" } });
+      fireEvent.blur(input);
+      expect((input as HTMLInputElement).value).toBe("#F06D55");
+    });
+
+    it("invalid hex is rejected safely and the applied theme is not corrupted", () => {
+      renderWithCustomAppearance();
+      const input = screen.getByLabelText(/Cor primária \(ações e botões\) — hexadecimal/);
+      fireEvent.change(input, { target: { value: "zzzz" } });
+      fireEvent.blur(input);
+      expect(screen.getByText(/Código hexadecimal inválido/)).toBeInTheDocument();
+    });
+
+    it("Restaurar resets the custom fields to the canonical baseline", () => {
+      renderWithCustomAppearance({
+        primary: "#111111",
+        secondary: "#222222",
+        accent: "#333333",
+        surface: "#444444",
+        text: "#555555",
+        border: "#666666",
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Restaurar" }));
+      const input = screen.getByLabelText(/Cor primária \(ações e botões\) — hexadecimal/);
+      expect((input as HTMLInputElement).value).toBe("#F06D55");
+    });
+
+    it("Cancelar restores the last persisted appearance values", () => {
+      renderWithCustomAppearance({
+        primary: "#111111",
+        secondary: "#222222",
+        accent: "#333333",
+        surface: "#444444",
+        text: "#555555",
+        border: "#666666",
+      });
+      fireEvent.change(screen.getByLabelText(/Cor primária \(ações e botões\) — hexadecimal/), {
+        target: { value: "#AAAAAA" },
+      });
+      fireEvent.blur(screen.getByLabelText(/Cor primária \(ações e botões\) — hexadecimal/));
+      fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+      const input = screen.getByLabelText(/Cor primária \(ações e botões\) — hexadecimal/);
+      expect((input as HTMLInputElement).value).toBe("#111111");
+    });
   });
 });

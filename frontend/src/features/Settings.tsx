@@ -12,6 +12,7 @@ import type { AppearanceMode, AppearancePreset, CustomColors } from "../lib/type
 import { useWorkspaceAppearance } from "../theme/react";
 import { applyTheme } from "../theme/applyTheme";
 import { resolveTheme } from "../theme/resolveTheme";
+import { isHexColor } from "../theme/color";
 import { Card, PageHeader, Spinner } from "../components/common";
 import { IconCheck, IconAlertCircle, IconSun, IconMoon } from "../components/Icons";
 import MyAccountModal from "./MyAccountModal";
@@ -65,6 +66,22 @@ const DEFAULT_CUSTOM: CustomColors = {
   border: "#E8D8D1",
 };
 
+// Normalize a #RRGGBB hex value (uppercase, with #) — mirrors the backend and
+// theme normalization. Invalid values are returned unchanged so the caller can
+// reject them before they reach state/CSS.
+function normalizeHexInput(value: string): string {
+  const trimmed = value.trim();
+  const withHash = trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
+  if (!isHexColor(withHash)) return value;
+  return withHash.toUpperCase();
+}
+
+function isValidHex(value: string): boolean {
+  const trimmed = value.trim();
+  const withHash = trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
+  return isHexColor(withHash);
+}
+
 export default function Settings() {
   const { data: session } = useMe();
   const currentAppearance = useWorkspaceAppearance();
@@ -79,6 +96,11 @@ export default function Settings() {
   const [customColors, setCustomColors] = useState<CustomColors>(
     currentAppearance.customColors ?? DEFAULT_CUSTOM,
   );
+  // Per-field text drafts let the user type a hex; only valid hex commits to
+  // customColors (which drives the live preview). Invalid input never corrupts
+  // the applied theme.
+  const [draftColors, setDraftColors] = useState<CustomColors | null>(null);
+  const [hexError, setHexError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const savedRef = useRef(false);
@@ -101,6 +123,8 @@ export default function Settings() {
     if (currentAppearance.customColors) {
       setCustomColors(currentAppearance.customColors);
     }
+    setDraftColors(null);
+    setHexError(null);
   }, [currentAppearance.preset, currentAppearance.mode, currentAppearance.customColors]);
 
   useEffect(() => {
@@ -165,6 +189,43 @@ export default function Settings() {
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Falha ao salvar aparência.");
     }
+  };
+
+  // Commit a typed hex for a Customizado field. Invalid input is rejected and
+  // surfaced; the applied theme (customColors) is never mutated with a bad value.
+  const commitCustomColor = (key: keyof CustomColors, value: string) => {
+    if (!value.trim()) {
+      setHexError("Informe um código hexadecimal.");
+      return;
+    }
+    if (!isValidHex(value)) {
+      setHexError("Código hexadecimal inválido (use #RRGGBB).");
+      return;
+    }
+    const normalized = normalizeHexInput(value);
+    setCustomColors((prev) => ({ ...prev, [key]: normalized }));
+    setDraftColors((prev) => (prev ? { ...prev, [key]: normalized } : prev));
+    setHexError(null);
+  };
+
+  // Restore the canonical Customizado baseline (AURA-derived safe palette).
+  // Does not switch the preset — it only resets the custom color fields.
+  const handleRestoreCustom = () => {
+    setCustomColors(DEFAULT_CUSTOM);
+    setDraftColors(null);
+    setHexError(null);
+    setErr(null);
+  };
+
+  // Discard unsaved edits and return the editor to the last persisted values.
+  const handleCancelAppearance = () => {
+    setPreset(currentAppearance.preset);
+    setMode(currentAppearance.mode);
+    setCustomColors(currentAppearance.customColors ?? DEFAULT_CUSTOM);
+    setDraftColors(null);
+    setHexError(null);
+    setErr(null);
+    setFeedback(null);
   };
 
   const handleSaveCompany = async (e: React.FormEvent) => {
@@ -449,12 +510,30 @@ export default function Settings() {
           {/* Custom theme editor */}
           {preset === "CUSTOM" && (
             <Card>
-              <h3 className="section-title mb-1">Cores Personalizadas</h3>
-              <p className="text-xs text-[var(--looply-color-text-muted)] mb-4">
-                Defina os códigos hexadecimais das cores do seu workspace.
-              </p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="section-title mb-1">Cores Personalizadas</h3>
+                  <p className="text-xs text-[var(--looply-color-text-muted)]">
+                    Defina os códigos hexadecimais das cores do seu workspace.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRestoreCustom}
+                  className="btn-secondary btn-sm shrink-0"
+                >
+                  Restaurar
+                </button>
+              </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {hexError && (
+                <div className="mt-3 flex items-center gap-2 rounded-lg bg-[var(--looply-color-status-danger)]/10 border border-[var(--looply-color-status-danger)]/20 px-3 py-2 text-xs text-[var(--looply-color-status-danger)]">
+                  <IconAlertCircle className="h-3.5 w-3.5" />
+                  <span>{hexError}</span>
+                </div>
+              )}
+
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {(
                   [
                     ["primary", "Cor primária (ações e botões)"],
@@ -466,22 +545,32 @@ export default function Settings() {
                   ] as const
                 ).map(([key, label]) => (
                   <div key={key}>
-                    <label className="label">{label}</label>
+                    <label className="label" htmlFor={`custom-${key}`}>{label}</label>
                     <div className="flex items-center gap-2">
                       <input
+                        id={`custom-${key}`}
                         type="color"
                         value={customColors[key]}
                         onChange={(e) =>
                           setCustomColors((prev) => ({ ...prev, [key]: e.target.value }))
                         }
+                        aria-label={`${label} — seletor`}
                         className="h-9 w-9 rounded-lg border border-[var(--looply-color-border-default)] cursor-pointer p-0.5"
                       />
                       <input
                         type="text"
-                        value={customColors[key]}
-                        onChange={(e) =>
-                          setCustomColors((prev) => ({ ...prev, [key]: e.target.value }))
-                        }
+                        inputMode="text"
+                        aria-label={`${label} — hexadecimal`}
+                        value={draftColors?.[key] ?? customColors[key]}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setDraftColors((prev) => ({ ...(prev ?? customColors), [key]: v }));
+                          setHexError(null);
+                        }}
+                        onBlur={(e) => commitCustomColor(key, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") commitCustomColor(key, (e.target as HTMLInputElement).value);
+                        }}
                         className="input font-mono text-xs uppercase"
                         maxLength={7}
                       />
@@ -492,13 +581,20 @@ export default function Settings() {
             </Card>
           )}
 
-          <Card className="flex items-center justify-between">
+          <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-xs text-[var(--looply-color-text-muted)]">
               {isOwnerOrAdmin
                 ? "Alterações serão salvas para todos os membros do workspace."
                 : "Apenas proprietários e administradores podem salvar alterações."}
             </span>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCancelAppearance}
+                className="btn-secondary"
+              >
+                Cancelar
+              </button>
               <button
                 type="submit"
                 disabled={updateAppearance.isPending || !isOwnerOrAdmin}
