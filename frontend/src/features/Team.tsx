@@ -195,7 +195,7 @@ export default function Team() {
     <div>
       <PageHeader
         title="Equipe"
-        subtitle="Membros da agência e permissões de acesso"
+        subtitle="Gerencie quem participa do Looply e mantenha os papéis de cada pessoa claros."
         actions={
           isAdminOrOwner ? (
             <button className="btn-primary" onClick={() => setShowInviteModal(true)}>

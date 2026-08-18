@@ -180,9 +180,9 @@ const PROFILES: { value: WorkspaceTemplate; title: string; description: string }
 ];
 
 const PROFILE_PREP: Record<WorkspaceTemplate, string[]> = {
-  LOCAL_BUSINESS: ["Clientes e jobs organizados", "Aprovação pública por link", "Agenda e lembretes", "Painel de acompanhamento"],
-  HIGH_TICKET: ["Clientes e jobs organizados", "Aprovação pública por link", "Agenda e lembretes", "Painel de acompanhamento"],
-  MARKETING_AGENCY: ["Clientes e jobs organizados", "Aprovação pública por link", "Agenda e lembretes", "Painel de acompanhamento"],
+  LOCAL_BUSINESS: ["Clientes e demandas organizados", "Aprovação pública por link", "Agenda e lembretes", "Painel de acompanhamento"],
+  HIGH_TICKET: ["Clientes e demandas organizados", "Aprovação pública por link", "Agenda e lembretes", "Painel de acompanhamento"],
+  MARKETING_AGENCY: ["Clientes e demandas organizados", "Aprovação pública por link", "Agenda e lembretes", "Painel de acompanhamento"],
 };
 
 const APPEARANCES: { value: AppearancePreset; title: string; description: string; deferred?: boolean }[] = [
