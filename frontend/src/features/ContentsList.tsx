@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback, useRef, useEffect, type DragEvent, type TouchEvent as ReactTouchEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useContents, useClients, useGroupContent, useUngroupContent, useWorkflow, apiFetch, ApiError } from "../lib/api";
 import { FORMAT_LABEL, relativeTime } from "../lib/format";
 import type { ContentListItem, Client } from "../lib/types";
@@ -7,7 +7,7 @@ import { EmptyState, ErrorState, PageHeader, Spinner } from "../components/commo
 import StatusPill from "../components/StatusPill";
 import ModalOrSheet from "../components/ModalOrSheet";
 import ScheduleModal from "../components/ScheduleModal";
-import { IconPlus, IconChevronDown, IconCheck } from "../components/Icons";
+import { IconPlus, IconChevronDown, IconCheck, IconX } from "../components/Icons";
 
 // ── R1.3 — the board is WorkflowStage-driven. Columns come from the active
 // stages of the workflow (id/order/label), cards are placed by currentStageId,
@@ -128,6 +128,28 @@ export default function ContentsList() {
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     errorTimerRef.current = setTimeout(() => setDragError(null), 4000);
   }, []);
+
+  // F14.7 — contextual navigation: /contents?focus=<id> scrolls the target
+  // demand into view and applies a temporary, non-animated highlight.
+  const [searchParams] = useSearchParams();
+  const focusParam = searchParams.get("focus");
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!focusParam || !data || data.length === 0) return;
+    let clear: ReturnType<typeof setTimeout> | null = null;
+    const raf = requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-job-id="${focusParam}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+      setFocusedId(focusParam);
+      clear = setTimeout(() => setFocusedId(null), 2500);
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      if (clear) clearTimeout(clear);
+      setFocusedId(null);
+    };
+  }, [focusParam, data]);
 
   const resetGroup = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -344,7 +366,7 @@ export default function ContentsList() {
 
       {!isLoading && !isError && data && data.length > 0 && (
         <>
-          <div className="mb-4">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
             <button
               type="button"
               aria-haspopup="dialog"
@@ -367,6 +389,17 @@ export default function ContentsList() {
               </span>
               <IconChevronDown className="h-4 w-4 shrink-0 text-[var(--looply-color-text-muted)]" />
             </button>
+            {/* F14.7 — clear/reset mirrors the canonical Clients/Team filter. */}
+            {clientId && (
+              <button
+                type="button"
+                onClick={() => setClientId("")}
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[12.5px] font-semibold text-[var(--looply-color-action-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
+              >
+                <IconX className="h-3.5 w-3.5" />
+                Limpar filtros
+              </button>
+            )}
           </div>
 
           {/* Rich client filter */}
@@ -475,6 +508,7 @@ export default function ContentsList() {
                           parent={c}
                           children_={childrenMap.get(c.id) ?? []}
                           isDragging={draggedId === c.id || (touchMoving && touchDrag?.id === c.id)}
+                          isFocused={focusedId === c.id}
                           isGroupTarget={groupTargetId === c.id}
                           groupReady={groupTargetId === c.id && groupReady}
                           onDragStart={() => handleDragStart(c.id, c.clientId)}
@@ -530,6 +564,7 @@ function CardStack({
   parent,
   children_,
   isDragging,
+  isFocused,
   isGroupTarget,
   groupReady,
   onDragStart,
@@ -548,6 +583,7 @@ function CardStack({
   parent: ContentListItem;
   children_: ContentListItem[];
   isDragging: boolean;
+  isFocused: boolean;
   isGroupTarget: boolean;
   groupReady: boolean;
   onDragStart: () => void;
@@ -570,6 +606,7 @@ function CardStack({
 
   return (
     <div
+      data-job-id={parent.id}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", parent.id);
@@ -588,7 +625,9 @@ function CardStack({
         onNavigate(parent.id);
       }}
       className={`group relative cursor-grab rounded-xl border bg-[var(--looply-color-bg-surface)] p-3 transition-all active:cursor-grabbing ${
-        isGroupTarget && groupReady
+        isFocused
+          ? "border-brand-400 bg-brand-50/60 ring-2 ring-brand-400"
+          : isGroupTarget && groupReady
           ? "border-brand-500 bg-brand-50/80 shadow-md ring-2 ring-brand-400"
           : isGroupTarget
           ? "border-brand-400 bg-brand-50/40"

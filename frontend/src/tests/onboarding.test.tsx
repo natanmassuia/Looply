@@ -169,6 +169,16 @@ describe("AccessGate", () => {
     renderGate("/dashboard");
     expect(screen.getByText("tela inicial")).toBeTruthy();
   });
+
+  it("an active workspace can voluntarily open the password screen (no redirect)", () => {
+    meMock.data = {
+      user: { id: "u1", name: "Ana", email: "a@b.c" },
+      mustChangePassword: false,
+      workspace: { status: "ACTIVE" },
+    };
+    renderGate("/change-password");
+    expect(screen.getByText("tela de senha")).toBeTruthy();
+  });
 });
 
 // ── ChangePassword ────────────────────────────────────────────────────────
@@ -178,8 +188,19 @@ describe("ChangePassword", () => {
     mutations.changePassword.isPending = false;
   });
 
+  function renderChangePassword() {
+    return render(
+      <MemoryRouter initialEntries={["/change-password"]}>
+        <Routes>
+          <Route path="/change-password" element={<ChangePassword />} />
+          <Route path="/dashboard" element={<div>tela inicial</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
   it("renders accessible labeled fields with new-password autocomplete", () => {
-    render(<ChangePassword />);
+    renderChangePassword();
     const password = screen.getByLabelText("Nova senha");
     const confirm = screen.getByLabelText("Confirmar nova senha");
     expect(password).toHaveAttribute("type", "password");
@@ -189,7 +210,7 @@ describe("ChangePassword", () => {
 
   it("rejects a password shorter than the backend minimum without calling the API", async () => {
     const user = userEvent.setup();
-    render(<ChangePassword />);
+    renderChangePassword();
     await user.type(screen.getByLabelText("Nova senha"), "curta");
     await user.type(screen.getByLabelText("Confirmar nova senha"), "curta");
     await user.click(screen.getByRole("button", { name: "Salvar nova senha" }));
@@ -202,7 +223,7 @@ describe("ChangePassword", () => {
 
   it("rejects mismatched confirmation without calling the API", async () => {
     const user = userEvent.setup();
-    render(<ChangePassword />);
+    renderChangePassword();
     await user.type(screen.getByLabelText("Nova senha"), "senhaforte123");
     await user.type(screen.getByLabelText("Confirmar nova senha"), "senhadiferente");
     await user.click(screen.getByRole("button", { name: "Salvar nova senha" }));
@@ -214,7 +235,7 @@ describe("ChangePassword", () => {
   it("submits only the newPassword contract", async () => {
     const user = userEvent.setup();
     mutations.changePassword.mutateAsync.mockResolvedValue({ ok: true });
-    render(<ChangePassword />);
+    renderChangePassword();
     await user.type(screen.getByLabelText("Nova senha"), "senhaforte123");
     await user.type(screen.getByLabelText("Confirmar nova senha"), "senhaforte123");
     await user.click(screen.getByRole("button", { name: "Salvar nova senha" }));
@@ -229,7 +250,7 @@ describe("ChangePassword", () => {
   it("shows a neutral message on network failure, never a raw error", async () => {
     const user = userEvent.setup();
     mutations.changePassword.mutateAsync.mockRejectedValue(new TypeError("Failed to fetch"));
-    render(<ChangePassword />);
+    renderChangePassword();
     await user.type(screen.getByLabelText("Nova senha"), "senhaforte123");
     await user.type(screen.getByLabelText("Confirmar nova senha"), "senhaforte123");
     await user.click(screen.getByRole("button", { name: "Salvar nova senha" }));
@@ -244,7 +265,7 @@ describe("ChangePassword", () => {
     mutations.changePassword.mutateAsync.mockRejectedValue(
       new ApiError(400, "Senha deve ter entre 10 e 200 caracteres"),
     );
-    render(<ChangePassword />);
+    renderChangePassword();
     await user.type(screen.getByLabelText("Nova senha"), "senhaforte123");
     await user.type(screen.getByLabelText("Confirmar nova senha"), "senhaforte123");
     await user.click(screen.getByRole("button", { name: "Salvar nova senha" }));
@@ -252,6 +273,99 @@ describe("ChangePassword", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Senha deve ter entre 10 e 200 caracteres",
     );
+  });
+
+  it("a voluntary password change (active workspace) shows the account flow copy and a Voltar control", () => {
+    meMock.data = {
+      user: { id: "u1", name: "Ana", email: "a@b.c" },
+      mustChangePassword: false,
+      workspace: { status: "ACTIVE" },
+    };
+    renderChangePassword();
+    expect(screen.getByRole("heading", { name: "Alterar minha senha" })).toBeInTheDocument();
+    expect(screen.getByText("Segurança")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Voltar" })).toBeInTheDocument();
+  });
+
+  it("a forced password change keeps the first-access copy and no Voltar", () => {
+    meMock.data = {
+      user: { id: "u1", name: "Ana", email: "a@b.c" },
+      mustChangePassword: true,
+      workspace: { status: "UNCONFIGURED" },
+    };
+    renderChangePassword();
+    expect(screen.getByRole("heading", { name: "Defina sua nova senha" })).toBeInTheDocument();
+    expect(screen.getByText("Primeiro acesso")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Voltar" })).not.toBeInTheDocument();
+  });
+
+  it("a successful voluntary change returns to the app home", async () => {
+    meMock.data = {
+      user: { id: "u1", name: "Ana", email: "a@b.c" },
+      mustChangePassword: false,
+      workspace: { status: "ACTIVE" },
+    };
+    mutations.changePassword.mutateAsync.mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    renderChangePassword();
+    await user.type(screen.getByLabelText("Nova senha"), "senhaforte123");
+    await user.type(screen.getByLabelText("Confirmar nova senha"), "senhaforte123");
+    await user.click(screen.getByRole("button", { name: "Salvar nova senha" }));
+
+    expect(await screen.findByText("tela inicial")).toBeInTheDocument();
+  });
+
+  it("a successful FORCED change in an ACTIVE workspace also returns to the app home (M1)", async () => {
+    meMock.data = {
+      user: { id: "u1", name: "Ana", email: "a@b.c" },
+      mustChangePassword: true,
+      workspace: { status: "ACTIVE" },
+    };
+    mutations.changePassword.mutateAsync.mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    renderChangePassword();
+    await user.type(screen.getByLabelText("Nova senha"), "senhaforte123");
+    await user.type(screen.getByLabelText("Confirmar nova senha"), "senhaforte123");
+    await user.click(screen.getByRole("button", { name: "Salvar nova senha" }));
+
+    expect(await screen.findByText("tela inicial")).toBeInTheDocument();
+  });
+
+  it("a successful FORCED change in a non-active workspace does NOT skip onboarding", async () => {
+    meMock.data = {
+      user: { id: "u1", name: "Ana", email: "a@b.c" },
+      mustChangePassword: true,
+      workspace: { status: "UNCONFIGURED" },
+    };
+    mutations.changePassword.mutateAsync.mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    renderChangePassword();
+    await user.type(screen.getByLabelText("Nova senha"), "senhaforte123");
+    await user.type(screen.getByLabelText("Confirmar nova senha"), "senhaforte123");
+    await user.click(screen.getByRole("button", { name: "Salvar nova senha" }));
+
+    // No navigation away: the form stays, so AccessGate can route to onboarding.
+    expect(await screen.findByLabelText("Nova senha")).toBeInTheDocument();
+    expect(screen.queryByText("tela inicial")).not.toBeInTheDocument();
+  });
+
+  it("Voltar returns to the previous page in the account flow", async () => {
+    meMock.data = {
+      user: { id: "u1", name: "Ana", email: "a@b.c" },
+      mustChangePassword: false,
+      workspace: { status: "ACTIVE" },
+    };
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/dashboard", "/change-password"]} initialIndex={1}>
+        <Routes>
+          <Route path="/change-password" element={<ChangePassword />} />
+          <Route path="/dashboard" element={<div>tela inicial</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await user.click(screen.getByRole("button", { name: "Voltar" }));
+    expect(await screen.findByText("tela inicial")).toBeInTheDocument();
   });
 });
 

@@ -214,3 +214,67 @@ describe("F14.6 dashboard pending density + header", () => {
     expect(screen.getByRole("link", { name: "Ver demandas" })).toBeInTheDocument();
   });
 });
+
+// ── F14.7 — Dashboard mobile header meta row + contextual navigation ───────
+describe("F14.7 Dashboard contextual navigation", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const attentionItems = Array.from({ length: 4 }, (_, i) => ({
+    id: `att-${i}`,
+    title: `Pendente ${i + 1}`,
+    clientId: "cli-1",
+    format: "POST" as const,
+    status: i === 0 ? "AWAITING_CLIENT" as const : "CHANGES_REQUESTED" as const,
+    createdAt: "2026-08-16T10:00:00.000Z",
+    updatedAt: "2026-08-16T10:00:00.000Z",
+    client: { id: "cli-1", name: "Acme", brandColor: "#333" },
+  }));
+
+  function mockDashboard(needingAttention: unknown[] = []) {
+    vi.spyOn(apiModule, "useDashboard").mockReturnValue({
+      data: mockDashboardData({ needingAttention }),
+      isLoading: false,
+      isError: false,
+    } as any);
+    vi.spyOn(apiModule, "useMe").mockReturnValue({ data: { user: { name: "Ana" }, workspace: {} } } as any);
+  }
+
+  it("clock and 'Ver demandas' share one responsive header meta row", () => {
+    mockDashboard();
+    renderWithClient(<Dashboard />);
+
+    const link = screen.getByRole("link", { name: "Ver demandas" });
+    const row = link.parentElement?.parentElement;
+    expect(row?.className).toContain("flex w-full flex-wrap items-center justify-between");
+    expect(row?.className).toContain("sm:w-auto");
+    expect(row?.className).toContain("sm:justify-end");
+    // The clock sits in the same meta row on mobile.
+    expect(row?.textContent).toContain("Horário da empresa");
+  });
+
+  it("attention 'Ver todas as demandas' opens Demandas focused on the first pending demand", () => {
+    mockDashboard(attentionItems);
+    renderWithClient(<Dashboard />);
+
+    const link = screen.getAllByRole("link", { name: "Ver todas as demandas" })[0];
+    expect(link.getAttribute("href")).toBe("/contents?focus=att-0");
+  });
+
+  it("'Em aprovação' KPI drills into Demandas focused on an awaiting demand", () => {
+    mockDashboard(attentionItems);
+    renderWithClient(<Dashboard />);
+
+    const kpi = screen.getByRole("link", { name: /Em aprovação/ });
+    expect(kpi.getAttribute("href")).toBe("/contents?focus=att-0");
+  });
+
+  it("KPIs without a known target keep the plain board link", () => {
+    mockDashboard();
+    renderWithClient(<Dashboard />);
+
+    expect(screen.getByRole("link", { name: /Demandas ativas/ })).toHaveAttribute("href", "/contents");
+    expect(screen.getByRole("link", { name: /Em aprovação/ })).toHaveAttribute("href", "/contents");
+  });
+});
