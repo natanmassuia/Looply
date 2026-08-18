@@ -7,6 +7,7 @@ import {
   useCreateVersion,
   useUpdateJob,
   useUngroupContent,
+  useCancelDemand,
   useJobFiles,
   useUploadJobAttachment,
   useDownloadJobFile,
@@ -62,6 +63,8 @@ export default function ContentDetail() {
   const [err, setErr] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [showVersionForm, setShowVersionForm] = useState(false);
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const cancelDemand = useCancelDemand();
 
   // Edit metadata modal state
   const [showEditModal, setShowEditModal] = useState(false);
@@ -182,6 +185,7 @@ export default function ContentDetail() {
   };
 
   const status = content.status;
+  const isCancelled = content.lifecycleStatus === "CANCELLED";
   const activeApprovalUrl =
     approvalUrl ??
     (latestApproval?.token ? `${window.location.origin}/approve/${latestApproval.token}` : null);
@@ -216,6 +220,15 @@ export default function ContentDetail() {
       {err && (
         <div className="mb-4 rounded-lg bg-[var(--looply-color-status-danger)]/10 px-3 py-2.5 text-sm text-[var(--looply-color-status-danger)]">
           {err}
+        </div>
+      )}
+
+      {/* Cancelled state banner */}
+      {isCancelled && (
+        <div className="mb-5 flex items-center gap-2 rounded-lg border border-[var(--looply-color-status-danger)]/20 bg-[var(--looply-color-status-danger)]/10 px-3.5 py-2.5 text-sm font-medium text-[var(--looply-color-status-danger)]">
+          <IconX className="h-4 w-4 shrink-0" />
+          Esta demanda foi cancelada e não faz mais parte do fluxo ativo. Histórico e arquivos
+          permanecem disponíveis.
         </div>
       )}
 
@@ -476,7 +489,7 @@ export default function ContentDetail() {
           <Card>
             <h3 className="section-title mb-4">Ações</h3>
 
-            {status === "DRAFT" && (
+            {!isCancelled && status === "DRAFT" && (
               <ActionButton
                 loading={review.isPending}
                 onClick={() => run(review)}
@@ -485,7 +498,7 @@ export default function ContentDetail() {
               />
             )}
 
-            {status === "IN_REVIEW" && (
+            {!isCancelled && status === "IN_REVIEW" && (
               <ActionButton
                 loading={sendApproval.isPending}
                 onClick={onSendApproval}
@@ -494,18 +507,18 @@ export default function ContentDetail() {
               />
             )}
 
-            {activeApprovalUrl && (status === "AWAITING_CLIENT" || status === "IN_REVIEW") && (
+            {!isCancelled && activeApprovalUrl && (status === "AWAITING_CLIENT" || status === "IN_REVIEW") && (
               <ApprovalLinkBox url={activeApprovalUrl} />
             )}
 
-            {status === "AWAITING_CLIENT" && (
+            {!isCancelled && status === "AWAITING_CLIENT" && (
               <div className="flex items-start gap-2 rounded-lg bg-[var(--looply-color-status-info)]/10 px-3 py-2.5 text-sm text-[var(--looply-color-status-info)]">
                 <IconClock className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>Aguardando o cliente aprovar ou solicitar alterações pelo link público.</span>
               </div>
             )}
 
-            {status === "CHANGES_REQUESTED" && latestApproval?.feedback && (
+            {!isCancelled && status === "CHANGES_REQUESTED" && latestApproval?.feedback && (
               <div className="rounded-lg border border-[var(--looply-color-status-danger)]/20 bg-[var(--looply-color-status-danger)]/10 p-3">
                 <div className="section-label mb-1.5 text-[var(--looply-color-status-danger)]">
                   Alteração solicitada
@@ -521,7 +534,7 @@ export default function ContentDetail() {
               </div>
             )}
 
-            {status === "CHANGES_REQUESTED" && (
+            {!isCancelled && status === "CHANGES_REQUESTED" && (
               <>
                 {!showVersionForm ? (
                   <ActionButton
@@ -549,14 +562,14 @@ export default function ContentDetail() {
               </>
             )}
 
-            {status === "APPROVED" && (
+            {!isCancelled && status === "APPROVED" && (
               <ScheduleForm
                 loading={schedule.isPending}
                 onSubmit={(iso) => run(schedule, { scheduledAt: iso }).then(() => undefined)}
               />
             )}
 
-            {status === "SCHEDULED" && (
+            {!isCancelled && status === "SCHEDULED" && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 rounded-lg bg-[var(--looply-color-action-primary)]/10 px-3 py-2.5 text-sm text-[var(--looply-color-action-primary)]">
                   <IconClock className="h-4 w-4" />
@@ -571,11 +584,23 @@ export default function ContentDetail() {
               </div>
             )}
 
-            {status === "PUBLISHED" && (
+            {!isCancelled && status === "PUBLISHED" && (
               <div className="flex items-center gap-2 rounded-lg bg-[var(--looply-color-status-success)]/10 px-3 py-2.5 text-sm text-[var(--looply-color-status-success)]">
                 <IconCheck className="h-4 w-4" />
                 Publicado em {formatDateTime(content.publishedAt)}
               </div>
+            )}
+
+            {!isCancelled && (
+              <button
+                type="button"
+                onClick={() => setConfirmCancelOpen(true)}
+                disabled={cancelDemand.isPending}
+                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-[var(--looply-color-status-danger)]/30 px-3 py-2 text-[12.5px] font-medium text-[var(--looply-color-status-danger)] transition-colors hover:bg-[var(--looply-color-status-danger)]/10 disabled:opacity-50"
+              >
+                <IconX className="h-3.5 w-3.5" />
+                {cancelDemand.isPending ? "Cancelando…" : "Cancelar demanda"}
+              </button>
             )}
           </Card>
 
@@ -583,6 +608,48 @@ export default function ContentDetail() {
           <JobActivityTimeline jobId={content.id} responsibleName={content.responsible?.name} />
         </div>
       </div>
+
+      {/* Cancel demand confirmation */}
+      <ModalOrSheet
+        isOpen={confirmCancelOpen}
+        onClose={() => setConfirmCancelOpen(false)}
+        title="Cancelar demanda"
+        subtitle="Esta ação não pode ser desfeita."
+        maxWidth="max-w-sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-[var(--looply-color-text-muted)]">
+            A demanda <strong className="text-[var(--looply-color-text-primary)]">{content.title}</strong> será
+            cancelada e removida do fluxo ativo. O histórico, as versões e os arquivos serão preservados.
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setConfirmCancelOpen(false)}
+            >
+              Voltar
+            </button>
+            <button
+              type="button"
+              className="btn-danger"
+              disabled={cancelDemand.isPending}
+              onClick={async () => {
+                try {
+                  await cancelDemand.mutateAsync(content.id);
+                  setConfirmCancelOpen(false);
+                  refetch();
+                } catch (e) {
+                  setErr(e instanceof ApiError ? e.message : "Falha ao cancelar demanda.");
+                  setConfirmCancelOpen(false);
+                }
+              }}
+            >
+              {cancelDemand.isPending ? "Cancelando…" : "Cancelar demanda"}
+            </button>
+          </div>
+        </div>
+      </ModalOrSheet>
     </div>
   );
 }

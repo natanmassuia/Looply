@@ -21,6 +21,7 @@ import {
   groupContent,
   ungroupContent,
 } from "../services/contentService";
+import { transitionJobLifecycle } from "../services/jobService";
 import { env } from "../lib/env";
 import { Capability } from "../domain/capabilities";
 import { requireCapability } from "../middleware/requireCapability";
@@ -153,6 +154,17 @@ router.post(
   asyncHandler(async (req, res) => {
     const result = await ungroupContent(prisma, req.auth!.companyId, req.params.id);
     res.json(result);
+  }),
+);
+
+// Cancel: business-state cancellation (not physical delete). Uses the tested
+// transitionJobLifecycle service: idempotent for CANCELLED, records a
+// JOB_CANCELLED activity, preserves files/history/approvals. Tenant-scoped.
+router.post(
+  "/:id/cancel",
+  asyncHandler(async (req, res) => {
+    const job = await transitionJobLifecycle(prisma, req.auth!.companyId, req.auth!.userId, req.params.id, "CANCELLED");
+    res.json(job);
   }),
 );
 

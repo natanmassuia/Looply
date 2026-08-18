@@ -90,6 +90,26 @@ export type ContentStatus =
   | "SCHEDULED"
   | "PUBLISHED";
 
+export type JobLifecycleStatus = "OPEN" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+
+export interface WorkflowStage {
+  id: string;
+  workflowId: string;
+  name: string;
+  position: number;
+  terminal: boolean;
+  active: boolean;
+}
+
+export interface WorkflowDefinition {
+  id: string;
+  companyId: string;
+  name: string;
+  template: string;
+  active: boolean;
+  stages: WorkflowStage[];
+}
+
 export type ContentFormat = "POST" | "REELS" | "STORY" | "CAROUSEL" | "VIDEO" | "IMAGE";
 export type UserRole = "ADMIN" | "CONTENT_MANAGER" | "EDITOR" | "SOCIAL_MEDIA" | "DESIGNER";
 export type MemberRole = "OWNER" | "ADMIN" | "MEMBER";
@@ -204,6 +224,7 @@ export interface ContentListItem {
   channel?: string | null;
   responsibleId?: string | null;
   status: ContentStatus;
+  lifecycleStatus?: JobLifecycleStatus;
   publicationTarget?: string | null;
   scheduledAt?: string | null;
   publishedAt?: string | null;

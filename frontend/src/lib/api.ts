@@ -32,6 +32,8 @@ import type {
   UpdateJobPayload,
   UploadIntentResponse,
   User,
+  WorkflowDefinition,
+  WorkflowStage,
   WorkspaceAppearance,
   WorkspaceContext,
   WorkspaceTemplate,
@@ -314,6 +316,60 @@ export function useUpdateCompanySettings() {
   });
 }
 
+// ── Workflow configuration (Settings → Workflow) ───────────────────────────
+
+export const useWorkflow = (enabled = true) =>
+  useQuery({
+    queryKey: ["workflow"],
+    queryFn: async () => {
+      const res = await apiFetch<{ workflows: WorkflowDefinition[] }>("/api/workflows");
+      return res.workflows[0] ?? null;
+    },
+    enabled,
+  });
+
+export function useAddWorkflowStage(workflowId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) =>
+      apiFetch<WorkflowStage>(`/api/workflows/${workflowId}/stages`, { method: "POST", body: { name } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["workflow"] }),
+  });
+}
+
+export function useRenameWorkflowStage(workflowId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ stageId, name }: { stageId: string; name: string }) =>
+      apiFetch<WorkflowStage>(`/api/workflows/${workflowId}/stages/${stageId}`, {
+        method: "PATCH",
+        body: { name },
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["workflow"] }),
+  });
+}
+
+export function useReorderWorkflowStages(workflowId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (stageIds: string[]) =>
+      apiFetch<WorkflowDefinition>(`/api/workflows/${workflowId}/reorder`, {
+        method: "POST",
+        body: { stageIds },
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["workflow"] }),
+  });
+}
+
+export function useRemoveWorkflowStage(workflowId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (stageId: string) =>
+      apiFetch<{ ok: true }>(`/api/workflows/${workflowId}/stages/${stageId}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["workflow"] }),
+  });
+}
+
 export function useUpdateProfile() {
   const qc = useQueryClient();
   return useMutation({
@@ -579,6 +635,21 @@ export function useUpdateJob() {
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["calendar"] });
       qc.invalidateQueries({ queryKey: ["jobActivity", vars.id] });
+    },
+  });
+}
+
+export function useCancelDemand() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch(`/api/contents/${id}/cancel`, { method: "POST" }),
+    onSuccess: (_data, id) => {
+      qc.invalidateQueries({ queryKey: ["content", id] });
+      qc.invalidateQueries({ queryKey: ["contents"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["publications"] });
+      qc.invalidateQueries({ queryKey: ["jobActivity", id] });
     },
   });
 }

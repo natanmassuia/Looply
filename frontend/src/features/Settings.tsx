@@ -17,6 +17,7 @@ import { IconCheck, IconAlertCircle, IconSun, IconMoon } from "../components/Ico
 import MyAccountModal from "./MyAccountModal";
 import ImageUpload from "../components/ImageUpload";
 import PhoneInput, { hydratePhone } from "../components/PhoneInput";
+import WorkflowSettings from "./WorkflowSettings";
 
 const PRESETS: { value: AppearancePreset; title: string; description: string; colors: string[] }[] = [
   {
@@ -69,7 +70,7 @@ export default function Settings() {
   const currentAppearance = useWorkspaceAppearance();
   const updateAppearance = useUpdateSettingsAppearance();
 
-  const [activeTab, setActiveTab] = useState<"account" | "company" | "appearance" | "integrations">("account");
+  const [activeTab, setActiveTab] = useState<"account" | "company" | "appearance" | "workflow" | "integrations">("account");
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
 
   // Local appearance form state initialized from workspace session
@@ -229,6 +230,17 @@ export default function Settings() {
             }`}
           >
             Aparência
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("workflow")}
+            className={`pb-3 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
+              activeTab === "workflow"
+                ? "border-[var(--looply-color-action-primary)] text-[var(--looply-color-text-primary)] font-semibold"
+                : "border-transparent text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
+            }`}
+          >
+            Workflow
           </button>
           <button
             type="button"
@@ -627,6 +639,20 @@ export default function Settings() {
             </div>
           </Card>
         </form>
+      )}
+
+      {/* Tab: Workflow (F14 — R1 editable workflow) */}
+      {activeTab === "workflow" && (
+        isOwnerOrAdmin ? (
+          <WorkflowSettings />
+        ) : (
+          <Card>
+            <div className="flex items-start gap-2 rounded-lg bg-[var(--looply-color-status-info)]/10 px-3 py-2.5 text-sm text-[var(--looply-color-status-info)]">
+              <IconAlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>Apenas proprietários e administradores podem configurar o workflow.</span>
+            </div>
+          </Card>
+        )
       )}
 
       {/* Tab: Integrações */}
