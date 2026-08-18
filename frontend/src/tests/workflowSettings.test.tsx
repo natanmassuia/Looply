@@ -12,10 +12,12 @@ const mockWorkflow: WorkflowDefinition = {
   template: "MARKETING_AGENCY",
   active: true,
   stages: [
-    { id: "s1", workflowId: "w1", name: "Backlog", position: 0, terminal: false, active: true },
-    { id: "s2", workflowId: "w1", name: "Em produção", position: 1, terminal: false, active: true },
-    { id: "s3", workflowId: "w1", name: "Revisão", position: 2, terminal: false, active: true },
-    { id: "s4", workflowId: "w1", name: "Concluído", position: 3, terminal: true, active: true },
+    { id: "s1", workflowId: "w1", name: "Backlog", position: 0, terminal: false, active: true, semanticKey: null },
+    { id: "s2", workflowId: "w1", name: "Em produção", position: 1, terminal: false, active: true, semanticKey: null },
+    { id: "s3", workflowId: "w1", name: "Revisão", position: 2, terminal: false, active: true, semanticKey: null },
+    { id: "s4", workflowId: "w1", name: "Aprovado", position: 3, terminal: false, active: true, semanticKey: "APPROVED" },
+    { id: "s5", workflowId: "w1", name: "Agendado", position: 4, terminal: false, active: true, semanticKey: "SCHEDULED" },
+    { id: "s6", workflowId: "w1", name: "Concluído", position: 5, terminal: true, active: true, semanticKey: "COMPLETED" },
   ],
 };
 
@@ -131,5 +133,20 @@ describe("Workflow Settings (R1)", () => {
     renderWithProviders();
     fireEvent.click(screen.getByRole("button", { name: /Remover Em produção/ }));
     await waitFor(() => expect(screen.getByText(/Falha ao remover etapa/i)).toBeInTheDocument());
+  });
+
+  it("marks protected semantic stages as Sistema and blocks their removal", () => {
+    vi.spyOn(apiModule, "useWorkflow").mockReturnValue({
+      data: mockWorkflow,
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    renderWithProviders();
+    // APPROVED and SCHEDULED stages are protected (non-terminal) → Sistema badge.
+    expect(screen.getAllByText("Sistema").length).toBeGreaterThanOrEqual(2);
+    // Removal is disabled for a protected semantic stage.
+    const removeApproved = screen.getByRole("button", { name: /Remover Aprovado/ });
+    expect(removeApproved).toBeDisabled();
   });
 });

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/db";
-import { asyncHandler, badRequest } from "../lib/errors";
+import { asyncHandler, badRequest, conflict } from "../lib/errors";
 import { parse } from "../lib/parse";
 import {
   createContentSchema,
@@ -22,6 +22,7 @@ import {
   ungroupContent,
 } from "../services/contentService";
 import { transitionJobLifecycle } from "../services/jobService";
+import { syncJobStageToSemantic } from "../services/workflowService";
 import { env } from "../lib/env";
 import { Capability } from "../domain/capabilities";
 import { requireCapability } from "../middleware/requireCapability";
@@ -120,6 +121,12 @@ router.patch(
 
     const newStatus = parsed.data.status as ContentStatus;
 
+    // R1.2 — Appointment is authoritative for scheduling. A generic status write
+    // (drag-and-drop) must never force SCHEDULED directly.
+    if (newStatus === "SCHEDULED") {
+      throw conflict("Agendamento só é permitido pelo fluxo de agendamento");
+    }
+
     // Move parent + all children to the same column (cards move together)
     await prisma.$transaction([
       prisma.job.updateMany({
@@ -131,6 +138,12 @@ router.patch(
         data: { status: newStatus },
       }),
     ]);
+    // R1.2 — keep the workflow stage coherent with protected semantics set here.
+    if (newStatus === "APPROVED") {
+      await syncJobStageToSemantic(prisma, req.auth!.companyId, req.params.id, "APPROVED");
+    } else if (newStatus === "PUBLISHED") {
+      await syncJobStageToSemantic(prisma, req.auth!.companyId, req.params.id, "COMPLETED");
+    }
     res.json({ id: req.params.id, status: newStatus });
   }),
 );

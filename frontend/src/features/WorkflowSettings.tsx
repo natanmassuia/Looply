@@ -81,7 +81,7 @@ export default function WorkflowSettings() {
   };
 
   const handleRemove = async (stage: WorkflowStage) => {
-    if (stage.terminal) return;
+    if (stage.terminal || stage.semanticKey) return;
     try {
       await removeStage.mutateAsync(stage.id);
       notify("Etapa removida.");
@@ -190,6 +190,11 @@ export default function WorkflowSettings() {
                         Final
                       </span>
                     )}
+                    {!stage.terminal && stage.semanticKey && (
+                      <span className="shrink-0 rounded-full bg-[var(--looply-color-bg-subtle)] px-2 py-0.5 text-[10px] font-medium text-[var(--looply-color-text-muted)]">
+                        Sistema
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
@@ -210,8 +215,8 @@ export default function WorkflowSettings() {
                 <button
                   type="button"
                   aria-label={`Remover ${stage.name}`}
-                  disabled={stage.terminal}
-                  title={stage.terminal ? "A etapa final é protegida" : "Remover etapa"}
+                  disabled={stage.terminal || !!stage.semanticKey}
+                  title={stage.terminal || stage.semanticKey ? "Esta etapa é protegida" : "Remover etapa"}
                   onClick={() => handleRemove(stage)}
                   className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--looply-color-status-danger)] hover:bg-[var(--looply-color-bg-subtle)] disabled:opacity-30"
                 >

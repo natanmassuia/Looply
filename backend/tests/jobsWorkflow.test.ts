@@ -87,7 +87,9 @@ describe.skipIf(!process.env.DATABASE_URL)("Jobs + Workflow + Activity", () => {
     const a = await login(prisma, emailA, "looply123");
     const workflow = (await request(app).get("/api/workflows").set("Cookie", `${SESSION_COOKIE}=${a.token}`)).body.workflows[0];
     const job = await prisma.job.findFirst({ where: { companyId: a.user.companyId! }, select: { id: true, currentStageId: true } });
-    const nextStage = workflow.stages.find((s: any) => s.id !== job!.currentStageId);
+    // R1.2 — protected stages (semanticKey) cannot be entered by a generic
+    // drag, so pick a custom stage for this generic-transition assertion.
+    const nextStage = workflow.stages.find((s: any) => s.id !== job!.currentStageId && !s.semanticKey);
     const moved = await request(app)
       .post(`/api/jobs/${job!.id}/transition`)
       .set("Cookie", `${SESSION_COOKIE}=${a.token}`)
