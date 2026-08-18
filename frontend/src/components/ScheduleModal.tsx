@@ -52,30 +52,12 @@ export default function ScheduleModal({
       setErr("Informe data e horário.");
       return;
     }
-    // Build an ISO datetime in the company timezone.
-    let startsAt: string;
-    try {
-      const [y, m, d] = date.split("-").map(Number);
-      const [hh, mm] = time.split(":").map(Number);
-      const tz = timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const dt = new Date(y, m - 1, d, hh, mm);
-      const iso = new Intl.DateTimeFormat("en-CA", {
-        timeZone: tz,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      }).format(dt);
-      // "MM/DD/YYYY, HH:MM" → ISO-local parts
-      const match = iso.match(/(\d+)\/(\d+)\/(\d+),?\s*(\d+):(\d+)/);
-      if (!match) throw new Error();
-      startsAt = `${match[3]}-${match[1]}-${match[2]}T${String(match[4]).padStart(2, "0")}:${match[5]}:00.000Z`;
-    } catch {
-      setErr("Não foi possível interpretar a data/horário.");
-      return;
-    }
+    // Build the ISO datetime directly from the wall-clock inputs. The native
+    // date/time inputs always produce YYYY-MM-DD and HH:MM, so no locale/ICU
+    // formatting dance is needed (Intl en-CA output is not MM/DD/YYYY).
+    const [y, m, d] = date.split("-").map(Number);
+    const [hh, mm] = time.split(":").map(Number);
+    const startsAt = `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00.000Z`;
 
     setPending(true);
     setErr(null);

@@ -23,12 +23,19 @@ describe.skipIf(!process.env.DATABASE_URL)("Workflow semantic coherence (R1.2, D
     if (created.status !== 201) { await logout(prisma, session.token); return; }
     const id = created.body.id;
 
-    // Move to APPROVED via the generic status route.
-    await request(app)
-      .patch(`/api/contents/${id}/status`)
+    // R1.3 — the legacy generic-status APPROVED path is closed. Approve through
+    // the canonical flow: review → send-approval → client decision.
+    await request(app).post(`/api/contents/${id}/review`).set("Cookie", cookie).set("Origin", env.CORS_ORIGIN);
+    const sent = await request(app)
+      .post(`/api/contents/${id}/send-approval`)
       .set("Cookie", cookie)
+      .set("Origin", env.CORS_ORIGIN);
+    expect(sent.status).toBe(200);
+    const approved = await request(app)
+      .post(`/api/public/approvals/${sent.body.token}/approve`)
       .set("Origin", env.CORS_ORIGIN)
-      .send({ status: "APPROVED" });
+      .send({ reviewerName: "Cliente" });
+    expect(approved.status).toBe(200);
 
     // Schedule (canonical endpoint).
     const sched = await request(app)
@@ -175,6 +182,70 @@ describe.skipIf(!process.env.DATABASE_URL)("Workflow semantic coherence (R1.2, D
     });
     expect(after?.status).toBe("APPROVED");
     expect(after?.currentStage?.semanticKey).toBe("APPROVED");
+
+    await logout(prisma, session.token);
+  });
+
+  it("legacy PATCH status cannot force APPROVED while an approval is pending (R1.3 remediation)", async () => {
+    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const cookie = `${SESSION_COOKIE}=${session.token}`;
+
+    const clientRes = await request(app).get("/api/clients").set("Cookie", cookie);
+    const clientId = clientRes.body.clients?.[0]?.id ?? clientRes.body?.[0]?.id;
+    if (!clientId) { await logout(prisma, session.token); return; }
+    const created = await request(app)
+      .post("/api/contents")
+      .set("Cookie", cookie)
+      .set("Origin", env.CORS_ORIGIN)
+      .send({ title: "R1.3 PATCH APPROVED Block", clientId, format: "POST", caption: "cap" });
+    if (created.status !== 201) { await logout(prisma, session.token); return; }
+    const id = created.body.id;
+
+    // Move the demand into AWAITING_CLIENT with a real pending canonical Approval.
+    await request(app).post(`/api/contents/${id}/review`).set("Cookie", cookie).set("Origin", env.CORS_ORIGIN);
+    const sent = await request(app)
+      .post(`/api/contents/${id}/send-approval`)
+      .set("Cookie", cookie)
+      .set("Origin", env.CORS_ORIGIN);
+    expect(sent.status).toBe(200);
+    const token = sent.body.token;
+    const approval = await prisma.approval.findFirst({ where: { contentId: id, status: "PENDING" } });
+    expect(approval).not.toBeNull();
+    const before = await prisma.job.findFirst({ where: { id, companyId: session.user.companyId! } });
+    expect(before?.status).toBe("AWAITING_CLIENT");
+
+    // A generic status write must be rejected unconditionally — even from
+    // AWAITING_CLIENT — because it is not an approval decision.
+    const res = await request(app)
+      .patch(`/api/contents/${id}/status`)
+      .set("Cookie", cookie)
+      .set("Origin", env.CORS_ORIGIN)
+      .send({ status: "APPROVED" });
+    expect(res.status).toBe(409);
+
+    const after = await prisma.job.findFirst({ where: { id, companyId: session.user.companyId! } });
+    expect(after?.status).toBe("AWAITING_CLIENT");
+    expect(after?.currentStageId).toBe(before?.currentStageId);
+
+    // The canonical Approval stays undecided; no decision row or activity.
+    const stillPending = await prisma.approval.findFirst({ where: { id: approval!.id } });
+    expect(stillPending?.status).toBe("PENDING");
+    expect(stillPending?.decidedAt).toBeNull();
+    expect(await prisma.approvalDecision.count({ where: { approvalId: approval!.id } })).toBe(0);
+    expect(await prisma.activity.count({ where: { jobId: id, type: "APPROVAL_APPROVED" } })).toBe(0);
+
+    // The canonical approval flow still approves and syncs the stage.
+    const approved = await request(app)
+      .post(`/api/public/approvals/${token}/approve`)
+      .set("Origin", env.CORS_ORIGIN)
+      .send({ reviewerName: "Cliente" });
+    expect(approved.status).toBe(200);
+    const finalJob = await prisma.job.findFirst({
+      where: { id, companyId: session.user.companyId! },
+      include: { currentStage: { select: { semanticKey: true } } },
+    });
+    expect(finalJob?.status).toBe("APPROVED");
+    expect(finalJob?.currentStage?.semanticKey).toBe("APPROVED");
 
     await logout(prisma, session.token);
   });

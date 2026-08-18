@@ -1,54 +1,87 @@
-import { useMemo, useState, useCallback, useRef, type DragEvent } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect, type DragEvent, type TouchEvent as ReactTouchEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useContents, useClients, useGroupContent, useUngroupContent, apiFetch } from "../lib/api";
-import { STATUS_LABEL, FORMAT_LABEL, relativeTime } from "../lib/format";
-import type { ContentStatus, ContentListItem, Client } from "../lib/types";
+import { useContents, useClients, useGroupContent, useUngroupContent, useWorkflow, apiFetch, ApiError } from "../lib/api";
+import { FORMAT_LABEL, relativeTime } from "../lib/format";
+import type { ContentListItem, Client } from "../lib/types";
 import { EmptyState, ErrorState, PageHeader, Spinner } from "../components/common";
 import StatusPill from "../components/StatusPill";
 import ModalOrSheet from "../components/ModalOrSheet";
 import ScheduleModal from "../components/ScheduleModal";
 import { IconPlus, IconChevronDown, IconCheck } from "../components/Icons";
 
-const COLUMNS: { status: ContentStatus; color: string; bg: string }[] = [
-  { status: "DRAFT", color: "bg-slate-400", bg: "bg-slate-50/70" },
-  { status: "IN_REVIEW", color: "bg-amber-400", bg: "bg-amber-50/50" },
-  { status: "AWAITING_CLIENT", color: "bg-violet-400", bg: "bg-violet-50/50" },
-  { status: "CHANGES_REQUESTED", color: "bg-rose-400", bg: "bg-rose-50/50" },
-  { status: "APPROVED", color: "bg-emerald-400", bg: "bg-emerald-50/50" },
-  { status: "SCHEDULED", color: "bg-blue-400", bg: "bg-blue-50/50" },
-  { status: "PUBLISHED", color: "bg-teal-400", bg: "bg-teal-50/50" },
-];
-
-const ENDPOINT_MAP: Record<string, string> = {
-  "DRAFT-IN_REVIEW": "/review",
-  "IN_REVIEW-AWAITING_CLIENT": "/send-approval",
-  "CHANGES_REQUESTED-IN_REVIEW": "/review",
-  "APPROVED-SCHEDULED": "/schedule",
-  "SCHEDULED-PUBLISHED": "/publish",
-};
+// ── R1.3 — the board is WorkflowStage-driven. Columns come from the active
+// stages of the workflow (id/order/label), cards are placed by currentStageId,
+// and movement goes through the canonical transition endpoint. semanticKey
+// (never the editable label) drives protected APPROVED/SCHEDULED behavior.
 
 const GROUP_MS = 500;
+const TOUCH_MOVE_THRESHOLD = 8;
+const SCROLL_EDGE = 64;
+const SCROLL_STEP = 12;
+
+// Presentation-only accent per board position. Semantics never come from here.
+const STAGE_COLORS = [
+  "bg-slate-400",
+  "bg-amber-400",
+  "bg-violet-400",
+  "bg-rose-400",
+  "bg-emerald-400",
+  "bg-blue-400",
+  "bg-teal-400",
+  "bg-fuchsia-400",
+  "bg-orange-400",
+  "bg-cyan-400",
+];
+
+// Horizontal auto-scroll while dragging: finger in the right edge zone scrolls
+// right, left edge zone scrolls left, out of the zone stops. Pure for testing.
+export function autoScrollDelta(
+  x: number,
+  rect: { left: number; right: number },
+  edge = SCROLL_EDGE,
+  step = SCROLL_STEP,
+): number {
+  if (x > rect.right - edge) return step;
+  if (x < rect.left + edge) return -step;
+  return 0;
+}
 
 export default function ContentsList() {
   const { data, isLoading, isError, error, refetch } = useContents();
+  const { data: workflow } = useWorkflow();
   const { data: clients } = useClients();
   const groupMutation = useGroupContent();
   const ungroupMutation = useUngroupContent();
   const navigate = useNavigate();
+
+  const stages = useMemo(
+    () => (workflow?.stages ?? []).filter((s) => s.active).sort((a, b) => a.position - b.position),
+    [workflow],
+  );
+  const stageById = useMemo(() => new Map(stages.map((s) => [s.id, s])), [stages]);
+
   const [clientId, setClientId] = useState<string>("");
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
   const [scheduleIntent, setScheduleIntent] = useState<{ id: string; title: string; clientId: string } | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [draggedClientId, setDraggedClientId] = useState<string | null>(null);
-  const [dropTarget, setDropTarget] = useState<ContentStatus | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [groupTargetId, setGroupTargetId] = useState<string | null>(null);
   const [groupReady, setGroupReady] = useState(false);
+  const [touchDrag, setTouchDrag] = useState<{ id: string; clientId: string } | null>(null);
+  const [touchMoving, setTouchMoving] = useState(false);
+  const [dragError, setDragError] = useState<string | null>(null);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const readyRef = useRef(false);
   const targetRef = useRef<string | null>(null);
   const enterCount = useRef(0);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const touchRef = useRef<{ id: string; clientId: string; x: number; y: number; moved: boolean; raf: number | null } | null>(null);
+  const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
+  const suppressClickRef = useRef(false);
 
   const filtered = useMemo(() => {
     if (!clientId) return data ?? [];
@@ -67,15 +100,16 @@ export default function ContentsList() {
 
   const topLevel = useMemo(() => filtered.filter((c) => !c.parentId && c.lifecycleStatus !== "CANCELLED"), [filtered]);
 
-  const byStatus = useMemo(() => {
-    const map = new Map<ContentStatus, ContentListItem[]>();
-    for (const c of COLUMNS) map.set(c.status, []);
+  // Card placement authority = currentStageId (operational workflow position).
+  const byStage = useMemo(() => {
+    const map = new Map<string, ContentListItem[]>();
+    for (const s of stages) map.set(s.id, []);
     for (const item of topLevel) {
-      const arr = map.get(item.status);
+      const arr = item.currentStageId ? map.get(item.currentStageId) : undefined;
       if (arr) arr.push(item);
     }
     return map;
-  }, [topLevel]);
+  }, [topLevel, stages]);
 
   const childrenMap = useMemo(() => {
     const map = new Map<string, ContentListItem[]>();
@@ -88,6 +122,12 @@ export default function ContentsList() {
     }
     return map;
   }, [filtered]);
+
+  const notifyError = useCallback((msg: string) => {
+    setDragError(msg);
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    errorTimerRef.current = setTimeout(() => setDragError(null), 4000);
+  }, []);
 
   const resetGroup = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -140,13 +180,41 @@ export default function ContentsList() {
     }
   }, []);
 
-  const handleDropOnColumn = useCallback(async (targetStatus: ContentStatus, event?: DragEvent) => {
+  // Commit a drop to a WorkflowStage. The backend is the transition authority;
+  // the card is never optimistically moved (a failure leaves it in place).
+  const performDrop = useCallback(async (stageId: string, id: string) => {
     setDropTarget(null);
+    const item = (data ?? []).find((c) => c.id === id);
+    if (!item) return;
+    if (item.currentStageId === stageId) return;
+
+    const stage = stageById.get(stageId);
+    if (stage?.semanticKey === "SCHEDULED") {
+      // Appointment stays authoritative: the drop is an intent to schedule.
+      // Only schedule-eligible cards open the canonical handoff; SCHEDULED is
+      // never committed here.
+      if (item.status === "APPROVED") {
+        setScheduleIntent({ id: item.id, title: item.title, clientId: item.clientId });
+      } else {
+        notifyError("Somente demandas aprovadas podem ser agendadas.");
+      }
+      return;
+    }
+
+    try {
+      await apiFetch(`/api/jobs/${id}/transition`, { method: "POST", body: { stageId } });
+      refetch();
+    } catch (e) {
+      notifyError(e instanceof ApiError ? e.message : "Não foi possível mover a demanda.");
+    }
+  }, [data, stageById, refetch, notifyError]);
+
+  const handleDropOnStage = useCallback(async (stageId: string, event?: DragEvent) => {
     // Prefer the id carried by the drag itself (dataTransfer), which survives
-    // dragend-state races. Fall back to the reactive draggedId for safety.
+    // dragend-state races. Fall back to the reactive draggedId / touchDrag.
     const transferId = event?.dataTransfer?.getData("text/plain");
-    const id = transferId || draggedId;
-    if (!id) { setDraggedId(null); setDraggedClientId(null); return; }
+    const id = transferId || draggedId || touchDrag?.id;
+    if (!id) { setDraggedId(null); setDraggedClientId(null); setDropTarget(null); return; }
 
     const doGroup = readyRef.current && targetRef.current && targetRef.current !== id;
     const groupParent = targetRef.current;
@@ -159,37 +227,82 @@ export default function ContentsList() {
       return;
     }
 
-    const fromStatus = findStatusById(data ?? [], id);
-    if (fromStatus === targetStatus) return;
+    await performDrop(stageId, id);
+  }, [draggedId, touchDrag, resetGroup, groupMutation, performDrop]);
 
-    // F14.4 — drop into Agendado from an eligible state is an INTENT TO
-    // SCHEDULE: open the scheduling modal instead of committing a status.
-    if (targetStatus === "SCHEDULED" && fromStatus === "APPROVED") {
-      const item = (data ?? []).find((c) => c.id === id);
-      if (item) {
-        setScheduleIntent({
-          id: item.id,
-          title: item.title,
-          clientId: item.clientId,
-        });
-      }
-      return;
+  // ── Touch drag (mobile): hold a card to drag it across the board. The
+  // horizontal container auto-scrolls while the finger sits in an edge zone.
+  const stopTouch = useCallback((drop: boolean) => {
+    const tr = touchRef.current;
+    touchRef.current = null;
+    if (tr?.raf) cancelAnimationFrame(tr.raf);
+    const pos = lastTouchRef.current;
+    lastTouchRef.current = null;
+    setTouchDrag(null);
+    setTouchMoving(false);
+    setDropTarget(null);
+    if (tr?.moved) suppressClickRef.current = true;
+    if (drop && tr?.moved && pos) {
+      const el = document.elementFromPoint(pos.x, pos.y);
+      const col = el?.closest?.("[data-stage-id]");
+      const stageId = col?.getAttribute("data-stage-id");
+      if (stageId) void performDrop(stageId, tr.id);
     }
+  }, [performDrop]);
 
-    const key = `${fromStatus}-${targetStatus}`;
-    const endpoint = ENDPOINT_MAP[key];
-    try {
-      if (endpoint) {
-        await apiFetch(`/api/contents/${id}${endpoint}`, { method: "POST" });
-      } else {
-        await apiFetch(`/api/contents/${id}/status`, {
-          method: "PATCH",
-          body: { status: targetStatus },
-        });
-      }
-      refetch();
-    } catch { /* */ }
-  }, [draggedId, data, refetch, resetGroup, groupMutation]);
+  const onCardTouchStart = useCallback((e: ReactTouchEvent, id: string, clientId: string) => {
+    const t = e.touches[0];
+    if (!t) return;
+    touchRef.current = { id, clientId, x: t.clientX, y: t.clientY, moved: false, raf: null };
+    lastTouchRef.current = { x: t.clientX, y: t.clientY };
+    setTouchDrag({ id, clientId });
+  }, []);
+
+  const onCardTouchMove = useCallback((e: ReactTouchEvent) => {
+    const tr = touchRef.current;
+    if (!tr) return;
+    const t = e.touches[0];
+    if (!t) return;
+    lastTouchRef.current = { x: t.clientX, y: t.clientY };
+    if (!tr.moved && Math.hypot(t.clientX - tr.x, t.clientY - tr.y) < TOUCH_MOVE_THRESHOLD) return;
+    if (!tr.moved) {
+      tr.moved = true;
+      setTouchMoving(true);
+    }
+    // Destination feedback follows the finger without requiring hover.
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    const col = el?.closest?.("[data-stage-id]");
+    setDropTarget(col?.getAttribute("data-stage-id") ?? null);
+    if (!tr.raf) {
+      const tick = () => {
+        const ctr = touchRef.current;
+        const container = scrollRef.current;
+        const pos = lastTouchRef.current;
+        if (!ctr?.moved || !container || !pos) return;
+        const rect = container.getBoundingClientRect();
+        container.scrollLeft += autoScrollDelta(pos.x, rect);
+        ctr.raf = requestAnimationFrame(tick);
+      };
+      tr.raf = requestAnimationFrame(tick);
+    }
+  }, []);
+
+  const onCardTouchEnd = useCallback(() => stopTouch(true), [stopTouch]);
+  const onCardTouchCancel = useCallback(() => stopTouch(false), [stopTouch]);
+
+  // Block page scroll only while a card is being touch-dragged (the intended
+  // movement target is the Kanban's horizontal container).
+  const boardReady = !!(data && data.length > 0);
+  useEffect(() => {
+    if (!boardReady) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const onTouchMove = (ev: globalThis.TouchEvent) => {
+      if (touchRef.current?.moved) ev.preventDefault();
+    };
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => el.removeEventListener("touchmove", onTouchMove);
+  }, [boardReady]);
 
   return (
     <div>
@@ -206,6 +319,15 @@ export default function ContentsList() {
 
       {isLoading && <Spinner label="Carregando demandas…" />}
       {isError && <ErrorState message={(error as Error)?.message} />}
+
+      {dragError && (
+        <div
+          role="alert"
+          className="fixed left-1/2 top-4 z-50 -translate-x-1/2 rounded-xl border border-[var(--looply-color-status-danger)]/30 bg-[var(--looply-color-bg-surface)] px-4 py-2.5 text-xs font-medium text-[var(--looply-color-status-danger)] shadow-looply-md"
+        >
+          {dragError}
+        </div>
+      )}
 
       {!isLoading && !isError && data && data.length === 0 && (
         <EmptyState
@@ -313,17 +435,19 @@ export default function ContentsList() {
               Nenhuma demanda encontrada para o cliente selecionado.
             </div>
           )}
-          <div className="overflow-x-auto min-w-0 pb-4">
+          <div ref={scrollRef} className="overflow-x-auto min-w-0 pb-4">
             <div className="flex gap-3 min-w-max">
-              {COLUMNS.map(({ status, color }) => {
-                const items = byStatus.get(status) ?? [];
-                const isTarget = dropTarget === status;
+              {stages.map((stage, index) => {
+                const items = byStage.get(stage.id) ?? [];
+                const isTarget = dropTarget === stage.id;
+                const color = STAGE_COLORS[index % STAGE_COLORS.length];
                 return (
                   <div
-                    key={status}
-                    onDragOver={(e) => { e.preventDefault(); setDropTarget(status); }}
+                    key={stage.id}
+                    data-stage-id={stage.id}
+                    onDragOver={(e) => { e.preventDefault(); setDropTarget(stage.id); }}
                     onDragLeave={() => setDropTarget(null)}
-                    onDrop={(e) => handleDropOnColumn(status, e)}
+                    onDrop={(e) => handleDropOnStage(stage.id, e)}
                     className={`flex w-[248px] shrink-0 flex-col rounded-xl border transition-colors ${
                       isTarget
                         ? "border-brand-400 bg-brand-50/50 shadow-inner"
@@ -335,7 +459,7 @@ export default function ContentsList() {
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className={`h-2 w-2 shrink-0 rounded-full ${color}`} />
                         <span className="truncate text-xs font-semibold text-[var(--looply-color-text-primary)]">
-                          {STATUS_LABEL[status]}
+                          {stage.name}
                         </span>
                       </div>
                       <span className="shrink-0 rounded-full bg-[var(--looply-color-bg-surface)] px-1.5 py-0.5 text-[0.6875rem] font-bold text-[var(--looply-color-text-muted)] border border-[var(--looply-color-border-default)]">
@@ -350,7 +474,7 @@ export default function ContentsList() {
                           key={c.id}
                           parent={c}
                           children_={childrenMap.get(c.id) ?? []}
-                          isDragging={draggedId === c.id}
+                          isDragging={draggedId === c.id || (touchMoving && touchDrag?.id === c.id)}
                           isGroupTarget={groupTargetId === c.id}
                           groupReady={groupTargetId === c.id && groupReady}
                           onDragStart={() => handleDragStart(c.id, c.clientId)}
@@ -370,6 +494,11 @@ export default function ContentsList() {
                           onSchedule={(c) =>
                             setScheduleIntent({ id: c.id, title: c.title, clientId: c.clientId })
                           }
+                          onTouchStart={onCardTouchStart}
+                          onTouchMove={onCardTouchMove}
+                          onTouchEnd={onCardTouchEnd}
+                          onTouchCancel={onCardTouchCancel}
+                          suppressClickRef={suppressClickRef}
                         />
                       ))}
                       {items.length === 0 && (
@@ -410,6 +539,11 @@ function CardStack({
   onNavigate,
   onUngroupAll,
   onSchedule,
+  onTouchStart,
+  onTouchMove,
+  onTouchEnd,
+  onTouchCancel,
+  suppressClickRef,
 }: {
   parent: ContentListItem;
   children_: ContentListItem[];
@@ -423,6 +557,11 @@ function CardStack({
   onNavigate: (id: string) => void;
   onUngroupAll: (childIds: string[]) => void;
   onSchedule?: (c: ContentListItem) => void;
+  onTouchStart: (e: ReactTouchEvent, id: string, clientId: string) => void;
+  onTouchMove: (e: ReactTouchEvent) => void;
+  onTouchEnd: (e: ReactTouchEvent) => void;
+  onTouchCancel: (e: ReactTouchEvent) => void;
+  suppressClickRef: React.RefObject<boolean>;
 }) {
   const hasChildren = children_.length > 0;
   const clientName = parent.client?.name ?? "—";
@@ -440,7 +579,14 @@ function CardStack({
       onDragEnd={onDragEnd}
       onDragEnter={(e) => { e.stopPropagation(); e.preventDefault(); onCardEnter(); }}
       onDragLeave={(e) => { e.stopPropagation(); onCardLeave(); }}
-      onClick={() => onNavigate(parent.id)}
+      onTouchStart={(e) => onTouchStart(e, parent.id, parent.clientId)}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
+      onClick={() => {
+        if (suppressClickRef.current) { suppressClickRef.current = false; return; }
+        onNavigate(parent.id);
+      }}
       className={`group relative cursor-grab rounded-xl border bg-[var(--looply-color-bg-surface)] p-3 transition-all active:cursor-grabbing ${
         isGroupTarget && groupReady
           ? "border-brand-500 bg-brand-50/80 shadow-md ring-2 ring-brand-400"
@@ -566,8 +712,4 @@ function CardStack({
 function latestVersion(c: ContentListItem): number {
   if (!c.versions?.length) return 1;
   return Math.max(...c.versions.map((v) => v.versionNumber));
-}
-
-function findStatusById(items: ContentListItem[], id: string): ContentStatus | undefined {
-  return items.find((i) => i.id === id)?.status;
 }

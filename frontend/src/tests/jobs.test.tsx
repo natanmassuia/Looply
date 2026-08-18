@@ -63,6 +63,7 @@ const mockContentsList: ContentListItem[] = [
     id: "job-1",
     title: "Post Cardápio de Verão",
     clientId: "cli-1",
+    currentStageId: "s1",
     format: "POST",
     status: "DRAFT",
     createdAt: new Date().toISOString(),
@@ -75,6 +76,7 @@ const mockContentsList: ContentListItem[] = [
     title: "Reels Making-of Verão",
     clientId: "cli-1",
     parentId: "job-1",
+    currentStageId: "s1",
     format: "REELS",
     status: "DRAFT",
     createdAt: new Date().toISOString(),
@@ -83,6 +85,22 @@ const mockContentsList: ContentListItem[] = [
     versions: [{ id: "v-2", contentId: "job-child-1", versionNumber: 1, caption: "Legenda", createdAt: "" }],
   },
 ];
+
+const mockWorkflow = {
+  id: "w1",
+  companyId: "c1",
+  name: "Workflow",
+  template: "MARKETING_AGENCY",
+  active: true,
+  stages: [
+    { id: "s1", workflowId: "w1", name: "Backlog", position: 0, terminal: false, active: true, semanticKey: null },
+    { id: "s2", workflowId: "w1", name: "Em produção", position: 1, terminal: false, active: true, semanticKey: null },
+    { id: "s3", workflowId: "w1", name: "Revisão", position: 2, terminal: false, active: true, semanticKey: null },
+    { id: "s4", workflowId: "w1", name: "Aprovado", position: 3, terminal: false, active: true, semanticKey: "APPROVED" },
+    { id: "s5", workflowId: "w1", name: "Agendado", position: 4, terminal: false, active: true, semanticKey: "SCHEDULED" },
+    { id: "s6", workflowId: "w1", name: "Concluído", position: 5, terminal: true, active: true, semanticKey: "COMPLETED" },
+  ],
+};
 
 function renderWithProviders(ui: React.ReactElement, initialRoute = "/") {
   const qc = new QueryClient({
@@ -361,6 +379,12 @@ describe("Jobs Feature — B4 Metadata Editing + Ungroup Wiring", () => {
         data: mockClients,
       } as any);
 
+      vi.spyOn(apiModule, "useWorkflow").mockReturnValue({
+        data: mockWorkflow,
+        isLoading: false,
+        isError: false,
+      } as any);
+
       const ungroupMutate = vi.fn().mockResolvedValue({ id: "job-child-1", parentId: null });
       vi.spyOn(apiModule, "useUngroupContent").mockReturnValue({
         mutateAsync: ungroupMutate,
@@ -446,6 +470,7 @@ describe("Jobs Feature — B4 Metadata Editing + Ungroup Wiring", () => {
           id: "job-approved",
           title: "Post Aprovado",
           clientId: "cli-1",
+          currentStageId: "s4",
           format: "POST" as const,
           status: "APPROVED" as const,
           createdAt: new Date().toISOString(),
@@ -461,6 +486,11 @@ describe("Jobs Feature — B4 Metadata Editing + Ungroup Wiring", () => {
         refetch: vi.fn(),
       } as any);
       vi.spyOn(apiModule, "useClients").mockReturnValue({ data: mockClients } as any);
+      vi.spyOn(apiModule, "useWorkflow").mockReturnValue({
+        data: mockWorkflow,
+        isLoading: false,
+        isError: false,
+      } as any);
       vi.spyOn(apiModule, "useGroupContent").mockReturnValue({ mutate: vi.fn() } as any);
       vi.spyOn(apiModule, "useUngroupContent").mockReturnValue({ mutateAsync: vi.fn() } as any);
       vi.spyOn(apiModule, "useCreateAppointment").mockReturnValue({
@@ -473,7 +503,7 @@ describe("Jobs Feature — B4 Metadata Editing + Ungroup Wiring", () => {
     function dragApprovedToScheduled() {
       const card = screen.getByText("Post Aprovado");
       fireEvent.dragStart(card, { dataTransfer: { setData: vi.fn(), effectAllowed: "move" } });
-      // The Agendado column header + body contain the status label "Agendado".
+      // The Agendado column header + body contain the stage label "Agendado".
       const agendadoColumn = screen.getByText("Agendado").closest("div");
       fireEvent.drop(agendadoColumn!, { dataTransfer: { getData: vi.fn().mockReturnValue("job-approved") } });
       fireEvent.dragEnd(card);
@@ -536,6 +566,11 @@ describe("Jobs Feature — B4 Metadata Editing + Ungroup Wiring", () => {
           { id: "cli-1", name: "Restaurante Aurora", brandColor: "#e11d48", status: "ACTIVE", channels: [], createdAt: "" },
           { id: "cli-2", name: "Café Solar", brandColor: "#f59e0b", status: "ACTIVE", channels: [], createdAt: "" },
         ],
+      } as any);
+      vi.spyOn(apiModule, "useWorkflow").mockReturnValue({
+        data: mockWorkflow,
+        isLoading: false,
+        isError: false,
       } as any);
       vi.spyOn(apiModule, "useGroupContent").mockReturnValue({ mutate: vi.fn() } as any);
       vi.spyOn(apiModule, "useUngroupContent").mockReturnValue({ mutateAsync: vi.fn() } as any);
