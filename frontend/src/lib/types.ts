@@ -99,6 +99,7 @@ export interface WorkflowStage {
   position: number;
   terminal: boolean;
   active: boolean;
+  semanticKey?: string | null;
 }
 
 export interface WorkflowDefinition {

@@ -74,6 +74,16 @@ enum JobLifecycleStatus {
   CANCELLED
 }
 
+// Stable protected semantic identity of a workflow stage. Nullable: a custom
+// stage carries no protected semantic. NEVER derive business behavior from the
+// editable stage label — only from this key. At most one ACTIVE stage may hold a
+// given semantic per workflow.
+enum WorkflowStageSemantic {
+  APPROVED
+  SCHEDULED
+  COMPLETED
+}
+
 // Workspace visual identity (BP1). Chosen during onboarding (F4B) and editable
 // in Settings. Values are canonical product vocabulary; the six base colors
 // apply to the CUSTOM preset only.
@@ -396,6 +406,7 @@ model WorkflowStage {
   position   Int
   terminal   Boolean  @default(false)
   active     Boolean  @default(true)
+  semanticKey WorkflowStageSemantic?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

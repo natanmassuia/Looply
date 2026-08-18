@@ -10,7 +10,7 @@ import {
   notFound,
 } from "../lib/errors";
 import type { CreateContentInput, CreateVersionInput, ScheduleInput } from "../lib/validation";
-import { ensureDefaultWorkflow } from "./workflowService";
+import { ensureDefaultWorkflow, syncJobStageToSemantic } from "./workflowService";
 import { createActivity } from "./activityService";
 import { createApproval } from "./approvalService";
 
@@ -173,6 +173,8 @@ export async function schedule(db: DB, companyId: string, id: string, input: Sch
   const scheduledAt = new Date(input.scheduledAt);
   if (isNaN(scheduledAt.getTime())) throw badRequest("Data de agendamento inválida");
   await db.job.updateMany({ where: { id, companyId }, data: { status: "SCHEDULED", scheduledAt } });
+  // R1.2 — keep the workflow stage coherent with the protected semantic.
+  await syncJobStageToSemantic(db, companyId, id, "SCHEDULED");
   return db.job.findFirst({ where: { id, companyId } });
 }
 
@@ -180,6 +182,8 @@ export async function publish(db: DB, companyId: string, id: string) {
   const c = await loadOr404(db, companyId, id);
   assertCanTransition(c.status as ContentStatus, "PUBLISHED");
   await db.job.updateMany({ where: { id, companyId }, data: { status: "PUBLISHED", publishedAt: new Date() } });
+  // R1.2 — publish is the terminal completion; move to the COMPLETED stage.
+  await syncJobStageToSemantic(db, companyId, id, "COMPLETED");
   return db.job.findFirst({ where: { id, companyId } });
 }
 

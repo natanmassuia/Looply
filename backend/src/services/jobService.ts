@@ -2,7 +2,7 @@ import type { DB } from "../lib/db";
 import { badRequest, conflict, notFound } from "../lib/errors";
 import { createActivity } from "./activityService";
 import { assertStageInWorkflow } from "./workflowService";
-import type { JobLifecycleStatus } from "@prisma/client";
+import type { JobLifecycleStatus, ContentStatus } from "@prisma/client";
 import { getWorkflow, ensureDefaultWorkflow } from "./workflowService";
 
 export interface CreateJobInput {
@@ -247,21 +247,40 @@ export async function transitionJobLifecycle(
 }
 
 export async function transitionJob(db: DB, companyId: string, actorUserId: string, jobId: string, stageId: string) {
-  const job = await db.job.findFirst({ where: { id: jobId, companyId }, select: { id: true, workflowId: true, currentStageId: true } });
+  const job = await db.job.findFirst({ where: { id: jobId, companyId }, select: { id: true, workflowId: true, currentStageId: true, status: true } });
   if (!job) throw notFound("Job não encontrado");
   if (!job.workflowId) throw conflict("Job sem workflow");
   const stage = await assertStageInWorkflow(db, companyId, job.workflowId, stageId);
   if (job.currentStageId === stage.id) throw badRequest("Job já está neste stage");
 
+  // R1.2 — protected semantics: a generic stage transition must NOT bypass the
+  // special domain operations. Moving directly into a SCHEDULED semantic stage
+  // is rejected; the canonical Appointment/scheduling flow is the only path.
+  if (stage.semanticKey === "SCHEDULED") {
+    throw conflict("Movimento direto para a etapa de agendamento não é permitido; use o fluxo de agendamento");
+  }
+  // APPROVED keeps the existing approval domain rules: status can only become
+  // APPROVED through the approval flow, so the stage may only be entered once
+  // the job is already APPROVED. Labels never drive this — only semanticKey.
+  if (stage.semanticKey === "APPROVED" && job.status !== "APPROVED") {
+    throw conflict("Movimento direto para a etapa de aprovação não é permitido; o status APPROVED só muda pelo fluxo de aprovação");
+  }
+
+  // Build a coherent write: stage location always updates; when the target
+  // stage carries a protected semantic, the status/lifecycle reconciles.
+  const data: { currentStageId: string; status?: ContentStatus; lifecycleStatus?: JobLifecycleStatus } = { currentStageId: stage.id };
+  if (stage.semanticKey === "APPROVED") data.status = "APPROVED";
+  if (stage.semanticKey === "COMPLETED") data.lifecycleStatus = "COMPLETED";
+
   return db.$transaction(async (tx) => {
-    const updated = await tx.job.updateMany({ where: { id: jobId, companyId, workflowId: job.workflowId }, data: { currentStageId: stage.id } });
+    const updated = await tx.job.updateMany({ where: { id: jobId, companyId, workflowId: job.workflowId }, data });
     if (updated.count === 0) throw notFound("Job não encontrado");
     await createActivity(tx, {
       companyId,
       jobId,
       actorUserId,
       type: "JOB_STAGE_CHANGED",
-      metadata: { fromStageId: job.currentStageId, toStageId: stage.id },
+      metadata: { fromStageId: job.currentStageId, toStageId: stage.id, semanticKey: stage.semanticKey ?? null },
     });
     return tx.job.findFirst({ where: { id: jobId, companyId }, include: { currentStage: true } });
   });

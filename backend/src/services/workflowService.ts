@@ -1,6 +1,11 @@
 import type { DB } from "../lib/db";
 import { badRequest, conflict, notFound } from "../lib/errors";
+import type { WorkflowStageSemantic, Prisma } from "@prisma/client";
 import { DEFAULT_WORKFLOW_STAGES, defaultWorkflowName } from "../domain/jobWorkflow";
+
+// Semantic helpers may run inside an interactive transaction (approval flow) as
+// well as against the top-level client.
+type WorkflowDB = DB | Prisma.TransactionClient;
 
 export async function ensureDefaultWorkflow(db: DB, companyId: string) {
   const company = await db.company.findUnique({
@@ -28,6 +33,7 @@ export async function ensureDefaultWorkflow(db: DB, companyId: string) {
             name: stage.name,
             position,
             terminal: stage.terminal,
+            semanticKey: stage.semanticKey ?? null,
           })),
         },
       },
@@ -69,6 +75,124 @@ export async function assertStageInWorkflow(
   });
   if (!stage) throw badRequest("Stage inválido para este workflow");
   return stage;
+}
+
+// ── Canonical protected semantics (R1.2) ─────────────────────────────────
+// The stage's semanticKey is the STABLE identity for business behavior
+// (scheduling, approval, terminal). Display labels are never business logic.
+
+export const PROTECTED_SEMANTICS: WorkflowStageSemantic[] = ["APPROVED", "SCHEDULED", "COMPLETED"];
+
+export async function resolveStageBySemantic(
+  db: WorkflowDB,
+  companyId: string,
+  semantic: WorkflowStageSemantic,
+): Promise<{ id: string; workflowId: string } | null> {
+  let stage = await db.workflowStage.findFirst({
+    where: { semanticKey: semantic, active: true, workflow: { companyId } },
+    select: { id: true, workflowId: true },
+  });
+  // Legacy workflows predate protected semantics. Upgrade them once so
+  // scheduling/approval/publish stay coherent with currentStageId.
+  if (!stage) {
+    await ensureCompanyWorkflowSemantics(db, companyId);
+    stage = await db.workflowStage.findFirst({
+      where: { semanticKey: semantic, active: true, workflow: { companyId } },
+      select: { id: true, workflowId: true },
+    });
+  }
+  return stage ?? null;
+}
+
+// Set a job's currentStageId to the active stage carrying `semantic` for the
+// company. Returns the job's new currentStageId, or null when no such stage.
+export async function syncJobStageToSemantic(
+  db: WorkflowDB,
+  companyId: string,
+  jobId: string,
+  semantic: WorkflowStageSemantic,
+): Promise<string | null> {
+  const stage = await resolveStageBySemantic(db, companyId, semantic);
+  if (!stage) return null;
+  await db.job.updateMany({
+    where: { id: jobId, companyId },
+    data: { currentStageId: stage.id },
+  });
+  return stage.id;
+}
+
+// Backfill canonical protected semantics for a workflow (idempotent):
+// - terminal stage → semanticKey COMPLETED
+// - ensure an APPROVED stage exists
+// - ensure a SCHEDULED stage exists
+export async function ensureWorkflowSemantics(
+  db: WorkflowDB,
+  workflowId: string,
+  companyId: string,
+  template: string,
+) {
+  const workflow = await db.workflowDefinition.findUnique({
+    where: { id: workflowId },
+    include: { stages: { orderBy: { position: "asc" } } },
+  });
+  if (!workflow || workflow.companyId !== companyId) throw notFound("Workflow não encontrado");
+
+  const bySemantic = new Map<string, { id: string; terminal: boolean }>();
+  for (const s of workflow.stages.filter((st) => st.active)) {
+    if (s.semanticKey) bySemantic.set(s.semanticKey, s);
+  }
+  const changes: { id?: string; name?: string; semanticKey?: string | null; terminal?: boolean; position?: number }[] = [];
+
+  // Terminal stage → COMPLETED (persisted).
+  const terminal = workflow.stages.find((s) => s.terminal && s.active);
+  if (terminal && !terminal.semanticKey) {
+    await db.workflowStage.updateMany({
+      where: { id: terminal.id, workflowId },
+      data: { semanticKey: "COMPLETED" },
+    });
+    changes.push({ id: terminal.id, semanticKey: "COMPLETED" });
+    bySemantic.set("COMPLETED", { id: terminal.id, terminal: true });
+  }
+
+  const defaults = DEFAULT_WORKFLOW_STAGES[template as keyof typeof DEFAULT_WORKFLOW_STAGES] ?? [];
+  const maxPos = workflow.stages.reduce((m, s) => Math.max(m, s.position), -1);
+  let nextPos = maxPos + 1;
+
+  // Ensure APPROVED and SCHEDULED stages exist. Existing stage positions are
+  // preserved — the backfill never reorders user configuration.
+  for (const semantic of ["APPROVED", "SCHEDULED"] as WorkflowStageSemantic[]) {
+    if (!bySemantic.has(semantic)) {
+      const seedName = defaults.find((d) => d.semanticKey === semantic)?.name ?? (semantic === "APPROVED" ? "Aprovado" : "Agendado");
+      const created = await db.workflowStage.create({
+        data: {
+          workflowId,
+          name: seedName,
+          position: nextPos++,
+          terminal: false,
+          active: true,
+          semanticKey: semantic,
+        },
+      });
+      bySemantic.set(semantic, { id: created.id, terminal: false });
+      changes.push({ id: created.id, name: seedName, semanticKey: semantic, position: created.position });
+    }
+  }
+
+  return { workflow, changes };
+}
+
+// Ensure protected semantics exist for every workflow in a company (used by
+// bootstrap/provisioning and by the migration backfill path).
+export async function ensureCompanyWorkflowSemantics(db: WorkflowDB, companyId: string) {
+  const workflows = await db.workflowDefinition.findMany({
+    where: { companyId },
+    select: { id: true, template: true },
+  });
+  const results = [];
+  for (const w of workflows) {
+    results.push(await ensureWorkflowSemantics(db, w.id, companyId, w.template));
+  }
+  return results;
 }
 
 // ── Bounded V1 workflow configuration ────────────────────────────────────
@@ -185,6 +309,7 @@ export async function removeStage(
   });
   if (!stage) throw notFound("Etapa não encontrada");
   if (stage.terminal) throw badRequest("A etapa final não pode ser removida");
+  if (stage.semanticKey) throw badRequest("Etapas com semântica protegida não podem ser removidas");
   if (stage._count.jobs > 0) {
     throw conflict("Não é possível remover uma etapa que contém demandas");
   }

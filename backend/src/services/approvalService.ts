@@ -3,6 +3,7 @@ import { badRequest, conflict, notFound } from "../lib/errors";
 import { randomToken } from "../lib/token";
 import { hashToken } from "../lib/password";
 import { createActivity } from "./activityService";
+import { syncJobStageToSemantic } from "./workflowService";
 import type { ObjectStorage } from "../lib/storage";
 
 const APPROVAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -129,6 +130,11 @@ async function decide(db: DB, token: string, decision: Decision, input: { review
     await tx.approvalDecision.create({ data: { approvalId: approval.id, decision, comment: input.comment ?? null, actorName: input.reviewerName ?? null, actorEmail: input.reviewerEmail ?? null, actorType: "PUBLIC" } });
     if (decision === "APPROVED" || decision === "CHANGES_REQUESTED") {
       await tx.job.updateMany({ where: { id: approval.contentId, companyId: approval.companyId }, data: { status: decision } });
+    }
+    // R1.2 — keep the workflow stage coherent with the protected semantic.
+    // Resolution is by stable semanticKey (never the editable label).
+    if (decision === "APPROVED") {
+      await syncJobStageToSemantic(tx, approval.companyId, approval.contentId, "APPROVED");
     }
     await createActivity(tx, {
       companyId: approval.companyId,
