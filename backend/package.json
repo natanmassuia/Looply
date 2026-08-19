@@ -20,7 +20,7 @@
     "prisma:migration:diff": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1110.0",
+    "@aws-sdk/client-s3": "^3.1111.0",
     "@aws-sdk/s3-request-presigner": "^3.1110.0",
     "@prisma/client": "^5.22.0",
     "cors": "^2.8.5",
