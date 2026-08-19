@@ -37,7 +37,11 @@ export class TransitionError extends Error {
   constructor(public readonly from: string, public readonly to: string) {
     super(`Transição de status inválida: ${from} → ${to}`);
     this.name = "TransitionError";
+    this.status = 409;
+    this.code = "invalid_state";
   }
+  public readonly status: number;
+  public readonly code: string;
 }
 
 // Versioning: monotonic increase. Given the highest existing version number

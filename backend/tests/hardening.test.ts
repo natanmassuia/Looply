@@ -4,6 +4,8 @@ import app from "../src/app";
 import { checkRateLimit } from "../src/lib/rateLimit";
 import { PASSWORD_RESET_LIMIT } from "../src/lib/rateLimit";
 import { env } from "../src/lib/env";
+import { errorHandler } from "../src/lib/errors";
+import { TransitionError } from "../src/domain/workflow";
 
 describe("B12 CSRF and rate-limit primitives", () => {
   it("rejects unsafe foreign-origin cookie mutations", async () => {
@@ -99,5 +101,11 @@ describe("B12 CSRF and rate-limit primitives", () => {
     expect(response.status).toBe(413);
     expect(response.body.error.code).toBe("payload_too_large");
     expect(response.text).not.toMatch(/entity|JSON|stack|at /i);
+  });
+
+  it("invalid content-state transitions surface as 409 conflict, not 500", () => {
+    const res = { statusCode: 0, locals: {}, status: (code: number) => { res.statusCode = code; return { json: () => {} }; }, json: () => {} } as any;
+    errorHandler(new TransitionError("DRAFT", "PUBLISHED"), { method: "POST", path: "/test" } as any, res, (() => {}) as any);
+    expect(res.statusCode).toBe(409);
   });
 });

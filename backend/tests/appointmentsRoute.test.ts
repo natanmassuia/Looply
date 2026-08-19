@@ -95,6 +95,17 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
     await logout(prisma, session1.token);
   });
 
+  it("GET list rejects an invalid status filter with validation_error", async () => {
+    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const cookie = `${SESSION_COOKIE}=${session.token}`;
+    const res = await request(app)
+      .get("/api/appointments?status=NOT_A_STATUS")
+      .set("Cookie", cookie);
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("validation_error");
+    await logout(prisma, session.token);
+  });
+
   it("GET detail own resource and 404 for foreign", async () => {
     const session1 = await login(prisma, "natan@looply.dev", "looply123");
     const session2 = await login(prisma, "dono@testecorp.com", "senha-definitiva-123");

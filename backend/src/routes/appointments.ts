@@ -54,7 +54,7 @@ router.get("/", asyncHandler(async (req, res) => {
     : undefined;
 
   if (typeof req.query.status === "string" && !status) {
-    res.status(400).json({ error: { code: "bad_request", message: "Invalid status" } });
+    res.status(400).json({ error: { code: "validation_error", message: "status inválido" } });
     return;
   }
 
