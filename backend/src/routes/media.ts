@@ -44,7 +44,7 @@ router.get("/media/file", asyncHandler(async (req, res) => {
     throw badRequest("Parâmetro 'key' é obrigatório");
   }
 
-  const result = await resolveMediaDownloadUrl(getObjectStorage(), req.auth!, key);
+  const result = await resolveMediaDownloadUrl(prisma, getObjectStorage(), req.auth!, key);
   res.setHeader("Cache-Control", "private, max-age=300");
   res.redirect(302, result.url);
 }));

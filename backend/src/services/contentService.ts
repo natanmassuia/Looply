@@ -24,8 +24,13 @@ export async function createContent(
   if (!client) throw notFound("Cliente não encontrado");
 
   if (input.responsibleId) {
-    const u = await db.user.findUnique({ where: { id: input.responsibleId } });
-    if (!u) throw notFound("Responsável não encontrado");
+    // Responsible must be an ACTIVE member of the authenticated tenant's
+    // company. This prevents a cross-tenant foreign reference (Tenant A must
+    // not assign a user from Tenant B). companyId is the authenticated tenant.
+    const member = await db.companyMember.findFirst({
+      where: { userId: input.responsibleId, companyId, isActive: true },
+    });
+    if (!member) throw notFound("Responsável não encontrado");
   }
 
   const workflow = await ensureDefaultWorkflow(db, companyId);

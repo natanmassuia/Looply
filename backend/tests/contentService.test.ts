@@ -9,10 +9,11 @@ function makeFakeDB(): DB {
   const state: {
     clients: any[];
     users: any[];
+    memberships: any[];
     contents: any[];
     versions: any[];
     approvals: any[];
-  } = { clients: [], users: [], contents: [], versions: [], approvals: [] };
+  } = { clients: [], users: [], memberships: [], contents: [], versions: [], approvals: [] };
   let n = 0;
   const id = () => `id_${++n}`;
 
@@ -36,6 +37,19 @@ function makeFakeDB(): DB {
     user: {
       findUnique: async ({ where }: any) =>
         state.users.find((u) => u.id === where.id || u.email === where.email) ?? null,
+    },
+    companyMember: {
+      findFirst: async ({ where }: any) => {
+        const memberships = (state as any).memberships ?? [];
+        return (
+          memberships.find(
+            (m: any) =>
+              m.userId === where.userId &&
+              m.companyId === where.companyId &&
+              (where.isActive === undefined || m.isActive === where.isActive),
+          ) ?? null
+        );
+      },
     },
     job: {
       findUnique: async ({ where }: any) => state.contents.find((c) => c.id === where.id) ?? null,
@@ -111,6 +125,7 @@ describe("contentService.createContent", () => {
     const db = makeFakeDB();
     (db as any).__state.clients.push({ id: "client_1", companyId: "company_1", name: "Restaurante Aurora" });
     (db as any).__state.users.push({ id: "user_1", name: "Lucas" });
+    (db as any).__state.memberships.push({ userId: "user_1", companyId: "company_1", isActive: true });
 
     const created = (await createContent(db, baseInput, "company_1")) as any;
     const versions = (db as any).__state.versions as any[];
@@ -126,6 +141,33 @@ describe("contentService.createContent", () => {
     const db = makeFakeDB();
     await expect(createContent(db, baseInput, "company_1")).rejects.toThrow();
   });
+
+  it("rejects a responsibleId that is NOT a member of the authenticated tenant (cross-tenant)", async () => {
+    const db = makeFakeDB();
+    (db as any).__state.clients.push({ id: "client_1", companyId: "company_1", name: "Aurora" });
+    (db as any).__state.users.push({ id: "user_1", name: "Lucas" });
+    (db as any).__state.users.push({ id: "user_2", name: "Foreign" });
+    // user_2 is a member of company_2 ONLY — Tenant A (company_1) must not
+    // assign it as responsible.
+    (db as any).__state.memberships.push({ userId: "user_1", companyId: "company_1", isActive: true });
+    (db as any).__state.memberships.push({ userId: "user_2", companyId: "company_2", isActive: true });
+
+    await expect(
+      createContent(db, { ...baseInput, responsibleId: "user_2" }, "company_1"),
+    ).rejects.toThrow(/Responsável não encontrado/i);
+  });
+
+  it("accepts a responsibleId that IS an active member of the authenticated tenant", async () => {
+    const db = makeFakeDB();
+    (db as any).__state.clients.push({ id: "client_1", companyId: "company_1", name: "Aurora" });
+    (db as any).__state.users.push({ id: "user_1", name: "Lucas" });
+    (db as any).__state.users.push({ id: "user_2", name: "Team Member" });
+    (db as any).__state.memberships.push({ userId: "user_1", companyId: "company_1", isActive: true });
+    (db as any).__state.memberships.push({ userId: "user_2", companyId: "company_1", isActive: true });
+
+    const created = (await createContent(db, { ...baseInput, responsibleId: "user_2" }, "company_1")) as any;
+    expect(created.responsibleId).toBe("user_2");
+  });
 });
 
 describe("contentService.sendForApproval", () => {
@@ -133,6 +175,7 @@ describe("contentService.sendForApproval", () => {
     const db = makeFakeDB();
     (db as any).__state.clients.push({ id: "client_1", companyId: "company_1", name: "Aurora" });
     (db as any).__state.users.push({ id: "user_1", name: "Lucas" });
+    (db as any).__state.memberships.push({ userId: "user_1", companyId: "company_1", isActive: true });
 
     const created = (await createContent(db, baseInput, "company_1")) as any;
     // bring to IN_REVIEW (legal prerequisite for send-approval)

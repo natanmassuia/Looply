@@ -62,6 +62,19 @@ function makeMockDb() {
       phone: "11999990002",
       avatarUrl: "/api/media/file?key=users%2Fusr-2%2Favatar%2Fold-avatar.png",
     },
+    {
+      id: "usr-3",
+      name: "User Three",
+      email: "user3@test.com",
+      phone: "11999990003",
+      avatarUrl: null,
+    },
+  ];
+
+  const members: any[] = [
+    { userId: "usr-1", companyId: "comp-1", isActive: true },
+    { userId: "usr-2", companyId: "comp-1", isActive: true },
+    { userId: "usr-3", companyId: "comp-2", isActive: true },
   ];
 
   const companies: any[] = [
@@ -125,9 +138,18 @@ function makeMockDb() {
         return { ...c };
       },
     },
+    companyMember: {
+      findFirst: async ({ where }: any) =>
+        members.find(
+          (m) =>
+            m.userId === where.userId &&
+            m.companyId === where.companyId &&
+            (where.isActive === undefined || m.isActive === where.isActive),
+        ) ?? null,
+    },
   };
 
-  return { db: db as unknown as DB, users, companies, clients };
+  return { db: db as unknown as DB, users, companies, clients, members };
 }
 
 describe("Identity Media Service — Security & Operations", () => {
@@ -298,29 +320,38 @@ describe("Identity Media Service — Security & Operations", () => {
   });
 
   describe("Media Serving Authorization", () => {
-    it("allows any authenticated user to view team user avatars", async () => {
+    it("allows viewing a team member avatar within the same tenant", async () => {
       const auth = { userId: "usr-1", companyId: "comp-1" };
-      const res = await resolveMediaDownloadUrl(storage, auth, "users/usr-2/avatar/photo.png");
+      // usr-2 is an active member of comp-1 → same-tenant avatar view allowed.
+      const res = await resolveMediaDownloadUrl(mockDb.db, storage, auth, "users/usr-2/avatar/photo.png");
       expect(res.url).toContain("users%2Fusr-2%2Favatar%2Fphoto.png");
+    });
+
+    it("blocks viewing a cross-tenant member avatar (Tenant A cannot read Tenant B media)", async () => {
+      const auth = { userId: "usr-1", companyId: "comp-1" };
+      // usr-3 is a member of comp-2 only → not authorized for comp-1.
+      await expect(
+        resolveMediaDownloadUrl(mockDb.db, storage, auth, "users/usr-3/avatar/photo.png"),
+      ).rejects.toThrowError(/não autorizado/i);
     });
 
     it("allows company members to view their own tenant company media", async () => {
       const auth = { userId: "usr-1", companyId: "comp-1" };
-      const res = await resolveMediaDownloadUrl(storage, auth, "company/comp-1/logo/logo.png");
+      const res = await resolveMediaDownloadUrl(mockDb.db, storage, auth, "company/comp-1/logo/logo.png");
       expect(res.url).toContain("company%2Fcomp-1%2Flogo%2Flogo.png");
     });
 
     it("blocks viewing other tenant company media (cross-tenant 403)", async () => {
       const auth = { userId: "usr-1", companyId: "comp-1" };
       await expect(
-        resolveMediaDownloadUrl(storage, auth, "company/comp-2/logo/logo.png"),
+        resolveMediaDownloadUrl(mockDb.db, storage, auth, "company/comp-2/logo/logo.png"),
       ).rejects.toThrowError(/não autorizado/i);
     });
 
     it("rejects path traversal in key", async () => {
       const auth = { userId: "usr-1", companyId: "comp-1" };
       await expect(
-        resolveMediaDownloadUrl(storage, auth, "company/comp-1/../comp-2/secret.png"),
+        resolveMediaDownloadUrl(mockDb.db, storage, auth, "company/comp-1/../comp-2/secret.png"),
       ).rejects.toThrowError(/inválida/i);
     });
   });
