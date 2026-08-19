@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction, RequestHandler } from "express";
 import { Prisma } from "@prisma/client";
 import { logger } from "./logger";
+import { reportError } from "./errorReporter";
 
 export class AppError extends Error {
   constructor(
@@ -54,8 +55,26 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   if (appErr.status >= 500) {
     logger.error("unhandled_error", {
       requestId: res.locals.requestId,
+      companyId: res.locals.companyId,
+      method: req.method,
       path: req.path,
+      errorName: err instanceof Error ? err.name : undefined,
+      status: appErr.status,
+      code: appErr.code,
       stack: err instanceof Error ? err.stack : String(err),
+    });
+    // Route unexpected (5xx) failures through the pluggable error-reporting
+    // seam so a future Contabo deployment can connect a monitoring provider.
+    reportError({
+      message: appErr.message,
+      errorName: err instanceof Error ? err.name : undefined,
+      code: appErr.code,
+      requestId: res.locals.requestId,
+      companyId: res.locals.companyId,
+      method: req.method,
+      path: req.path,
+      status: appErr.status,
+      error: err,
     });
   }
   const error: Record<string, unknown> = {

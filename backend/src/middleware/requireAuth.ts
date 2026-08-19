@@ -6,13 +6,17 @@ import { resolveAuth, type AuthContext } from "../services/authService";
 
 // Factory form (makeRequireAuth(db)) is used by unit tests with a fake DB.
 export function makeRequireAuth(db: typeof prisma): RequestHandler {
-  return (req, _res, next) => {
+  return (req, res, next) => {
     const token = cookiesFromReq(req)[SESSION_COOKIE];
     resolveAuth(db, token)
       .then((result) => {
         if (!result) throw unauthorized();
         req.auth = result.auth;
         req.mustChangePassword = result.mustChangePassword;
+        // Tenant correlation for logs: always from the authenticated session
+        // context, never from body/query/header company ids. Only the company
+        // id (not a name/email) is exposed.
+        res.locals.companyId = result.auth.companyId;
         next();
       })
       .catch(next);
