@@ -12,6 +12,9 @@ export const requestLogger: RequestHandler = (req, res, next) => {
   res.on("finish", () => {
     logger.info("request", {
       requestId: res.locals.requestId,
+      // companyId is populated by requireAuth from the authenticated session
+      // context; absent for unauthenticated/public requests.
+      companyId: res.locals.companyId,
       method: req.method,
       path,
       status: res.statusCode,
