@@ -1,0 +1,22 @@
+# Gitleaks configuration — secret scan.
+# Uses the default rule set and adds a NARROW allowlist for documented
+# format-comment placeholders that are proven non-secrets (verified in the
+# R2.1 secret scan: "only format-comment placeholders, no real .env values").
+#
+# Rule: never add a broad ignore here. Only proven false positives — format
+# examples in comments/docs (e.g. postgresql://user:pass@...) — are allowed.
+
+[extend]
+  useDefault = true
+
+[allowlist]
+  description = "Format-comment placeholder URLs and demo-key markers (non-secrets)"
+  regexes = [
+    # Example DATABASE_URL formats shown in comments/docs, never real creds.
+    '''postgresql://user:pass@host:port/db''',
+    '''postgresql://user:pass@\.\.\.''',
+    '''postgresql://u:p@host:port/db''',
+    # Demo-placeholder access/secret key markers.
+    '''YOUR-ACCESS-KEY-HERE''',
+    '''YOUR-SECRET-KEY-HERE''',
+  ]

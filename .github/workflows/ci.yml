@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  security:
+    name: Security gates (SAST + secret scan + SCA)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # ── SAST ──────────────────────────────────────────────────────────
+      # Semgrep (focused OWASP Top 10 + JavaScript rules). Fails CI on any
+      # finding. No app token required — local scan mode, no publishing.
+      - name: SAST (Semgrep)
+        uses: returntocorp/semgrep-action@v3
+        with:
+          config: p/owasp-top-ten, p/javascript
+          publish_token: ""
+          # Local scan only; does not require a Semgrep account.
+
+      # ── Secret scan ───────────────────────────────────────────────────
+      # Gitleaks scans committed changes / the repo for secrets. A real
+      # finding fails CI. Allowlist lives in .gitleaks.toml (narrow only).
+      - name: Secret scan (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── SCA (production dependency graph) ─────────────────────────────
+      # npm audit --omit=dev enforces the release policy (0 critical / 0 high)
+      # against the dependencies that actually ship. Uses the committed
+      # lockfiles; no install needed.
+      - name: SCA backend (npm audit --omit=dev)
+        run: npm --prefix backend audit --omit=dev --audit-level=high
+      - name: SCA frontend (npm audit --omit=dev)
+        run: npm --prefix frontend audit --omit=dev --audit-level=high
+
+  checks:
+    name: Typecheck / build / test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install backend (npm ci)
+        run: npm --prefix backend ci
+      - name: Install frontend (npm ci)
+        run: npm --prefix frontend ci
+
+      - name: Typecheck
+        run: |
+          npm --prefix backend run typecheck
+          npm --prefix frontend run typecheck
+      - name: Build
+        run: |
+          npm --prefix backend run build
+          npm --prefix frontend run build
+      - name: Test
+        run: |
+          npm --prefix backend run test
+          npm --prefix frontend run test
