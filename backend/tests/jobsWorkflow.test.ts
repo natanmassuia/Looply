@@ -25,10 +25,12 @@ describe.skipIf(!process.env.DATABASE_URL)("Jobs + Workflow + Activity", () => {
     expect(wb.body.workflows).toHaveLength(1);
     expect(wa.body.workflows[0].companyId).toBe(a.user.companyId);
     expect(wb.body.workflows[0].companyId).toBe(b.user.companyId);
-    expect(wa.body.workflows[0].stages.map((s: any) => s.name)).toEqual(
+    // Archived (soft-deleted) stages are excluded from the active workflow, so
+    // compare only the active default stages against the template.
+    expect(wa.body.workflows[0].stages.filter((s: any) => s.active).map((s: any) => s.name)).toEqual(
       DEFAULT_WORKFLOW_STAGES.MARKETING_AGENCY.map((s) => s.name),
     );
-    expect(wb.body.workflows[0].stages.map((s: any) => s.name)).toEqual(
+    expect(wb.body.workflows[0].stages.filter((s: any) => s.active).map((s: any) => s.name)).toEqual(
       DEFAULT_WORKFLOW_STAGES.HIGH_TICKET.map((s) => s.name),
     );
     const again = await request(app).get("/api/workflows").set("Cookie", `${SESSION_COOKIE}=${a.token}`);
