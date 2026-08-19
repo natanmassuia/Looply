@@ -52,3 +52,14 @@ export const INVITATION_ACCEPT_LIMIT = requestRateLimit({
   windowMs: 15 * 60 * 1000,
   key: (req) => `${req.ip}:${typeof req.body?.token === "string" ? req.body.token : "missing"}`,
 });
+
+// Password reset (token consumption) is rate-limited per IP+token to blunt
+// brute-force/token-spraying attempts, without leaking whether a token exists
+// (the endpoint returns the same generic error regardless). Reuses the same
+// in-process limiter as the other auth flows.
+export const PASSWORD_RESET_LIMIT = requestRateLimit({
+  name: "password-reset",
+  max: 20,
+  windowMs: 15 * 60 * 1000,
+  key: (req) => `${req.ip}:${typeof req.body?.token === "string" ? req.body.token : "missing"}`,
+});

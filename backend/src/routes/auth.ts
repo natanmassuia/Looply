@@ -6,6 +6,7 @@ import { parse } from "../lib/parse";
 import { setSessionCookie, clearSessionCookie, cookiesFromReq, SESSION_COOKIE } from "../lib/session";
 import { login, logout, switchCompany } from "../services/authService";
 import { checkLoginRate } from "../lib/loginLimiter";
+import { PASSWORD_RESET_LIMIT } from "../lib/rateLimit";
 import { requireAuth } from "../middleware/requireAuth";
 import { resolveWorkspaceContext } from "../domain/capabilities";
 import { assertNewPasswordOk } from "../services/onboardingService";
@@ -231,6 +232,7 @@ router.post(
 
 router.post(
   "/password-reset",
+  PASSWORD_RESET_LIMIT,
   asyncHandler(async (req, res) => {
     const { token, password } = parse(resetPasswordSchema, req.body);
     const { resetPasswordWithToken } = await import("../services/recoveryService");

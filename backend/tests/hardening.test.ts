@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import request from "supertest";
 import app from "../src/app";
 import { checkRateLimit } from "../src/lib/rateLimit";
+import { PASSWORD_RESET_LIMIT } from "../src/lib/rateLimit";
 import { env } from "../src/lib/env";
 
 describe("B12 CSRF and rate-limit primitives", () => {
@@ -34,6 +35,28 @@ describe("B12 CSRF and rate-limit primitives", () => {
     expect(checkRateLimit(key, 2, 60_000).allowed).toBe(true);
     expect(checkRateLimit(key, 2, 60_000).allowed).toBe(true);
     expect(checkRateLimit(key, 2, 60_000).allowed).toBe(false);
+  });
+
+  it("password reset endpoint is rate-limited per IP+token and returns 429 on abuse", async () => {
+    const token = `r2-3b-reset-${Date.now()}`;
+    const body = { token, password: "NewSecurePassword123!" };
+    // Fill the per-IP+token window past the limit.
+    for (let i = 0; i < 21; i += 1) {
+      await request(app).post("/api/auth/password-reset").send(body);
+    }
+    const limited = await request(app).post("/api/auth/password-reset").send(body);
+    expect(limited.status).toBe(429);
+  });
+
+  it("password reset limiter allows valid attempts within the window", () => {
+    // The PASSWORD_RESET_LIMIT middleware permits calls until the max is hit.
+    const req = { ip: "127.0.0.1", body: { token: `ok-${Date.now()}` } } as any;
+    const res = { setHeader: () => {}, statusCode: 0 } as any;
+    let nextCalled = false;
+    PASSWORD_RESET_LIMIT(req, res, () => {
+      nextCalled = true;
+    });
+    expect(nextCalled).toBe(true);
   });
 
   it("public approval and invitation mutation limits return 429", async () => {

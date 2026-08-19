@@ -345,6 +345,7 @@ export async function deleteClientLogo(
 // ── 4. MEDIA SERVING / DOWNLOAD ────────────────────────────────────────────
 
 export async function resolveMediaDownloadUrl(
+  db: DB,
   storage: ObjectStorage,
   auth: { userId: string; companyId: string },
   key: string,
@@ -354,10 +355,18 @@ export async function resolveMediaDownloadUrl(
   }
 
   // Authorization check:
-  // 1. users/<userId>/avatar/ -> user can read any team member's avatar (or own)
+  // 1. users/<userId>/avatar/ -> ONLY if that user is an active member of the
+  //    requesting tenant. This prevents cross-tenant avatar/media disclosure
+  //    (Tenant A must not read Tenant B's member media).
   // 2. company/<companyId>/ -> must belong to current active company
   if (key.startsWith("users/")) {
-    // authenticated users can view team avatars
+    const segments = key.split("/");
+    const ownerUserId = segments[1];
+    if (!ownerUserId) throw forbidden("Acesso não autorizado ao arquivo de mídia");
+    const member = await db.companyMember.findFirst({
+      where: { userId: ownerUserId, companyId: auth.companyId, isActive: true },
+    });
+    if (!member) throw forbidden("Acesso não autorizado ao arquivo de mídia");
   } else if (key.startsWith(`company/${auth.companyId}/`)) {
     // belongs to current tenant
   } else {
