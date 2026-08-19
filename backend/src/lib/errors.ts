@@ -36,6 +36,13 @@ export const asyncHandler =
 // Map Prisma errors to clean 4xx responses without leaking internals.
 function toAppError(err: unknown): AppError {
   if (err instanceof AppError) return err;
+  // body-parser failures (express.json/raw) are client input errors, not server
+  // faults: malformed JSON → 400, oversized body → 413.
+  const parserType = err instanceof Error ? (err as { type?: string }).type : undefined;
+  if (parserType === "entity.parse.failed") return badRequest("JSON inválido");
+  if (parserType === "entity.too.large") {
+    return new AppError(413, "Corpo da requisição muito grande", "payload_too_large");
+  }
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === "P2025") return notFound("Registro não encontrado");
     if (err.code === "P2002")

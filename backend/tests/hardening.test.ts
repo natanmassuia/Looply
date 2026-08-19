@@ -78,4 +78,26 @@ describe("B12 CSRF and rate-limit primitives", () => {
   it("trust proxy is explicit rather than implicitly trusting forwarded IPs", () => {
     expect(app.get("trust proxy")).toBe(false);
   });
+
+  it("malformed JSON body returns 400 instead of an internal 500", async () => {
+    const response = await request(app)
+      .post("/api/auth/login")
+      .set("Origin", env.CORS_ORIGIN)
+      .set("Content-Type", "application/json")
+      .send('{bad json');
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("bad_request");
+  });
+
+  it("oversized JSON body returns 413 with no parser internals leaked", async () => {
+    const oversized = JSON.stringify({ data: "x".repeat(1024 * 1024 + 1) });
+    const response = await request(app)
+      .post("/api/auth/login")
+      .set("Origin", env.CORS_ORIGIN)
+      .set("Content-Type", "application/json")
+      .send(oversized);
+    expect(response.status).toBe(413);
+    expect(response.body.error.code).toBe("payload_too_large");
+    expect(response.text).not.toMatch(/entity|JSON|stack|at /i);
+  });
 });
