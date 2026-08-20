@@ -37,43 +37,92 @@ export class ResendMailService implements MailService {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${subject}</title>
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FFF7F1; margin: 0; padding: 40px 20px; color: #2A171F;">
-  <div style="max-width: 520px; margin: 0 auto; background: #FFFFFF; border-radius: 16px; border: 1px solid #F3B84B33; padding: 40px; box-shadow: 0 4px 16px rgba(42, 23, 31, 0.04);">
-    <div style="margin-bottom: 28px;">
-      <span style="font-size: 24px; font-weight: 800; color: #F06D55; letter-spacing: -0.5px;">Looply</span>
-    </div>
-    
-    <div style="display: inline-block; padding: 4px 10px; border-radius: 9999px; background: #FFE3D7; color: #F06D55; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 16px;">
-      Recuperação de Acesso
-    </div>
-
-    <h1 style="font-size: 22px; font-weight: 700; color: #2A171F; margin: 0 0 16px 0; line-height: 1.3;">
-      Redefinição de senha
-    </h1>
-
-    <p style="font-size: 15px; line-height: 1.6; color: #5C4A52; margin: 0 0 24px 0;">
-      Olá, <strong>${input.name}</strong>!<br>
-      Recebemos um pedido para redefinir a senha da sua conta no Looply.
-    </p>
-
-    <div style="margin: 32px 0;">
-      <a href="${resetUrl}" style="background-color: #F06D55; color: #FFFFFF; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 600; font-size: 15px; display: inline-block; box-shadow: 0 2px 8px rgba(240, 109, 85, 0.25);">
-        Redefinir senha
-      </a>
-    </div>
-
-    <p style="font-size: 13px; line-height: 1.5; color: #8F7C85; margin: 0 0 16px 0;">
-      Este link é válido por <strong>1 hora</strong> e só pode ser utilizado uma vez.<br>
-      Se o botão acima não funcionar, copie e cole este link no seu navegador:<br>
-      <a href="${resetUrl}" style="color: #F06D55; word-break: break-all;">${resetUrl}</a>
-    </p>
-
-    <hr style="border: 0; border-top: 1px solid #F3B84B22; margin: 28px 0;">
-
-    <p style="font-size: 12px; line-height: 1.5; color: #8F7C85; margin: 0;">
-      Se você não solicitou a redefinição de senha, ignore este e-mail com segurança. Sua senha continuará a mesma.
-    </p>
-  </div>
+<body style="margin:0; padding:0; background-color:#FFF7F1; -webkit-text-size-adjust:100%;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFF7F1; padding:32px 16px;">
+    <tr>
+      <td align="center" style="padding:0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:640px; width:100%; background-color:#FFFFFF; border-radius:20px; border:1px solid rgba(243,184,75,0.18); box-shadow:0 8px 32px rgba(42,23,31,0.06);">
+          <tr>
+            <td style="padding:32px 40px 24px 40px;">
+              <!-- Logo: Looply / Human Relay -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td style="padding-bottom:20px;">
+                    <span style="font-family:Manrope,'Segoe UI',Arial,Helvetica,sans-serif; font-size:24px; font-weight:800; color:#2A171F; letter-spacing:-0.5px;">Looply</span>
+                    <span style="font-family:Manrope,'Segoe UI',Arial,Helvetica,sans-serif; font-size:12px; font-weight:600; color:#8F7C85; letter-spacing:0.08em; text-transform:uppercase; padding-left:8px;">Human Relay</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Blush recovery artwork/header -->
+          <tr>
+            <td style="background-color:#FFE3D7; padding:28px 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td align="center" style="padding-bottom:14px;">
+                    <span style="font-family:Manrope,'Segoe UI',Arial,Helvetica,sans-serif; display:inline-block; font-size:11px; font-weight:700; color:#F06D55; text-transform:uppercase; letter-spacing:0.08em; background-color:#FFFFFF; border-radius:999px; padding:6px 14px;">RECUPERAÇÃO DE ACESSO</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <h1 style="font-family:Manrope,'Segoe UI',Arial,Helvetica,sans-serif; margin:0; font-size:28px; line-height:1.25; color:#2A171F; font-weight:700;">Redefina sua senha</h1>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px 40px 8px 40px;">
+              <p style="font-family:Manrope,'Segoe UI',Arial,Helvetica,sans-serif; margin:0 0 18px 0; font-size:15px; line-height:1.6; color:#5C4A52;">
+                Olá, <strong style="color:#2A171F;">${input.name}</strong>!
+              </p>
+              <p style="font-family:Manrope,'Segoe UI',Arial,Helvetica,sans-serif; margin:0 0 24px 0; font-size:15px; line-height:1.6; color:#5C4A52;">
+                Recebemos uma solicitação para redefinir a senha da sua conta no Looply. Para cadastrar uma nova senha, use o botão abaixo.
+              </p>
+              <!-- Coral CTA -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 24px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="${resetUrl}" style="font-family:Manrope,'Segoe UI',Arial,Helvetica,sans-serif; display:inline-block; background-color:#F06D55; color:#FFFFFF; text-decoration:none; font-size:16px; font-weight:700; padding:14px 32px; border-radius:12px; box-shadow:0 4px 12px rgba(240,109,85,0.3);">Redefinir senha</a>
+                  </td>
+                </tr>
+              </table>
+              <!-- Amber validity notice -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 24px 0;">
+                <tr>
+                  <td style="background-color:#F3B84B; border-radius:12px; padding:14px 18px;">
+                    <span style="font-family:Manrope,'Segoe UI',Arial,Helvetica,sans-serif; font-size:14px; line-height:1.5; color:#2A171F; font-weight:600;">Este link expira em 1 hora e pode ser usado apenas uma vez.</span>
+                  </td>
+                </tr>
+              </table>
+              <!-- Fallback reset URL -->
+              <p style="font-family:Manrope,'Segoe UI',Arial,Helvetica,sans-serif; margin:0 0 8px 0; font-size:13px; line-height:1.5; color:#8F7C85;">
+                Se o botão acima não funcionar, copie e cole este link no seu navegador:
+              </p>
+              <p style="margin:0 0 28px 0; word-break:break-all;">
+                <a href="${resetUrl}" style="font-family:Manrope,'Segoe UI',Arial,Helvetica,sans-serif; font-size:13px; line-height:1.5; color:#F06D55; text-decoration:underline;">${resetUrl}</a>
+              </p>
+              <hr style="border:0; border-top:1px solid rgba(243,184,75,0.25); margin:0 0 20px 0;">
+              <!-- Security notice -->
+              <p style="font-family:Manrope,'Segoe UI',Arial,Helvetica,sans-serif; margin:0 0 24px 0; font-size:12px; line-height:1.5; color:#8F7C85;">
+                Se você não solicitou a redefinição de senha, ignore este e-mail com segurança. Sua senha continuará a mesma.
+              </p>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 40px 28px 40px; border-top:1px solid rgba(243,184,75,0.15);">
+              <p style="font-family:Manrope,'Segoe UI',Arial,Helvetica,sans-serif; margin:0; font-size:12px; line-height:1.5; color:#B8A6AE;">
+                Enviado por Looply — Human Relay · Operação de conteúdo para agências
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
     `.trim();
