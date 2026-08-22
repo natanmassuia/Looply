@@ -1,6 +1,7 @@
-# Ignore CI metadata, dev reports, test files and build artifacts
+# Ignore CI metadata, dev reports, test files, operations templates, and build artifacts
 .github/
 .dev-reports/
+ops/
 backend/tests/
 frontend/src/tests/
 node_modules/
