@@ -18,19 +18,22 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
 
       # ── SAST ──────────────────────────────────────────────────────────
-      # Semgrep (focused OWASP Top 10 + JavaScript rules). Fails CI on any
-      # finding. No app token required — local scan mode, no publishing.
+      # Semgrep CLI (SAST). Fails CI on any finding.
+      - name: Install Semgrep
+        run: pipx install semgrep
       - name: SAST (Semgrep)
-        uses: returntocorp/semgrep-action@v3
-        with:
-          config: p/owasp-top-ten, p/javascript
-          publish_token: ""
-          # Local scan only; does not require a Semgrep account.
+        run: semgrep scan --config auto --error
 
       # ── Secret scan ───────────────────────────────────────────────────
       # Gitleaks scans committed changes / the repo for secrets. A real
@@ -58,6 +61,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
 
       - name: Install backend (npm ci)
         run: npm --prefix backend ci
