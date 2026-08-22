@@ -78,7 +78,7 @@ describe("B12 CSRF and rate-limit primitives", () => {
   });
 
   it("trust proxy is explicit rather than implicitly trusting forwarded IPs", () => {
-    expect(app.get("trust proxy")).toBe(false);
+    expect(app.get("trust proxy")).toBe(env.TRUST_PROXY);
   });
 
   it("malformed JSON body returns 400 instead of an internal 500", async () => {

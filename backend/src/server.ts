@@ -37,8 +37,8 @@ process.on("uncaughtException", (err) => {
   exitWithFailure("exception", err);
 });
 
-const server = app.listen(env.PORT, () => {
-  logger.info("server_started", { port: env.PORT, nodeEnv: env.NODE_ENV });
+const server = app.listen(env.PORT, env.HOST, () => {
+  logger.info("server_started", { host: env.HOST, port: env.PORT, nodeEnv: env.NODE_ENV });
 });
 
 // Graceful shutdown: stop accepting connections, close HTTP, disconnect Prisma.
