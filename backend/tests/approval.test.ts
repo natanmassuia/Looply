@@ -3,6 +3,8 @@ import request from "supertest";
 import app from "../src/app";
 import { prisma } from "../src/lib/db";
 import { login, logout } from "../src/services/authService";
+import { seedCredentials } from "./seedCredentials";
+import { tenantBLogin } from "./fixtures";
 import { SESSION_COOKIE } from "../src/lib/session";
 import { publicFileDownload } from "../src/services/approvalService";
 import type { DB } from "../src/lib/db";
@@ -12,7 +14,7 @@ const createdApprovalIds: string[] = [];
 
 describe.skipIf(!process.env.DATABASE_URL)("Approval B9", () => {
   it("internal create returns token once; public read is minimal and unauthenticated", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const job = await prisma.job.findFirst({ where: { companyId: session.user.companyId! }, select: { id: true } });
     const result = await request(app)
       .post(`/api/jobs/${job!.id}/approvals`)
@@ -33,7 +35,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Approval B9", () => {
   });
 
   it("approve is final, replay is deterministic, and history is persisted", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const job = await prisma.job.findFirst({ where: { companyId: session.user.companyId! }, select: { id: true } });
     const created = await request(app).post(`/api/jobs/${job!.id}/approvals`).set("Cookie", `${SESSION_COOKIE}=${session.token}`).send({});
     createdApprovalIds.push(created.body.approvalId);
@@ -56,7 +58,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Approval B9", () => {
   });
 
   it("reject persists an immutable REJECTED decision", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const job = await prisma.job.findFirst({ where: { companyId: session.user.companyId! }, select: { id: true } });
     const created = await request(app).post(`/api/jobs/${job!.id}/approvals`).set("Cookie", `${SESSION_COOKIE}=${session.token}`).send({});
     createdApprovalIds.push(created.body.approvalId);
@@ -70,7 +72,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Approval B9", () => {
   });
 
   it("High Ticket keeps APPROVAL capability but unknown Job remains hidden", async () => {
-    const session = await login(prisma, "dono@testecorp.com", "senha-definitiva-123");
+    const session = await tenantBLogin(prisma);
     const result = await request(app).post("/api/jobs/not-a-job/approvals").set("Cookie", `${SESSION_COOKIE}=${session.token}`).send({});
     expect(result.status).toBe(404);
     await logout(prisma, session.token);
@@ -79,7 +81,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Approval B9", () => {
   it("invalid, expired and revoked public tokens do not reveal approval data", async () => {
     const invalid = await request(app).get("/api/public/approvals/not-a-real-token");
     expect(invalid.status).toBe(404);
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const job = await prisma.job.findFirst({ where: { companyId: session.user.companyId! }, select: { id: true } });
     const created = await request(app).post(`/api/jobs/${job!.id}/approvals`).set("Cookie", `${SESSION_COOKIE}=${session.token}`).send({});
     createdApprovalIds.push(created.body.approvalId);

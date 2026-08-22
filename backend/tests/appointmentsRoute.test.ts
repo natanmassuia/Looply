@@ -1,10 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterAll } from "vitest";
 import request from "supertest";
 import app from "../src/app";
 import { prisma } from "../src/lib/db";
 import { login, logout } from "../src/services/authService";
+import { seedCredentials } from "./seedCredentials";
+import { tenantBLogin } from "./fixtures";
 import { SESSION_COOKIE } from "../src/lib/session";
 import { env } from "../src/lib/env";
+
+// Rows created by this suite are removed at the end so a shared dev DB does
+// not accumulate residue across runs.
+const createdAppointmentIds: string[] = [];
 
 describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
   it("denies unauthenticated read", async () => {
@@ -21,7 +27,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
   });
 
   it("authenticated CALENDAR user allowed to create", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const cookie = `${SESSION_COOKIE}=${session.token}`;
     const res = await request(app)
       .post("/api/appointments")
@@ -32,11 +38,12 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
     expect(res.body.title).toBe("Create API Test");
     expect(res.body.companyId).toBe(session.user.companyId);
     expect(res.body.createdByUserId).toBe(session.user.id);
+    createdAppointmentIds.push(res.body.id);
     await logout(prisma, session.token);
   });
 
   it("rejects invalid startsAt", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const cookie = `${SESSION_COOKIE}=${session.token}`;
     const res = await request(app)
       .post("/api/appointments")
@@ -48,7 +55,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
   });
 
   it("rejects invalid interval from service", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const cookie = `${SESSION_COOKIE}=${session.token}`;
     const res = await request(app)
       .post("/api/appointments")
@@ -60,7 +67,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
   });
 
   it("cannot spoof tenant or creator", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const cookie = `${SESSION_COOKIE}=${session.token}`;
     const res = await request(app)
       .post("/api/appointments")
@@ -71,18 +78,20 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
     expect(res.body.companyId).toBe(session.user.companyId);
     expect(res.body.createdByUserId).toBe(session.user.id);
     expect(res.body.status).toBe("SCHEDULED");
+    createdAppointmentIds.push(res.body.id);
     await logout(prisma, session.token);
   });
 
   it("GET list returns own tenant only and parses limit", async () => {
-    const session1 = await login(prisma, "natan@looply.dev", "looply123");
+    const session1 = await login(prisma, seedCredentials().email, seedCredentials().password);
     const cookie1 = `${SESSION_COOKIE}=${session1.token}`;
     
-    await request(app)
+    const appt = await request(app)
       .post("/api/appointments")
       .set("Cookie", cookie1)
       .set("Origin", env.CORS_ORIGIN)
       .send({ title: "T1", startsAt: "2026-09-01T10:00:00.000Z" });
+    createdAppointmentIds.push(appt.body.id);
 
     const res1 = await request(app)
       .get("/api/appointments?limit=1")
@@ -96,7 +105,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
   });
 
   it("GET list rejects an invalid status filter with validation_error", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const cookie = `${SESSION_COOKIE}=${session.token}`;
     const res = await request(app)
       .get("/api/appointments?status=NOT_A_STATUS")
@@ -107,8 +116,8 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
   });
 
   it("GET detail own resource and 404 for foreign", async () => {
-    const session1 = await login(prisma, "natan@looply.dev", "looply123");
-    const session2 = await login(prisma, "dono@testecorp.com", "senha-definitiva-123");
+    const session1 = await login(prisma, seedCredentials().email, seedCredentials().password);
+    const session2 = await tenantBLogin(prisma);
     const appt = await request(app)
       .post("/api/appointments")
       .set("Cookie", `${SESSION_COOKIE}=${session1.token}`)
@@ -116,6 +125,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
       .send({ title: "T1", startsAt: "2026-09-01T10:00:00.000Z" });
 
     const id = appt.body.id;
+    createdAppointmentIds.push(appt.body.id);
     
     const resOwn = await request(app)
       .get(`/api/appointments/${id}`)
@@ -132,7 +142,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
   });
 
   it("PATCH title succeeds and cannot mutate protected fields", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const cookie = `${SESSION_COOKIE}=${session.token}`;
     const appt = await request(app)
       .post("/api/appointments")
@@ -141,6 +151,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
       .send({ title: "T1", startsAt: "2026-09-01T10:00:00.000Z" });
 
     const id = appt.body.id;
+    createdAppointmentIds.push(appt.body.id);
     
     const res = await request(app)
       .patch(`/api/appointments/${id}`)
@@ -156,7 +167,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
   });
 
   it("POST cancel succeeds idempotently", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const cookie = `${SESSION_COOKIE}=${session.token}`;
     const appt = await request(app)
       .post("/api/appointments")
@@ -165,6 +176,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
       .send({ title: "ToCancel", startsAt: "2026-09-01T10:00:00.000Z" });
 
     const id = appt.body.id;
+    createdAppointmentIds.push(appt.body.id);
     
     const res1 = await request(app)
       .post(`/api/appointments/${id}/cancel`)
@@ -187,5 +199,11 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
     expect(patchCancelled.status).toBe(409);
 
     await logout(prisma, session.token);
+  });
+
+  afterAll(async () => {
+    if (createdAppointmentIds.length > 0) {
+      await prisma.appointment.deleteMany({ where: { id: { in: createdAppointmentIds } } });
+    }
   });
 });

@@ -3,12 +3,14 @@ import request from "supertest";
 import app from "../src/app";
 import { prisma } from "../src/lib/db";
 import { login, logout } from "../src/services/authService";
+import { seedCredentials } from "./seedCredentials";
+import { tenantBLogin } from "./fixtures";
 import { SESSION_COOKIE } from "../src/lib/session";
 import { getDashboardForCompany } from "../src/services/dashboardService";
 
 describe.skipIf(!process.env.DATABASE_URL)("Dashboard tenant-safe projection", () => {
   it("Agency dashboard is scoped and includes capability-aware sections", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const response = await request(app).get("/api/dashboard").set("Cookie", `${SESSION_COOKIE}=${session.token}`);
     expect(response.status).toBe(200);
     expect(response.body.workspace.id).toBe(session.user.companyId);
@@ -25,7 +27,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Dashboard tenant-safe projection", (
   });
 
   it("High Ticket dashboard has own counts and no Kanban-specific section", async () => {
-    const session = await login(prisma, "dono@testecorp.com", "senha-definitiva-123");
+    const session = await tenantBLogin(prisma);
     const response = await request(app).get("/api/dashboard?companyId=other").set("Cookie", `${SESSION_COOKIE}=${session.token}`);
     expect(response.status).toBe(200);
     expect(response.body.workspace.id).toBe(session.user.companyId);

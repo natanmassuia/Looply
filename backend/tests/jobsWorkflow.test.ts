@@ -3,18 +3,19 @@ import request from "supertest";
 import app from "../src/app";
 import { prisma } from "../src/lib/db";
 import { login, logout } from "../src/services/authService";
+import { seedCredentials } from "./seedCredentials";
+import { tenantBLogin } from "./fixtures";
 import { SESSION_COOKIE } from "../src/lib/session";
 import { DEFAULT_WORKFLOW_STAGES } from "../src/domain/jobWorkflow";
 
-const emailA = "natan@looply.dev";
-const emailB = "dono@testecorp.com";
+const emailA = (): string => seedCredentials().email;
 const cleanupJobs: string[] = [];
 const cleanupClients: string[] = [];
 
 describe.skipIf(!process.env.DATABASE_URL)("Jobs + Workflow + Activity", () => {
   it("default workflows are deterministic and idempotent per company", async () => {
-    const a = await login(prisma, emailA, "looply123");
-    const b = await login(prisma, emailB, "senha-definitiva-123");
+    const a = await login(prisma, emailA(), seedCredentials().password);
+    const b = await tenantBLogin(prisma);
     const [wa, wb] = await Promise.all([
       request(app).get("/api/workflows").set("Cookie", `${SESSION_COOKIE}=${a.token}`),
       request(app).get("/api/workflows").set("Cookie", `${SESSION_COOKIE}=${b.token}`),
@@ -39,8 +40,8 @@ describe.skipIf(!process.env.DATABASE_URL)("Jobs + Workflow + Activity", () => {
   });
 
   it("creates a Job only with a same-tenant Client and records creation Activity", async () => {
-    const a = await login(prisma, emailA, "looply123");
-    const b = await login(prisma, emailB, "senha-definitiva-123");
+    const a = await login(prisma, emailA(), seedCredentials().password);
+    const b = await tenantBLogin(prisma);
     const clientA = await prisma.client.findFirst({ where: { companyId: a.user.companyId! }, select: { id: true } });
     const clientB = await prisma.client.create({ data: { companyId: b.user.companyId!, name: `B6 Client ${Date.now()}`, channels: [] } });
     cleanupClients.push(clientB.id);
@@ -86,24 +87,34 @@ describe.skipIf(!process.env.DATABASE_URL)("Jobs + Workflow + Activity", () => {
   });
 
   it("transition validates stage/workflow ownership and records Activity atomically", async () => {
-    const a = await login(prisma, emailA, "looply123");
+    const a = await login(prisma, emailA(), seedCredentials().password);
     const workflow = (await request(app).get("/api/workflows").set("Cookie", `${SESSION_COOKIE}=${a.token}`)).body.workflows[0];
-    const job = await prisma.job.findFirst({ where: { companyId: a.user.companyId! }, select: { id: true, currentStageId: true } });
+    // Create a fresh job via the API so it is attached to the default workflow
+    // (seeded contents have no workflow binding).
+    const clientRes = await request(app).get("/api/clients").set("Cookie", `${SESSION_COOKIE}=${a.token}`);
+    const clientId = clientRes.body.clients?.[0]?.id ?? clientRes.body?.[0]?.id;
+    const created = await request(app)
+      .post("/api/jobs")
+      .set("Cookie", `${SESSION_COOKIE}=${a.token}`)
+      .send({ title: "B6 Transition Job", clientId });
+    expect(created.status).toBe(201);
+    cleanupJobs.push(created.body.id);
+    const job = { id: created.body.id as string, currentStageId: created.body.currentStageId as string };
     // R1.2 — protected stages (semanticKey) cannot be entered by a generic
     // drag, so pick a custom stage for this generic-transition assertion.
-    const nextStage = workflow.stages.find((s: any) => s.id !== job!.currentStageId && !s.semanticKey);
+    const nextStage = workflow.stages.find((s: any) => s.id !== job.currentStageId && !s.semanticKey);
     const moved = await request(app)
-      .post(`/api/jobs/${job!.id}/transition`)
+      .post(`/api/jobs/${job.id}/transition`)
       .set("Cookie", `${SESSION_COOKIE}=${a.token}`)
       .send({ stageId: nextStage.id });
     expect(moved.status).toBe(200);
-    const activity = await prisma.activity.findFirst({ where: { companyId: a.user.companyId!, jobId: job!.id, type: "JOB_STAGE_CHANGED" } });
+    const activity = await prisma.activity.findFirst({ where: { companyId: a.user.companyId!, jobId: job.id, type: "JOB_STAGE_CHANGED" } });
     expect(activity?.actorUserId).toBe(a.user.id);
 
-    const b = await login(prisma, emailB, "senha-definitiva-123");
+    const b = await tenantBLogin(prisma);
     const foreignStage = (await request(app).get("/api/workflows").set("Cookie", `${SESSION_COOKIE}=${b.token}`)).body.workflows[0].stages[0];
     const denied = await request(app)
-      .post(`/api/jobs/${job!.id}/transition`)
+      .post(`/api/jobs/${job.id}/transition`)
       .set("Cookie", `${SESSION_COOKIE}=${b.token}`)
       .send({ stageId: foreignStage.id });
     expect(denied.status).toBe(404);
@@ -111,8 +122,8 @@ describe.skipIf(!process.env.DATABASE_URL)("Jobs + Workflow + Activity", () => {
   });
 
   it("lists only the authenticated tenant's Jobs", async () => {
-    const a = await login(prisma, emailA, "looply123");
-    const b = await login(prisma, emailB, "senha-definitiva-123");
+    const a = await login(prisma, emailA(), seedCredentials().password);
+    const b = await tenantBLogin(prisma);
     const [ra, rb] = await Promise.all([
       request(app).get("/api/jobs").set("Cookie", `${SESSION_COOKIE}=${a.token}`),
       request(app).get("/api/jobs").set("Cookie", `${SESSION_COOKIE}=${b.token}`),
@@ -124,7 +135,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Jobs + Workflow + Activity", () => {
   });
 
   it("list supports bounded filters and summary counts stay tenant-scoped", async () => {
-    const a = await login(prisma, emailA, "looply123");
+    const a = await login(prisma, emailA(), seedCredentials().password);
     const filtered = await request(app)
       .get("/api/jobs?lifecycleStatus=OPEN&sort=title&direction=asc&page=1&limit=2")
       .set("Cookie", `${SESSION_COOKIE}=${a.token}`);
@@ -140,7 +151,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Jobs + Workflow + Activity", () => {
   });
 
   it("board is a read-only stage projection and respects KANBAN capability", async () => {
-    const a = await login(prisma, emailA, "looply123");
+    const a = await login(prisma, emailA(), seedCredentials().password);
     const boardA = await request(app).get("/api/jobs/board").set("Cookie", `${SESSION_COOKIE}=${a.token}`);
     expect(boardA.status).toBe(200);
     expect(boardA.body.stages.length).toBeGreaterThan(0);
@@ -151,7 +162,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Jobs + Workflow + Activity", () => {
     }
     await logout(prisma, a.token);
 
-    const b = await login(prisma, emailB, "senha-definitiva-123");
+    const b = await tenantBLogin(prisma);
     const boardB = await request(app).get("/api/jobs/board").set("Cookie", `${SESSION_COOKIE}=${b.token}`);
     expect(boardB.status).toBe(403); // HIGH_TICKET has JOBS/WORKFLOW, not KANBAN
     await logout(prisma, b.token);

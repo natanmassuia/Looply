@@ -3,14 +3,24 @@ import request from "supertest";
 import app from "../src/app";
 import { prisma } from "../src/lib/db";
 import { login, logout } from "../src/services/authService";
+import { seedCredentials } from "./seedCredentials";
+import { tenantBLogin } from "./fixtures";
 import { SESSION_COOKIE } from "../src/lib/session";
 import { getCalendar } from "../src/services/calendarService";
 
 describe.skipIf(!process.env.DATABASE_URL)("Calendar projection", () => {
   it("projects only the current tenant's scheduled/publication dates", async () => {
-    const a = await login(prisma, "natan@looply.dev", "looply123");
-    const b = await login(prisma, "dono@testecorp.com", "senha-definitiva-123");
-    const range = "from=2026-08-16T00:00:00.000Z&to=2026-08-24T00:00:00.000Z";
+    const a = await login(prisma, seedCredentials().email, seedCredentials().password);
+    const b = await tenantBLogin(prisma);
+    // Seed dates are relative to the run date — derive the window from the
+    // demo contents so the projection assertion does not rot with the clock.
+    const jobs = await prisma.job.findMany({
+      where: { companyId: a.user.companyId! },
+      select: { scheduledAt: true, publicationTarget: true },
+    });
+    const dates = jobs.flatMap((j) => [j.scheduledAt, j.publicationTarget]).filter((d): d is Date => d !== null);
+    const day = 24 * 60 * 60 * 1000;
+    const range = `from=${new Date(Math.min(...dates.map((d) => d.getTime())) - day).toISOString()}&to=${new Date(Math.max(...dates.map((d) => d.getTime())) + day).toISOString()}`;
     const [calendarA, calendarB] = await Promise.all([
       request(app).get(`/api/calendar?${range}`).set("Cookie", `${SESSION_COOKIE}=${a.token}`),
       request(app).get(`/api/calendar?${range}`).set("Cookie", `${SESSION_COOKIE}=${b.token}`),
@@ -26,24 +36,42 @@ describe.skipIf(!process.env.DATABASE_URL)("Calendar projection", () => {
   });
 
   it("returns separate events for separate canonical dates and supports filters", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
-    // Deterministic: Aurora (lowest seeded id) is the only client with both a
-    // SCHEDULED and a PUBLICATION_TARGET event inside the fixed range — bare
-    // findFirst follows heap order and flakes after unrelated row updates.
-    const client = await prisma.client.findFirst({ where: { companyId: session.user.companyId! }, orderBy: { id: "asc" }, select: { id: true } });
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
+    // Deterministic: pick any seeded content that carries a publication-target
+    // date (seed dates are relative to the run date), then build the window
+    // around its own dates — no fixed range, no reliance on heap order.
+    const content = await prisma.job.findFirst({
+      where: { companyId: session.user.companyId!, publicationTarget: { not: null } },
+      select: { id: true, clientId: true, scheduledAt: true, publicationTarget: true },
+    });
+    if (!content?.publicationTarget) throw new Error("fixture: no seeded content with a publication target");
+    const clientId = content.clientId;
+    const anchor = content.publicationTarget;
+    // Ensure this client has both event types in the window: scheduling flows
+    // through the canonical calendar write path (test 3 below exercises it too).
+    const patched = await request(app)
+      .patch(`/api/jobs/${content.id}`)
+      .set("Cookie", `${SESSION_COOKIE}=${session.token}`)
+      .send({ scheduledAt: anchor.toISOString() });
+    expect(patched.status).toBe(200);
+    const day = 24 * 60 * 60 * 1000;
+    const from = new Date(anchor.getTime() - day).toISOString();
+    const to = new Date(anchor.getTime() + day).toISOString();
     const response = await request(app)
-      .get(`/api/calendar?from=2026-08-16T00:00:00.000Z&to=2026-08-24T00:00:00.000Z&clientId=${client!.id}`)
+      .get(`/api/calendar?from=${from}&to=${to}&clientId=${clientId}`)
       .set("Cookie", `${SESSION_COOKIE}=${session.token}`);
     expect(response.status).toBe(200);
     const types = new Set(response.body.events.map((event: any) => event.type));
     expect(types.has("SCHEDULED")).toBe(true);
     expect(types.has("PUBLICATION_TARGET")).toBe(true);
-    expect(response.body.events.every((event: any) => event.client.id === client!.id)).toBe(true);
+    expect(response.body.events.every((event: any) => event.client.id === clientId)).toBe(true);
+    // Restore the seeded content's original scheduledAt so runs stay stable.
+    await prisma.job.update({ where: { id: content.id }, data: { scheduledAt: content.scheduledAt } });
     await logout(prisma, session.token);
   });
 
   it("rejects invalid, reversed and oversized ranges", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const cookie = `${SESSION_COOKIE}=${session.token}`;
     expect((await request(app).get("/api/calendar?from=nope&to=nope").set("Cookie", cookie)).status).toBe(400);
     expect((await request(app).get("/api/calendar?from=2026-08-20T00:00:00.000Z&to=2026-08-19T00:00:00.000Z").set("Cookie", cookie)).status).toBe(400);
@@ -53,7 +81,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Calendar projection", () => {
   });
 
   it("requires CALENDAR capability/auth and keeps Job date mutation as write authority", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const job = await prisma.job.findFirst({ where: { companyId: session.user.companyId! }, select: { id: true } });
     const result = await request(app)
       .patch(`/api/jobs/${job!.id}`)
@@ -110,7 +138,7 @@ describe("Calendar pure range contract", () => {
 
 describe.skipIf(!process.env.DATABASE_URL)("Calendar appointment integration", () => {
   it("projects scheduled appointments respecting overlapping interval constraints", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     
     const client = await prisma.client.findFirst({ where: { companyId: session.user.companyId! } });
     

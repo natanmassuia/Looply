@@ -18,29 +18,72 @@ function daysFromNow(days: number, hour = 12): Date {
   return d;
 }
 
+// Convergent demo approvals: the token stays random (256-bit, hashed at rest),
+// but re-running the seed reuses the FIRST approval row for a given
+// content+version instead of creating a new one — counts stay stable.
+async function ensureApproval(cfg: {
+  contentId: string;
+  contentVersionId: string;
+  companyId: string;
+  status: "PENDING" | "CHANGES_REQUESTED";
+  feedback?: string;
+  clientName?: string;
+  clientReviewedAt?: Date;
+}): Promise<{ created: boolean; token?: string }> {
+  const existing = await db.approval.findFirst({
+    where: { contentId: cfg.contentId, contentVersionId: cfg.contentVersionId },
+  });
+  if (existing) return { created: false };
+  const rawToken = token();
+  await db.approval.create({
+    data: {
+      contentId: cfg.contentId,
+      contentVersionId: cfg.contentVersionId,
+      companyId: cfg.companyId,
+      tokenHash: hashToken(rawToken),
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      status: cfg.status as ApprovalStatus,
+      feedback: cfg.feedback,
+      clientName: cfg.clientName,
+      clientReviewedAt: cfg.clientReviewedAt,
+    },
+  });
+  return { created: true, token: rawToken };
+}
+
 async function main() {
   // ── Company (tenant) ────────────────────────────────────────────────
   const company = await db.company.upsert({
     where: { slug: "looply-studio" },
-    update: { workspaceTemplate: "MARKETING_AGENCY" },
+    update: { workspaceTemplate: "MARKETING_AGENCY", onboardedAt: new Date() },
       create: {
         name: "Looply Studio",
         slug: "looply-studio",
         isActive: true,
         // Demo data models an agency workspace (kanban, approvals, calendar).
+        // The demo workspace is fully onboarded so domain routes are usable.
         workspaceTemplate: "MARKETING_AGENCY",
+        onboardedAt: new Date(),
       },
   });
 
-  // Demo login password for ALL seeded users (dev only): looply123
-  const demoHash = await hashPassword("looply123");
+  // Admin/demo credentials come from env — the seed refuses to run with a
+  // hardcoded fallback password.
+  const seedAdminEmail = process.env.SEED_ADMIN_EMAIL;
+  const seedAdminPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!seedAdminEmail || !seedAdminPassword) {
+    throw new Error(
+      "Seed refused: SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD are required (no fallback credentials). Set them in .env before running the seed.",
+    );
+  }
+  const demoHash = await hashPassword(seedAdminPassword);
 
   // ── Team ────────────────────────────────────────────────────────────
   const users = {
     natan: await db.user.upsert({
-      where: { email: "natan@looply.dev" },
+      where: { email: seedAdminEmail },
       update: { passwordHash: demoHash },
-      create: { name: "Natan Massuia", email: "natan@looply.dev", role: "ADMIN", active: true, passwordHash: demoHash },
+      create: { name: "Natan Massuia", email: seedAdminEmail, role: "ADMIN", active: true, passwordHash: demoHash },
     }),
     marina: await db.user.upsert({
       where: { email: "marina@looply.dev" },
@@ -286,47 +329,41 @@ async function main() {
     where: { contentId: diaDosPais.id },
     orderBy: { versionNumber: "desc" },
   });
-
-  // PENDING approval → reviewer can approve OR request changes on this one.
-  const diaToken = token();
-  await db.approval.upsert({
-    where: { tokenHash: hashToken(diaToken) },
-    update: {},
-    create: {
-      contentId: diaDosPais.id,
-      contentVersionId: diaVersion.id,
-      companyId: company.id,
-      tokenHash: hashToken(diaToken),
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      status: "PENDING" as ApprovalStatus,
-    },
-  });
-
-  // CHANGES_REQUESTED already decided on the tour content (history example).
   const tourVersion = await db.jobVersion.findFirstOrThrow({
     where: { contentId: tourUnidade.id },
     orderBy: { versionNumber: "desc" },
   });
-  const tourToken = token();
-  await db.approval.upsert({
-    where: { tokenHash: hashToken(tourToken) },
-    update: {},
-    create: {
-      contentId: tourUnidade.id,
-      contentVersionId: tourVersion.id,
-      companyId: company.id,
-      tokenHash: hashToken(tourToken),
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      status: "CHANGES_REQUESTED" as ApprovalStatus,
-      feedback: "Prefiro que a entrada comece mostrando a fachada da unidade e o endereço. O resto está ótimo!",
-      clientName: "Patrícia Souza",
-      clientReviewedAt: new Date(),
-    },
+
+  // PENDING approval → reviewer can approve OR request changes on this one.
+  const diaApproval = await ensureApproval({
+    contentId: diaDosPais.id,
+    contentVersionId: diaVersion.id,
+    companyId: company.id,
+    status: "PENDING",
+  });
+
+  // CHANGES_REQUESTED already decided on the tour content (history example).
+  const tourApproval = await ensureApproval({
+    contentId: tourUnidade.id,
+    contentVersionId: tourVersion.id,
+    companyId: company.id,
+    status: "CHANGES_REQUESTED",
+    feedback: "Prefiro que a entrada comece mostrando a fachada da unidade e o endereço. O resto está ótimo!",
+    clientName: "Patrícia Souza",
+    clientReviewedAt: new Date(),
   });
 
   console.log("\n── Looply demo seed concluído ──");
-  console.log(`Aprovação (Pendente) — Campanha Dia dos Pais:\n  ${publicBase}/approve/${diaToken}`);
-  console.log(`Aprovação (Alterações) — Tour da nova unidade:\n  ${publicBase}/approve/${tourToken}\n`);
+  if (diaApproval.created && diaApproval.token) {
+    console.log(`Aprovação (Pendente) — Campanha Dia dos Pais:\n  ${publicBase}/approve/${diaApproval.token}`);
+  } else {
+    console.log("Aprovação (Pendente) — Campanha Dia dos Pais: link mantido de execução anterior (não re-impresso).");
+  }
+  if (tourApproval.created && tourApproval.token) {
+    console.log(`Aprovação (Alterações) — Tour da nova unidade:\n  ${publicBase}/approve/${tourApproval.token}\n`);
+  } else {
+    console.log("Aprovação (Alterações) — Tour da nova unidade: link mantido de execução anterior (não re-impresso).\n");
+  }
 }
 
 main()

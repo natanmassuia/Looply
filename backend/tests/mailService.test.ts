@@ -40,7 +40,10 @@ describe("ResendMailService password-reset email template", () => {
   it("renders recipient name, reset URL, CTA, 1-hour validity, and security notice", async () => {
     const name = "Ana Teste";
     const token = "abc123";
-    const resetUrl = `https://looply.verbumlab.com.br/reset-password?token=${encodeURIComponent(token)}`;
+    // Mirror the service's own app-URL resolution (mailService.ts) instead of
+    // a hardcoded fallback — the configured origin may differ per environment.
+    const appUrl = (process.env.FRONTEND_URL || process.env.APP_URL || process.env.PUBLIC_APP_URL || "https://looply.verbumlab.com.br").replace(/\/$/, "");
+    const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(token)}`;
     const html = await renderWithCapturedHtml(name, token);
 
     // Recipient name rendered

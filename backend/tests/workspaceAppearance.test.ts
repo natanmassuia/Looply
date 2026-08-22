@@ -2,6 +2,8 @@ import { describe, it, expect, afterAll } from "vitest";
 import request from "supertest";
 import { prisma } from "../src/lib/db";
 import { login, logout } from "../src/services/authService";
+import { seedCredentials } from "./seedCredentials";
+import { tenantBLogin } from "./fixtures";
 import { SESSION_COOKIE } from "../src/lib/session";
 import { env } from "../src/lib/env";
 import {
@@ -290,7 +292,7 @@ describe.skipIf(!process.env.DATABASE_URL)("appearance HTTP contract", () => {
   });
 
   it("30. active MEMBER can read appearance", async () => {
-    const session = await login(prisma, "marina@looply.dev", "looply123");
+    const session = await login(prisma, "marina@looply.dev", seedCredentials().password);
     const res = await request(app)
       .get("/api/settings/appearance")
       .set("Cookie", cookie(session.token));
@@ -300,7 +302,7 @@ describe.skipIf(!process.env.DATABASE_URL)("appearance HTTP contract", () => {
   });
 
   it("31. active MEMBER cannot mutate appearance", async () => {
-    const session = await login(prisma, "marina@looply.dev", "looply123");
+    const session = await login(prisma, "marina@looply.dev", seedCredentials().password);
     const res = await request(app)
       .patch("/api/settings/appearance")
       .set("Cookie", cookie(session.token))
@@ -310,7 +312,7 @@ describe.skipIf(!process.env.DATABASE_URL)("appearance HTTP contract", () => {
   });
 
   it("32. OWNER can mutate appearance", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const res = await request(app)
       .patch("/api/settings/appearance")
       .set("Cookie", cookie(session.token))
@@ -322,8 +324,8 @@ describe.skipIf(!process.env.DATABASE_URL)("appearance HTTP contract", () => {
   });
 
   it("33. tenants never see each other's appearance", async () => {
-    const sessionA = await login(prisma, "natan@looply.dev", "looply123");
-    const sessionB = await login(prisma, "dono@testecorp.com", "senha-definitiva-123");
+    const sessionA = await login(prisma, seedCredentials().email, seedCredentials().password);
+    const sessionB = await tenantBLogin(prisma);
     const resA = await request(app).get("/api/settings/appearance").set("Cookie", cookie(sessionA.token));
     const resB = await request(app).get("/api/settings/appearance").set("Cookie", cookie(sessionB.token));
     expect(resA.body.appearance.preset).toBe("FLUX"); // set in test 32
@@ -333,7 +335,7 @@ describe.skipIf(!process.env.DATABASE_URL)("appearance HTTP contract", () => {
   });
 
   it("34. body companyId cannot override the session tenant", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const before = await request(app).get("/api/settings/appearance").set("Cookie", cookie(session.token));
     const res = await request(app)
       .patch("/api/settings/appearance")
@@ -347,7 +349,7 @@ describe.skipIf(!process.env.DATABASE_URL)("appearance HTTP contract", () => {
   });
 
   it("35. forged tenant field alone is rejected", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const res = await request(app)
       .patch("/api/settings/appearance")
       .set("Cookie", cookie(session.token))
@@ -357,7 +359,7 @@ describe.skipIf(!process.env.DATABASE_URL)("appearance HTTP contract", () => {
   });
 
   it("workspace.appearance is exposed through /api/auth/me", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const res = await request(app).get("/api/auth/me").set("Cookie", cookie(session.token));
     expect(res.status).toBe(200);
     expect(res.body.workspace.appearance).toMatchObject({ mode: "LIGHT" });

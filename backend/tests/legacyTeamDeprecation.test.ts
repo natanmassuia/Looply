@@ -4,6 +4,7 @@ import app from "../src/app";
 import { SESSION_COOKIE } from "../src/lib/session";
 import { prisma } from "../src/lib/db";
 import { login, logout } from "../src/services/authService";
+import { seedCredentials } from "./seedCredentials";
 
 // lib/db imports lib/env which loads dotenv at import time — synchronous.
 // Live-DB regression suite: proves the legacy identity-creation path is closed
@@ -12,7 +13,7 @@ import { login, logout } from "../src/services/authService";
 describe.skipIf(!process.env.DATABASE_URL)("legacy /api/team user creation is closed", () => {
   it("POST /api/team returns 410 for OWNER/ADMIN (no User creation) — invitation flow cannot be bypassed", async () => {
     // Demo workspace is ACTIVE with definitive passwords (B4 backfill).
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     expect(session.user.role).toBe("OWNER");
 
     const before = await prisma.user.count();
@@ -28,7 +29,7 @@ describe.skipIf(!process.env.DATABASE_URL)("legacy /api/team user creation is cl
   });
 
   it("POST /api/team returns 410 for MEMBER too — no role creates users here", async () => {
-    const session = await login(prisma, "marina@looply.dev", "looply123");
+    const session = await login(prisma, "marina@looply.dev", seedCredentials().password);
     expect(session.user.role).toBe("MEMBER");
     const res = await request(app)
       .post("/api/team")
@@ -51,19 +52,19 @@ describe.skipIf(!process.env.DATABASE_URL)("legacy /api/team user creation is cl
   // F14.1.1 — identity media projection: /api/team members and /api/auth/me
   // workspace must expose avatarUrl/logoUrl so UIs can render photos.
   it("GET /api/team projects avatarUrl for members (identity propagation)", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const res = await request(app)
       .get("/api/team")
       .set("Cookie", `${SESSION_COOKIE}=${session.token}`);
     expect(res.status).toBe(200);
-    const me = res.body.team.find((u: any) => u.email === "natan@looply.dev");
+    const me = res.body.team.find((u: any) => u.email === seedCredentials().email);
     expect(me).toBeDefined();
     expect(me).toHaveProperty("avatarUrl");
     await logout(prisma, session.token);
   });
 
   it("GET /api/auth/me workspace exposes logoUrl (company identity propagation)", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const res = await request(app)
       .get("/api/auth/me")
       .set("Cookie", `${SESSION_COOKIE}=${session.token}`);

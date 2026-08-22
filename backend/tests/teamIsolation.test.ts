@@ -3,6 +3,8 @@ import request from "supertest";
 import app from "../src/app";
 import { prisma } from "../src/lib/db";
 import { login, logout } from "../src/services/authService";
+import { seedCredentials } from "./seedCredentials";
+import { getTenantB, tenantBLogin } from "./fixtures";
 import { SESSION_COOKIE } from "../src/lib/session";
 
 // R2-01 — Tenant isolation proof for GET /api/team.
@@ -13,9 +15,8 @@ import { SESSION_COOKIE } from "../src/lib/session";
 // ONLY the authenticated company's members and never leaks another tenant's PII.
 // They would FAIL against the pre-fix implementation.
 
-const TENANT_A = { email: "natan@looply.dev", password: "looply123" }; // Loyal Tech (OWNER)
-const TENANT_B = { email: "dono@testecorp.com", password: "senha-definitiva-123" }; // Teste Corp (OWNER)
-const TENANT_B_MEMBER = "membro@testecorp.com";
+const TENANT_A = (): { email: string; password: string } => seedCredentials(); // Looply Studio (OWNER)
+// Tenant B (Teste Corp) is provisioned by the test fixture with runtime credentials.
 
 // Resolve the companyId for a known tenant email, then return that company's
 // member user identities (email, id, name).
@@ -38,7 +39,7 @@ async function memberIdentities(tenantEmail: string) {
 
 describe.skipIf(!process.env.DATABASE_URL)("R2-01 /api/team tenant isolation", () => {
   it("Tenant A (Loyal Tech) sees ONLY A members and no Tenant B PII", async () => {
-    const session = await login(prisma, TENANT_A.email, TENANT_A.password);
+    const session = await login(prisma, TENANT_A().email, TENANT_A().password);
     const cookie = `${SESSION_COOKIE}=${session.token}`;
 
     const res = await request(app).get("/api/team").set("Cookie", cookie);
@@ -47,11 +48,11 @@ describe.skipIf(!process.env.DATABASE_URL)("R2-01 /api/team tenant isolation", (
     const emails = (res.body.team as { email: string }[]).map((u) => u.email);
     const ids = (res.body.team as { id: string }[]).map((u) => u.id);
     const names = (res.body.team as { name: string }[]).map((u) => u.name);
-    const a = await memberIdentities(TENANT_A.email);
-    const b = await memberIdentities(TENANT_B.email);
+    const a = await memberIdentities(TENANT_A().email);
+    const b = await memberIdentities((await getTenantB()).email);
 
     // The authenticated OWNER is present (same-tenant behavior preserved).
-    expect(emails).toContain(TENANT_A.email);
+    expect(emails).toContain(TENANT_A().email);
     // Every returned member is a Company A member; every Company A member appears.
     expect(emails.sort()).toEqual([...a.emails].sort());
 
@@ -64,7 +65,7 @@ describe.skipIf(!process.env.DATABASE_URL)("R2-01 /api/team tenant isolation", (
   });
 
   it("Tenant B (Teste Corp) sees ONLY B members and no Tenant A PII", async () => {
-    const session = await login(prisma, TENANT_B.email, TENANT_B.password);
+    const session = await tenantBLogin(prisma);
     const cookie = `${SESSION_COOKIE}=${session.token}`;
 
     const res = await request(app).get("/api/team").set("Cookie", cookie);
@@ -73,11 +74,11 @@ describe.skipIf(!process.env.DATABASE_URL)("R2-01 /api/team tenant isolation", (
     const emails = (res.body.team as { email: string }[]).map((u) => u.email);
     const ids = (res.body.team as { id: string }[]).map((u) => u.id);
     const names = (res.body.team as { name: string }[]).map((u) => u.name);
-    const a = await memberIdentities(TENANT_A.email);
-    const b = await memberIdentities(TENANT_B.email);
+    const a = await memberIdentities(TENANT_A().email);
+    const b = await memberIdentities((await getTenantB()).email);
 
-    expect(emails).toContain(TENANT_B.email);
-    expect(emails).toContain(TENANT_B_MEMBER);
+    expect(emails).toContain((await getTenantB()).email);
+    expect(emails).toContain((await getTenantB()).memberEmail);
     expect(emails.sort()).toEqual([...b.emails].sort());
 
     // No Tenant A PII leaks.
@@ -89,7 +90,7 @@ describe.skipIf(!process.env.DATABASE_URL)("R2-01 /api/team tenant isolation", (
   });
 
   it("a non-owner MEMBER (marina@looply.dev) is also confined to Company A", async () => {
-    const session = await login(prisma, "marina@looply.dev", "looply123");
+    const session = await login(prisma, "marina@looply.dev", seedCredentials().password);
     const cookie = `${SESSION_COOKIE}=${session.token}`;
 
     const res = await request(app).get("/api/team").set("Cookie", cookie);
@@ -98,8 +99,8 @@ describe.skipIf(!process.env.DATABASE_URL)("R2-01 /api/team tenant isolation", (
     const emails = (res.body.team as { email: string }[]).map((u) => u.email);
     // MEMBER sees their own company only.
     expect(emails).toContain("marina@looply.dev");
-    expect(emails).not.toContain(TENANT_B.email);
-    expect(emails).not.toContain(TENANT_B_MEMBER);
+    expect(emails).not.toContain((await getTenantB()).email);
+    expect(emails).not.toContain((await getTenantB()).memberEmail);
 
     await logout(prisma, session.token);
   });

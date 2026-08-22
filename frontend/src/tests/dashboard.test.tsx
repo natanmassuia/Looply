@@ -7,6 +7,9 @@ import * as apiModule from "../lib/api";
 import type { Dashboard as DashboardData } from "../lib/types";
 
 function mockDashboardData(overrides: Record<string, unknown> = {}) {
+  const now = Date.now();
+  const hour = 60 * 60 * 1000;
+  const day = 24 * hour;
   return {
     counts: {
       totalContents: 12,
@@ -35,9 +38,9 @@ function mockDashboardData(overrides: Record<string, unknown> = {}) {
     upcoming: {
       timezone: "America/Sao_Paulo",
       events: [
-        { id: "e1", type: "APPOINTMENT", at: "2026-08-20T14:00:00.000Z", title: "Reunião", client: { id: "c1", name: "Acme" } },
-        { id: "e2", type: "SCHEDULED", jobId: "job-9", at: "2026-08-22T09:30:00.000Z", title: "Publicação X", client: { id: "c2", name: "Cliente Y" } },
-        { id: "e3", type: "APPOINTMENT", at: "2026-08-25T11:00:00.000Z", title: "Revisão final", client: { id: "c3", name: "Cliente Z" } },
+        { id: "e1", type: "APPOINTMENT", at: new Date(now + 3 * hour).toISOString(), title: "Reunião", client: { id: "c1", name: "Acme" } },
+        { id: "e2", type: "SCHEDULED", jobId: "job-9", at: new Date(now + 1 * day).toISOString(), title: "Publicação X", client: { id: "c2", name: "Cliente Y" } },
+        { id: "e3", type: "APPOINTMENT", at: new Date(now + 3 * day).toISOString(), title: "Revisão final", client: { id: "c3", name: "Cliente Z" } },
       ],
       totalEvents: 3,
       truncated: false,

@@ -3,21 +3,22 @@ import request from "supertest";
 import app from "../src/app";
 import { SESSION_COOKIE } from "../src/lib/session";
 import { login, logout } from "../src/services/authService";
+import { seedCredentials } from "./seedCredentials";
+import { tenantBLogin } from "./fixtures";
 import { prisma } from "../src/lib/db";
 
 // Live-DB HTTP suite: proves tenant isolation end-to-end through the real
 // route stack (auth → workspace → capability CLIENTS → tenant-scoped CRUD).
 // Requires DATABASE_URL + seeded demo workspace. Skipped otherwise.
 
-const emailA = "natan@looply.dev"; // OWNER of Looply Studio (MARKETING_AGENCY)
-const emailB = "dono@testecorp.com"; // OWNER of Teste Corp (HIGH_TICKET, from B4 smoke)
+const emailA = (): string => seedCredentials().email; // OWNER of Looply Studio (MARKETING_AGENCY)
 
 const createdClientIds: string[] = [];
 
 describe.skipIf(!process.env.DATABASE_URL)("clients tenant isolation (HTTP)", () => {
   it("lists only own-tenant clients", async () => {
-    const a = await login(prisma, emailA, "looply123");
-    const b = await login(prisma, emailB, "senha-definitiva-123");
+    const a = await login(prisma, emailA(), seedCredentials().password);
+    const b = await tenantBLogin(prisma);
     const resA = await request(app).get("/api/clients").set("Cookie", `${SESSION_COOKIE}=${a.token}`);
     const resB = await request(app).get("/api/clients").set("Cookie", `${SESSION_COOKIE}=${b.token}`);
     expect(resA.status).toBe(200);
@@ -36,7 +37,7 @@ describe.skipIf(!process.env.DATABASE_URL)("clients tenant isolation (HTTP)", ()
   });
 
   it("create: body companyId spoof does not change ownership", async () => {
-    const b = await login(prisma, emailB, "senha-definitiva-123");
+    const b = await tenantBLogin(prisma);
     const victim = await prisma.client.findFirst({
       where: { companyId: { not: b.user.companyId! } },
       select: { id: true, companyId: true },
@@ -53,8 +54,8 @@ describe.skipIf(!process.env.DATABASE_URL)("clients tenant isolation (HTTP)", ()
   });
 
   it("detail/patch/delete cross-tenant → 404", async () => {
-    const a = await login(prisma, emailA, "looply123");
-    const b = await login(prisma, emailB, "senha-definitiva-123");
+    const a = await login(prisma, emailA(), seedCredentials().password);
+    const b = await tenantBLogin(prisma);
     const own = await prisma.client.findFirst({
       where: { companyId: a.user.companyId! },
       select: { id: true },

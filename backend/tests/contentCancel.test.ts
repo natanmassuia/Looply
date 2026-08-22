@@ -1,10 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, afterAll } from "vitest";
 import request from "supertest";
 import app from "../src/app";
 import { prisma } from "../src/lib/db";
 import { login, logout } from "../src/services/authService";
+import { seedCredentials } from "./seedCredentials";
 import { SESSION_COOKIE } from "../src/lib/session";
 import { env } from "../src/lib/env";
+
+// Jobs created by this suite are removed at the end so the shared dev DB does
+// not accumulate residue across runs.
+const createdJobIds: string[] = [];
 
 describe.skipIf(!process.env.DATABASE_URL)("Demand Cancellation Router", () => {
   it("denies unauthenticated cancel", async () => {
@@ -13,7 +18,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Demand Cancellation Router", () => {
   });
 
   it("cancels an eligible demand and preserves the row + records activity", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const cookie = `${SESSION_COOKIE}=${session.token}`;
 
     const clientsRes = await request(app)
@@ -43,6 +48,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Demand Cancellation Router", () => {
     }
 
     const id = created.body.id;
+    createdJobIds.push(id);
     const res = await request(app)
       .post(`/api/contents/${id}/cancel`)
       .set("Cookie", cookie)
@@ -71,7 +77,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Demand Cancellation Router", () => {
   });
 
   it("rejects cross-tenant cancel (not found)", async () => {
-    const session = await login(prisma, "natan@looply.dev", "looply123");
+    const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const cookie = `${SESSION_COOKIE}=${session.token}`;
     const res = await request(app)
       .post("/api/contents/nonexistent/cancel")
@@ -79,5 +85,11 @@ describe.skipIf(!process.env.DATABASE_URL)("Demand Cancellation Router", () => {
       .set("Origin", env.CORS_ORIGIN);
     expect([404, 409]).toContain(res.status);
     await logout(prisma, session.token);
+  });
+
+  afterAll(async () => {
+    if (createdJobIds.length > 0) {
+      await prisma.job.deleteMany({ where: { id: { in: createdJobIds } } });
+    }
   });
 });
