@@ -1,0 +1,40 @@
+# ==============================================================================
+# SOURCE OF TRUTH TEMPLATE: looply-backend.service
+# Target Host Location: /etc/systemd/system/looply-backend.service
+#
+# NOTE: Live unit requires explicit install/reload:
+#   sudo cp ops/systemd/looply-backend.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl restart looply-backend
+# ==============================================================================
+
+[Unit]
+Description=Looply Backend Service
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=ops
+Group=verbum-ai
+WorkingDirectory=/srv/verbum/workspaces/looply/backend
+EnvironmentFile=/srv/verbum/workspaces/looply/.env
+Environment=NODE_ENV=production
+Environment=PATH=/srv/verbum/tooling/shared/node/current/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/srv/verbum/tooling/shared/node/current/bin/node dist/server.js
+Restart=always
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=looply-backend
+
+# Security Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target
