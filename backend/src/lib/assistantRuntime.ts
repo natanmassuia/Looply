@@ -10,6 +10,10 @@ import {
 import { GupshupWhatsAppProvider } from "../services/gupshupProvider";
 import { OpenAICompatibleLanguageModel } from "../services/assistantLanguageModel";
 import type { AssistantLanguageModel } from "../services/assistantLanguageModel";
+import {
+  OpenAIAudioTranscriptionService,
+  type AudioTranscriptionService,
+} from "../services/audioTranscriptionService";
 
 // ── Application-lifecycle singletons for the WhatsApp Assistant (A3.1) ───
 // Built lazily from env, once per process. No per-request clients, no
@@ -19,6 +23,7 @@ let transientStore: TransientStore | null | undefined;
 let whatsappProvider: WhatsAppProvider | undefined;
 let gupshupProvider: GupshupWhatsAppProvider | undefined;
 let languageModel: AssistantLanguageModel | undefined;
+let transcriptionService: AudioTranscriptionService | undefined;
 
 // null means "state layer unavailable" → callers must fail closed.
 export function getRuntimeTransientStore(): TransientStore | null {
@@ -66,4 +71,15 @@ export function getAssistantLanguageModel(): AssistantLanguageModel {
     });
   }
   return languageModel;
+}
+
+export function getAssistantAudioTranscriptionService(): AudioTranscriptionService {
+  if (!transcriptionService) {
+    transcriptionService = new OpenAIAudioTranscriptionService({
+      baseUrl: env.ASSISTANT_LLM_BASE_URL,
+      apiKey: env.ASSISTANT_LLM_API_KEY,
+      model: process.env.ASSISTANT_TRANSCRIPTION_MODEL || "whisper-1",
+    });
+  }
+  return transcriptionService;
 }

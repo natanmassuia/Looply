@@ -15,13 +15,19 @@ import {
   consumePendingConfirmation,
   savePendingConfirmation,
 } from "./assistantConfirmationStore";
-import type { WhatsAppInboundEvent } from "./whatsappProvider";
+import {
+  isAllowedAudioMime,
+  MAX_AUDIO_SIZE_BYTES,
+  type AudioTranscriptionService,
+} from "./audioTranscriptionService";
+import type { WhatsAppInboundEvent, WhatsAppMediaPayload } from "./whatsappProvider";
 import { formatAssistantResult, WHATSAPP_COPY, confirmationPrompt } from "./whatsappReplyFormatter";
 
-// ── WhatsApp TEXT transport adapter (A3.1) ───────────────────────────────
-// Transport only: idempotency → actor resolution → confirmation phrases →
-// language adapter → A2 command router → deterministic reply. It never calls
-// domain services or Prisma directly and never becomes a second router.
+// ── WhatsApp transport adapter (A3.1 Text + A3.2 Audio Transcription V1) ─
+// Transport only: idempotency → audio transcription / text extraction →
+// actor resolution → confirmation phrases → language adapter → A2 command router →
+// deterministic reply. It never calls domain services or Prisma directly and
+// never becomes a second router.
 
 const POSITIVE_CONFIRMATIONS = new Set(["sim", "confirmo", "confirmar"]);
 const NEGATIVE_CONFIRMATIONS = new Set(["não", "nao", "cancelar"]);
@@ -30,6 +36,7 @@ export type WhatsAppInboundOutcome =
   | "processed"
   | "duplicate"
   | "non_text"
+  | "unsupported_media"
   | "unauthorized"
   | "transient_failure"
   | "malformed";
@@ -37,8 +44,12 @@ export type WhatsAppInboundOutcome =
 export interface WhatsAppAdapterDeps {
   db: DB;
   store: TransientStore;
-  provider: { sendText(to: string, text: string): Promise<void> };
+  provider: {
+    sendText(to: string, text: string): Promise<void>;
+    downloadMedia?(media: WhatsAppMediaPayload): Promise<{ buffer: Buffer; contentType: string }>;
+  };
   languageModel: AssistantLanguageModel;
+  transcriptionService?: AudioTranscriptionService;
   services?: AssistantDomainServices;
   now?: () => Date;
 }
@@ -74,13 +85,80 @@ export async function handleWhatsAppInboundText(
     return "transient_failure";
   }
 
-  // 2. Non-text events get a deterministic deferral reply (no media download).
-  if (event.type !== "text" || typeof event.text !== "string") {
+  // 2. Extract or transcribe text from the inbound event.
+  let text = "";
+
+  if (event.type === "text") {
+    if (typeof event.text !== "string") return "malformed";
+    text = event.text.trim();
+    if (!text) return "malformed";
+  } else if (event.type === "audio") {
+    if (!deps.transcriptionService) {
+      await send(deps, event.senderPhone, WHATSAPP_COPY.nonText);
+      return "non_text";
+    }
+    if (!deps.provider.downloadMedia || !event.media || (!event.media.id && !event.media.url)) {
+      logger.warn("whatsapp_audio_download_unsupported", { sender: maskPhone(event.senderPhone) });
+      await send(deps, event.senderPhone, WHATSAPP_COPY.audioDownloadFailure);
+      return "transient_failure";
+    }
+
+    // Check MIME allowlist upfront if present in webhook metadata
+    if (event.media.mimeType && !isAllowedAudioMime(event.media.mimeType)) {
+      await send(deps, event.senderPhone, WHATSAPP_COPY.unsupportedAudioMime);
+      return "unsupported_media";
+    }
+
+    let downloaded: { buffer: Buffer; contentType: string };
+    try {
+      downloaded = await deps.provider.downloadMedia(event.media);
+    } catch (err) {
+      logger.warn("whatsapp_audio_download_failed", {
+        sender: maskPhone(event.senderPhone),
+        detail: err instanceof Error ? err.message : String(err),
+      });
+      await send(deps, event.senderPhone, WHATSAPP_COPY.audioDownloadFailure);
+      return "transient_failure";
+    }
+
+    // Check MIME allowlist against downloaded content-type
+    if (!isAllowedAudioMime(downloaded.contentType)) {
+      await send(deps, event.senderPhone, WHATSAPP_COPY.unsupportedAudioMime);
+      return "unsupported_media";
+    }
+
+    // Check size limit
+    if (downloaded.buffer.length > MAX_AUDIO_SIZE_BYTES) {
+      await send(deps, event.senderPhone, WHATSAPP_COPY.audioTooLarge);
+      return "malformed";
+    }
+
+    // Transcribe audio to text
+    try {
+      const transcription = await deps.transcriptionService.transcribe({
+        buffer: downloaded.buffer,
+        mimeType: downloaded.contentType,
+      });
+      text = transcription.text.trim();
+    } catch (err) {
+      logger.warn("whatsapp_audio_transcription_failed", {
+        sender: maskPhone(event.senderPhone),
+        detail: err instanceof Error ? err.message : String(err),
+      });
+      await send(deps, event.senderPhone, WHATSAPP_COPY.transcriptionFailure);
+      return "transient_failure";
+    }
+
+    // Empty transcription -> prompt user to speak closer or write text
+    if (!text) {
+      await send(deps, event.senderPhone, WHATSAPP_COPY.emptyAudio);
+      return "processed";
+    }
+  } else {
+    // Non-audio, non-text events get a deterministic deferral reply.
     await send(deps, event.senderPhone, WHATSAPP_COPY.nonText);
     return "non_text";
   }
-  const text = event.text.trim();
-  if (!text) return "malformed";
 
   // 3. Actor resolution — WhatsAppIdentity + active membership only. A Client
   //    phone never becomes an actor; the webhook payload carries no tenant.
@@ -175,4 +253,4 @@ export async function handleWhatsAppInboundText(
   return "processed";
 }
 
-export { WHATSAPP_IDENTITY_PROVIDER };
+export { WHATSAPP_IDENTITY_PROVIDER, handleWhatsAppInboundText as handleWhatsAppInbound };

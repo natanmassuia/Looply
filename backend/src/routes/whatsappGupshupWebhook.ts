@@ -3,6 +3,7 @@ import { prisma } from "../lib/db";
 import { asyncHandler } from "../lib/errors";
 import { logger } from "../lib/logger";
 import {
+  getAssistantAudioTranscriptionService,
   getAssistantLanguageModel,
   getRuntimeTransientStore,
   getWhatsAppProvider,
@@ -11,6 +12,7 @@ import { handleWhatsAppInboundText } from "../services/whatsappTextAdapter";
 import { GUPSHUP_PROVIDER_NAME } from "../services/whatsappProvider";
 import type { GupshupWhatsAppProvider } from "../services/gupshupProvider";
 import type { AssistantLanguageModel } from "../services/assistantLanguageModel";
+import type { AudioTranscriptionService } from "../services/audioTranscriptionService";
 import type { AssistantDomainServices } from "../services/assistantCommandService";
 import type { TransientStore } from "../lib/transientStore";
 import type { DB } from "../lib/db";
@@ -31,6 +33,7 @@ export function makeGupshupWebhookRouter(deps?: {
   provider?: GupshupWhatsAppProvider;
   store?: TransientStore | null;
   languageModel?: AssistantLanguageModel;
+  transcriptionService?: AudioTranscriptionService;
   services?: AssistantDomainServices;
 }) {
   const router = Router();
@@ -72,6 +75,7 @@ export function makeGupshupWebhookRouter(deps?: {
             store,
             provider,
             languageModel: deps?.languageModel ?? getAssistantLanguageModel(),
+            transcriptionService: deps?.transcriptionService ?? getAssistantAudioTranscriptionService(),
             services: deps?.services,
           }, event);
           logger.info("gupshup_inbound", { outcome, sender: `******${event.senderPhone.slice(-4)}` });

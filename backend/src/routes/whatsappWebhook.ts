@@ -3,6 +3,7 @@ import { prisma } from "../lib/db";
 import { asyncHandler } from "../lib/errors";
 import { logger } from "../lib/logger";
 import {
+  getAssistantAudioTranscriptionService,
   getAssistantLanguageModel,
   getRuntimeTransientStore,
   getWhatsAppProvider,
@@ -10,6 +11,7 @@ import {
 import { handleWhatsAppInboundText } from "../services/whatsappTextAdapter";
 import type { WhatsAppProvider } from "../services/whatsappProvider";
 import type { AssistantLanguageModel } from "../services/assistantLanguageModel";
+import type { AudioTranscriptionService } from "../services/audioTranscriptionService";
 import type { AssistantDomainServices } from "../services/assistantCommandService";
 import type { TransientStore } from "../lib/transientStore";
 import type { DB } from "../lib/db";
@@ -17,7 +19,7 @@ import type { DB } from "../lib/db";
 // ── WhatsApp provider webhook (A3.1) ─────────────────────────────────────
 // GET  /api/webhooks/whatsapp → Meta subscription verification handshake.
 // POST /api/webhooks/whatsapp → raw-body X-Hub-Signature-256 verification,
-// normalization, then the text transport adapter. The route is mounted
+// normalization, then the transport adapter. The route is mounted
 // BEFORE the JSON parser (signature needs the raw bytes) and BEFORE the
 // session chain: provider authenticity replaces session auth here.
 
@@ -26,6 +28,7 @@ export function makeWhatsAppWebhookRouter(deps?: {
   provider?: WhatsAppProvider;
   store?: TransientStore | null;
   languageModel?: AssistantLanguageModel;
+  transcriptionService?: AudioTranscriptionService;
   services?: AssistantDomainServices;
 }) {
   const router = Router();
@@ -77,6 +80,7 @@ export function makeWhatsAppWebhookRouter(deps?: {
             store,
             provider,
             languageModel: deps?.languageModel ?? getAssistantLanguageModel(),
+            transcriptionService: deps?.transcriptionService ?? getAssistantAudioTranscriptionService(),
             services: deps?.services,
           }, event);
           logger.info("whatsapp_inbound", { outcome, sender: `******${event.senderPhone.slice(-4)}` });

@@ -167,6 +167,17 @@ export class GupshupWhatsAppProvider implements WhatsAppProvider {
       if (typeof raw !== "string" || raw.trim().length === 0) return [];
       text = raw;
     }
+    let media: { id?: string; url?: string; mimeType?: string } | undefined;
+    if (!isText && typeof inner.payload === "object" && inner.payload !== null) {
+      const p = inner.payload as { url?: unknown; id?: unknown; contentType?: unknown };
+      if (typeof p.url === "string" || typeof p.id === "string") {
+        media = {
+          url: typeof p.url === "string" ? p.url : undefined,
+          id: typeof p.id === "string" ? p.id : undefined,
+          mimeType: typeof p.contentType === "string" ? p.contentType : undefined,
+        };
+      }
+    }
     const timestamp =
       typeof root.timestamp === "number" && Number.isFinite(root.timestamp) && root.timestamp > 0
         ? new Date(root.timestamp)
@@ -177,6 +188,7 @@ export class GupshupWhatsAppProvider implements WhatsAppProvider {
       senderPhone: inner.source,
       type: eventType,
       ...(text !== undefined ? { text } : {}),
+      ...(media !== undefined ? { media } : {}),
       ...(timestamp ? { timestamp } : {}),
     }];
   }
@@ -203,5 +215,17 @@ export class GupshupWhatsAppProvider implements WhatsAppProvider {
       signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("Gupshup outbound send failed");
+  }
+
+  async downloadMedia(media: { id?: string; url?: string; mimeType?: string }): Promise<{ buffer: Buffer; contentType: string }> {
+    if (!media.url) throw new Error("Missing media url");
+    const doFetch = this.config.fetchImpl ?? fetch;
+    const fileRes = await doFetch(media.url, {
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!fileRes.ok) throw new Error("Failed to download media from Gupshup");
+    const arrayBuf = await fileRes.arrayBuffer();
+    const contentType = fileRes.headers.get("content-type") || media.mimeType || "application/octet-stream";
+    return { buffer: Buffer.from(arrayBuf), contentType };
   }
 }

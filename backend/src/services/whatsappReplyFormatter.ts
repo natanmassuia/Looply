@@ -14,6 +14,11 @@ export const WHATSAPP_COPY = {
   confirmationCancelled: "Ação cancelada.",
   nonText: "Por enquanto, envie sua solicitação em texto.",
   domainError: "Não foi possível concluir o pedido.",
+  unsupportedAudioMime: "Formato de áudio não suportado. Por favor, envie em OGG, MP3 ou texto.",
+  audioDownloadFailure: "Não foi possível baixar o áudio. Tente novamente em instantes.",
+  transcriptionFailure: "Não foi possível processar o áudio. Tente novamente ou envie em texto.",
+  emptyAudio: "Não consegui compreender o áudio. Por favor, envie novamente ou em texto.",
+  audioTooLarge: "O áudio enviado ultrapassa o limite permitido de 16MB.",
 } as const;
 
 const SUCCESS_COPY: Record<AssistantOperation, string> = {

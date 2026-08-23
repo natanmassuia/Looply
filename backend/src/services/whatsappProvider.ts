@@ -17,12 +17,20 @@ export type WhatsAppProviderName = typeof WHATSAPP_PROVIDER_NAME | typeof GUPSHU
 
 export type WhatsAppInboundEventType = "text" | "audio" | "image" | "video" | "document" | "other";
 
+export interface WhatsAppMediaPayload {
+  id?: string;
+  url?: string;
+  mimeType?: string;
+  fileSize?: number;
+}
+
 export interface WhatsAppInboundEvent {
   provider: WhatsAppProviderName;
   providerMessageId: string;
   senderPhone: string;
   type: WhatsAppInboundEventType;
   text?: string;
+  media?: WhatsAppMediaPayload;
   timestamp?: Date;
 }
 
@@ -42,6 +50,7 @@ export interface WhatsAppProvider {
   isValidVerification(mode: string | undefined, token: string | undefined): boolean;
   normalizeInbound(payload: unknown): WhatsAppInboundEvent[];
   sendText(to: string, text: string): Promise<void>;
+  downloadMedia?(media: WhatsAppMediaPayload): Promise<{ buffer: Buffer; contentType: string }>;
 }
 
 const KNOWN_NON_TEXT_TYPES = new Set(["audio", "voice", "image", "video", "document", "sticker", "location", "contacts", "reaction", "button", "interactive", "order", "system"]);
@@ -100,12 +109,24 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
           const type = typeof m.type === "string" ? m.type : "other";
           const isText = type === "text" && typeof m.text?.body === "string";
           if (!isText && KNOWN_NON_TEXT_TYPES.has(type) === false && type !== "text") continue; // unknown shapes ignored
+          const rawMedia = (m as { audio?: { id?: string; mime_type?: string }; voice?: { id?: string; mime_type?: string }; image?: { id?: string; mime_type?: string }; video?: { id?: string; mime_type?: string }; document?: { id?: string; mime_type?: string } }).audio
+            ?? (m as { voice?: { id?: string; mime_type?: string } }).voice
+            ?? (m as { image?: { id?: string; mime_type?: string } }).image
+            ?? (m as { video?: { id?: string; mime_type?: string } }).video
+            ?? (m as { document?: { id?: string; mime_type?: string } }).document;
+          const media: WhatsAppMediaPayload | undefined = rawMedia && (rawMedia.id || (rawMedia as { url?: string }).url) ? {
+            id: rawMedia.id,
+            url: (rawMedia as { url?: string }).url,
+            mimeType: rawMedia.mime_type,
+          } : undefined;
+
           events.push({
             provider: WHATSAPP_PROVIDER_NAME,
             providerMessageId: m.id,
             senderPhone: m.from,
             type: isText ? "text" : nonTextType(type),
             ...(isText ? { text: (m.text as { body: string }).body } : {}),
+            ...(media ? { media } : {}),
             ...(typeof m.timestamp === "string" && /^\d+$/.test(m.timestamp) ? { timestamp: new Date(Number(m.timestamp) * 1000) } : {}),
           });
         }
@@ -130,5 +151,34 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
       },
     );
     if (!response.ok) throw new Error("WhatsApp outbound send failed");
+  }
+
+  async downloadMedia(media: WhatsAppMediaPayload): Promise<{ buffer: Buffer; contentType: string }> {
+    if (!media.id && !media.url) throw new Error("Missing media id or url");
+    const doFetch = this.config.fetchImpl ?? fetch;
+    const version = this.config.graphApiVersion ?? "v21.0";
+    let downloadUrl = media.url;
+    let mimeType = media.mimeType ?? "audio/ogg";
+
+    if (!downloadUrl && media.id) {
+      const infoRes = await doFetch(`https://graph.facebook.com/${version}/${media.id}`, {
+        headers: { authorization: `Bearer ${this.config.accessToken}` },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!infoRes.ok) throw new Error("Failed to fetch media metadata from Meta");
+      const info = (await infoRes.json()) as { url?: string; mime_type?: string };
+      if (!info.url) throw new Error("Meta media response missing url");
+      downloadUrl = info.url;
+      if (info.mime_type) mimeType = info.mime_type;
+    }
+
+    const fileRes = await doFetch(downloadUrl!, {
+      headers: { authorization: `Bearer ${this.config.accessToken}` },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!fileRes.ok) throw new Error("Failed to download media binary from Meta");
+    const arrayBuf = await fileRes.arrayBuffer();
+    const contentType = fileRes.headers.get("content-type") || mimeType;
+    return { buffer: Buffer.from(arrayBuf), contentType };
   }
 }

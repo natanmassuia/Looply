@@ -19,4 +19,12 @@
     # Demo-placeholder access/secret key markers.
     '''YOUR-ACCESS-KEY-HERE''',
     '''YOUR-SECRET-KEY-HERE''',
+    # Figma design document file IDs in reports
+    '''8JDixNLJNe1f3KVPRwEFBi''',
+    # Markdown documentation paths matching generic-api-key entropy
+    '''SCHEDULED/Appointment''',
+    # Unit test fixtures and mock keys
+    '''company/c1/jobs/j1/key''',
+    '''senhaforte123''',
+    '''senha-definitiva-123''',
   ]

@@ -1,4 +1,4 @@
-import { describe, it, expect, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import request from "supertest";
 import { prisma } from "../src/lib/db";
 import { login, logout } from "../src/services/authService";
@@ -280,6 +280,22 @@ describe("appearance transitions", () => {
 // ── HTTP contract (28-35) — live local dev DB ────────────────────────────
 describe.skipIf(!process.env.DATABASE_URL)("appearance HTTP contract", () => {
   const cookie = (token: string) => `${SESSION_COOKIE}=${token}`;
+
+  beforeAll(async () => {
+    await prisma.company.updateMany({
+      where: { slug: "looply-studio" },
+      data: {
+        appearancePreset: null,
+        appearanceMode: null,
+        appearanceCustomPrimary: null,
+        appearanceCustomSecondary: null,
+        appearanceCustomAccent: null,
+        appearanceCustomSurface: null,
+        appearanceCustomText: null,
+        appearanceCustomBorder: null,
+      },
+    });
+  });
 
   it("28. unauthenticated GET rejected", async () => {
     const res = await request(app).get("/api/settings/appearance");
