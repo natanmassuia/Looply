@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { safeMediaDownload } from "../lib/ssrfGuard";
 
 // ── WhatsApp provider boundary (A3.1) ────────────────────────────────────
 // Transport only — no domain rules. Two providers share this boundary:
@@ -158,7 +159,6 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
     const doFetch = this.config.fetchImpl ?? fetch;
     const version = this.config.graphApiVersion ?? "v21.0";
     let downloadUrl = media.url;
-    let mimeType = media.mimeType ?? "audio/ogg";
 
     if (!downloadUrl && media.id) {
       const infoRes = await doFetch(`https://graph.facebook.com/${version}/${media.id}`, {
@@ -169,16 +169,14 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
       const info = (await infoRes.json()) as { url?: string; mime_type?: string };
       if (!info.url) throw new Error("Meta media response missing url");
       downloadUrl = info.url;
-      if (info.mime_type) mimeType = info.mime_type;
     }
 
-    const fileRes = await doFetch(downloadUrl!, {
-      headers: { authorization: `Bearer ${this.config.accessToken}` },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!fileRes.ok) throw new Error("Failed to download media binary from Meta");
-    const arrayBuf = await fileRes.arrayBuffer();
-    const contentType = fileRes.headers.get("content-type") || mimeType;
-    return { buffer: Buffer.from(arrayBuf), contentType };
+    if (!downloadUrl) throw new Error("Missing download URL for Meta media");
+
+    return await safeMediaDownload(
+      downloadUrl,
+      { authorization: `Bearer ${this.config.accessToken}` },
+      { fetchImpl: doFetch, timeoutMs: 10000 },
+    );
   }
 }

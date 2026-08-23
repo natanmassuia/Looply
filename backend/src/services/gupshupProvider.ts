@@ -1,4 +1,5 @@
 import { isIP } from "node:net";
+import { safeMediaDownload } from "../lib/ssrfGuard";
 import {
   GUPSHUP_PROVIDER_NAME,
   type WhatsAppInboundEvent,
@@ -220,12 +221,10 @@ export class GupshupWhatsAppProvider implements WhatsAppProvider {
   async downloadMedia(media: { id?: string; url?: string; mimeType?: string }): Promise<{ buffer: Buffer; contentType: string }> {
     if (!media.url) throw new Error("Missing media url");
     const doFetch = this.config.fetchImpl ?? fetch;
-    const fileRes = await doFetch(media.url, {
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!fileRes.ok) throw new Error("Failed to download media from Gupshup");
-    const arrayBuf = await fileRes.arrayBuffer();
-    const contentType = fileRes.headers.get("content-type") || media.mimeType || "application/octet-stream";
-    return { buffer: Buffer.from(arrayBuf), contentType };
+    return await safeMediaDownload(
+      media.url,
+      {},
+      { fetchImpl: doFetch, timeoutMs: 10000 },
+    );
   }
 }
