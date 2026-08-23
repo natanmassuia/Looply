@@ -240,6 +240,39 @@ describe("Audio Transcription Service (Unit & MIME validation)", () => {
     });
     await expect(missingTextField.transcribe({ buffer: Buffer.from("a"), mimeType: "audio/ogg" })).rejects.toThrow("missing");
   });
+
+  it("OpenAIAudioTranscriptionService works seamlessly with custom providers and models (e.g. Groq Whisper)", async () => {
+    let capturedUrl: string | undefined;
+    let capturedHeaders: Record<string, string> | undefined;
+    let capturedBody: FormData | undefined;
+
+    const fetchImpl: typeof fetch = async (url, init) => {
+      capturedUrl = String(url);
+      capturedHeaders = init?.headers as Record<string, string>;
+      capturedBody = init?.body as FormData;
+      return new Response(JSON.stringify({ text: "Transcrição via Groq Whisper concluída" }), { status: 200 });
+    };
+
+    const service = new OpenAIAudioTranscriptionService({
+      baseUrl: "https://api.groq.com/openai/v1",
+      apiKey: "gsk_mock_key_for_test",
+      model: "whisper-large-v3-turbo",
+      fetchImpl,
+    });
+
+    const result = await service.transcribe({
+      buffer: Buffer.from("fake-groq-audio-bytes"),
+      mimeType: "audio/mp4",
+      filename: "audio.m4a",
+    });
+
+    expect(result.text).toBe("Transcrição via Groq Whisper concluída");
+    expect(capturedUrl).toBe("https://api.groq.com/openai/v1/audio/transcriptions");
+    expect(capturedHeaders?.authorization).toBe("Bearer gsk_mock_key_for_test");
+    expect(capturedBody?.get("model")).toBe("whisper-large-v3-turbo");
+    expect(capturedBody?.get("language")).toBe("pt");
+    expect(service.getConfig().model).toBe("whisper-large-v3-turbo");
+  });
 });
 
 describe("Audio Inbound WhatsApp Pipeline", () => {

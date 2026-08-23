@@ -74,6 +74,10 @@ function mimeToExtension(mimeType: string): string {
 export class OpenAIAudioTranscriptionService implements AudioTranscriptionService {
   constructor(private readonly config: OpenAITranscriptionConfig) {}
 
+  getConfig(): Readonly<OpenAITranscriptionConfig> {
+    return { ...this.config };
+  }
+
   async transcribe(request: AudioTranscriptionRequest): Promise<{ text: string }> {
     if (!this.config.baseUrl || !this.config.apiKey) {
       throw new Error("Audio transcription service is not configured");

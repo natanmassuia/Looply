@@ -27,6 +27,10 @@ export interface OpenAICompatibleConfig {
 export class OpenAICompatibleLanguageModel implements AssistantLanguageModel {
   constructor(private readonly config: OpenAICompatibleConfig) {}
 
+  getConfig(): Readonly<OpenAICompatibleConfig> {
+    return { ...this.config };
+  }
+
   async generateStructuredOutput(request: AssistantLanguageModelRequest): Promise<unknown> {
     if (!this.config.baseUrl || !this.config.apiKey || !this.config.model) {
       throw new Error("Assistant language model is not configured");

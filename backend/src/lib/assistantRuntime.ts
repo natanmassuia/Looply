@@ -62,24 +62,66 @@ export function getWhatsAppProvider(provider: WhatsAppProviderName = WHATSAPP_PR
   return whatsappProvider;
 }
 
+export interface AssistantLanguageModelEnvSource {
+  ASSISTANT_LLM_BASE_URL?: string;
+  ASSISTANT_LLM_API_KEY?: string;
+  ASSISTANT_LLM_MODEL?: string;
+}
+
+export function resolveAssistantLanguageModelConfig(source: AssistantLanguageModelEnvSource = {
+  ASSISTANT_LLM_BASE_URL: env.ASSISTANT_LLM_BASE_URL,
+  ASSISTANT_LLM_API_KEY: env.ASSISTANT_LLM_API_KEY,
+  ASSISTANT_LLM_MODEL: env.ASSISTANT_LLM_MODEL,
+}) {
+  return {
+    baseUrl: source.ASSISTANT_LLM_BASE_URL,
+    apiKey: source.ASSISTANT_LLM_API_KEY,
+    model: source.ASSISTANT_LLM_MODEL,
+  };
+}
+
 export function getAssistantLanguageModel(): AssistantLanguageModel {
   if (!languageModel) {
-    languageModel = new OpenAICompatibleLanguageModel({
-      baseUrl: env.ASSISTANT_LLM_BASE_URL,
-      apiKey: env.ASSISTANT_LLM_API_KEY,
-      model: env.ASSISTANT_LLM_MODEL,
-    });
+    languageModel = new OpenAICompatibleLanguageModel(resolveAssistantLanguageModelConfig());
   }
   return languageModel;
 }
 
+export interface AudioTranscriptionEnvSource {
+  AUDIO_TRANSCRIPTION_BASE_URL?: string;
+  AUDIO_TRANSCRIPTION_API_KEY?: string;
+  AUDIO_TRANSCRIPTION_MODEL?: string;
+  ASSISTANT_LLM_BASE_URL?: string;
+  ASSISTANT_LLM_API_KEY?: string;
+  ASSISTANT_TRANSCRIPTION_MODEL?: string;
+}
+
+export function resolveAudioTranscriptionConfig(source: AudioTranscriptionEnvSource = {
+  AUDIO_TRANSCRIPTION_BASE_URL: env.AUDIO_TRANSCRIPTION_BASE_URL,
+  AUDIO_TRANSCRIPTION_API_KEY: env.AUDIO_TRANSCRIPTION_API_KEY,
+  AUDIO_TRANSCRIPTION_MODEL: env.AUDIO_TRANSCRIPTION_MODEL,
+  ASSISTANT_LLM_BASE_URL: env.ASSISTANT_LLM_BASE_URL,
+  ASSISTANT_LLM_API_KEY: env.ASSISTANT_LLM_API_KEY,
+  ASSISTANT_TRANSCRIPTION_MODEL: process.env.ASSISTANT_TRANSCRIPTION_MODEL,
+}) {
+  return {
+    baseUrl: source.AUDIO_TRANSCRIPTION_BASE_URL || source.ASSISTANT_LLM_BASE_URL,
+    apiKey: source.AUDIO_TRANSCRIPTION_API_KEY || source.ASSISTANT_LLM_API_KEY,
+    model: source.AUDIO_TRANSCRIPTION_MODEL || source.ASSISTANT_TRANSCRIPTION_MODEL || "whisper-1",
+  };
+}
+
 export function getAssistantAudioTranscriptionService(): AudioTranscriptionService {
   if (!transcriptionService) {
-    transcriptionService = new OpenAIAudioTranscriptionService({
-      baseUrl: env.ASSISTANT_LLM_BASE_URL,
-      apiKey: env.ASSISTANT_LLM_API_KEY,
-      model: process.env.ASSISTANT_TRANSCRIPTION_MODEL || "whisper-1",
-    });
+    transcriptionService = new OpenAIAudioTranscriptionService(resolveAudioTranscriptionConfig());
   }
   return transcriptionService;
+}
+
+export function _resetAssistantRuntimeForTests(): void {
+  transientStore = undefined;
+  whatsappProvider = undefined;
+  gupshupProvider = undefined;
+  languageModel = undefined;
+  transcriptionService = undefined;
 }
