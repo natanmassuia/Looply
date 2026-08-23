@@ -9,6 +9,7 @@ import Clients from "./features/Clients";
 import ClientDetail from "./features/ClientDetail";
 import Team from "./features/Team";
 import Settings from "./features/Settings";
+import Inbox from "./features/Inbox";
 import PublicApproval from "./features/PublicApproval";
 import Login, { ProtectedRoute } from "./features/Login";
 import Recovery from "./features/Recovery";
@@ -52,6 +53,10 @@ export default function App() {
           <Route path="/clients/:id" element={<ClientDetail />} />
           <Route path="/team" element={<Team />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/inbox" element={<Inbox />} />
+          <Route path="/inbox/:id" element={<Inbox />} />
+          <Route path="/conversations" element={<Inbox />} />
+          <Route path="/conversations/:id" element={<Inbox />} />
         </Route>
       </Route>
 

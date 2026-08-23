@@ -96,12 +96,13 @@ describe("navigation contract", () => {
       </MemoryRouter>,
     );
 
-  it("exposes the six expected destinations in canonical product order", () => {
+  it("exposes the seven expected destinations in canonical product order", () => {
     renderShell();
     expect(screen.getByRole("link", { name: "Visão geral" })).toHaveAttribute("href", "/dashboard");
     expect(screen.getByRole("link", { name: "Clientes" })).toHaveAttribute("href", "/clients");
     expect(screen.getByRole("link", { name: "Demandas" })).toHaveAttribute("href", "/contents");
     expect(screen.getByRole("link", { name: "Agenda" })).toHaveAttribute("href", "/calendar");
+    expect(screen.getByRole("link", { name: "Conversas" })).toHaveAttribute("href", "/conversations");
     expect(screen.getByRole("link", { name: "Equipe" })).toHaveAttribute("href", "/team");
     expect(screen.getByRole("link", { name: "Configurações" })).toHaveAttribute("href", "/settings");
   });
@@ -217,12 +218,13 @@ describe("mobile app shell", () => {
     );
   });
 
-  it("account menu exposes Equipe, Configurações and Sair; Escape closes; no dead clones or unrouted destinations", async () => {
+  it("account menu exposes Conversas, Equipe, Configurações and Sair; Escape closes; no dead clones or unrouted destinations", async () => {
     const user = userEvent.setup();
     renderLayout("/dashboard");
 
     await user.click(screen.getByRole("button", { name: "Conta" }));
     const menu = screen.getByRole("menu", { name: "Menu da conta" });
+    expect(within(menu).getByRole("link", { name: "Conversas" })).toHaveAttribute("href", "/conversations");
     expect(within(menu).getByRole("link", { name: "Equipe" })).toHaveAttribute("href", "/team");
     expect(within(menu).getByRole("link", { name: "Configurações" })).toHaveAttribute("href", "/settings");
     expect(within(menu).getByRole("button", { name: "Sair" })).toBeTruthy();

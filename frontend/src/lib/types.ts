@@ -370,3 +370,82 @@ export interface Dashboard {
     truncated: boolean;
   };
 }
+
+// ── Conversation Domain (F15.2 / F15.3) ──────────────────────────────────
+export type ConversationAiStatus = "ACTIVE" | "PAUSED" | "NEEDS_ATTENTION";
+export type MessageDirection = "INBOUND" | "OUTBOUND";
+export type MessageSenderType = "CONTACT" | "AI" | "USER";
+export type ConversationMessageType =
+  | "TEXT"
+  | "AUDIO"
+  | "IMAGE"
+  | "VIDEO"
+  | "DOCUMENT"
+  | "SYSTEM"
+  | "OTHER";
+export type MessageDeliveryStatus =
+  | "PENDING"
+  | "SENT"
+  | "DELIVERED"
+  | "READ"
+  | "FAILED";
+
+export interface ConversationSummaryDto {
+  id: string;
+  companyId: string;
+  provider: string;
+  remotePhone: string;
+  contactName: string | null;
+  contactAvatarUrl: string | null;
+  client: { id: string; name: string } | null;
+  lastMessagePreview: string | null;
+  lastMessageAt: string | null;
+  unreadCount: number;
+  aiStatus: ConversationAiStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ConversationMessageDto {
+  id: string;
+  conversationId: string;
+  companyId: string;
+  provider: string;
+  direction: MessageDirection;
+  senderType: MessageSenderType;
+  senderUser?: { id: string; name: string } | null;
+  type: ConversationMessageType;
+  body: string | null;
+  media: {
+    storageKey?: string | null;
+    mimeType?: string | null;
+    sizeBytes?: number | null;
+    filename?: string | null;
+    url?: string | null;
+  } | null;
+  transcription: string | null;
+  deliveryStatus: MessageDeliveryStatus;
+  action: {
+    type: string;
+    metadata: Record<string, unknown>;
+  } | null;
+  createdAt: string;
+}
+
+export interface ListConversationsResponse {
+  items: ConversationSummaryDto[];
+  nextCursor: string | null;
+}
+
+export interface ListMessagesResponse {
+  items: ConversationMessageDto[];
+  nextCursor: string | null;
+}
+
+export interface ListConversationsParams {
+  search?: string;
+  aiStatus?: ConversationAiStatus;
+  cursor?: string;
+  limit?: number;
+}
+

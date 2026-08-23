@@ -37,6 +37,11 @@ import type {
   WorkspaceAppearance,
   WorkspaceContext,
   WorkspaceTemplate,
+  ConversationAiStatus,
+  ConversationSummaryDto,
+  ListConversationsParams,
+  ListConversationsResponse,
+  ListMessagesResponse,
 } from "./types";
 
 export type {
@@ -45,6 +50,10 @@ export type {
   AppointmentListResponse,
   AppointmentStatus,
   ClientStatus,
+  ConversationAiStatus,
+  ConversationMessageDto,
+  ConversationMessageType,
+  ConversationSummaryDto,
   CreateAppointmentPayload,
   CreateClientPayload,
   CreateInvitationPayload,
@@ -53,7 +62,13 @@ export type {
   Invitation,
   JobActivity,
   JobAttachment,
+  ListConversationsParams,
+  ListConversationsResponse,
+  ListMessagesResponse,
   MemberRole,
+  MessageDeliveryStatus,
+  MessageDirection,
+  MessageSenderType,
   UpdateAppointmentPayload,
   UpdateClientPayload,
   UpdateJobPayload,
@@ -1015,3 +1030,92 @@ export function useCancelAppointment() {
     },
   });
 }
+
+// ── Conversations (AI Inbox - F15.2 / F15.3) ─────────────────────────────
+
+export function useConversations(params: ListConversationsParams = {}) {
+  const query = new URLSearchParams();
+  if (params.search?.trim()) query.set("search", params.search.trim());
+  if (params.aiStatus) query.set("aiStatus", params.aiStatus);
+  if (params.cursor) query.set("cursor", params.cursor);
+  if (params.limit) query.set("limit", String(params.limit));
+
+  const qs = query.toString();
+  const path = `/api/conversations${qs ? `?${qs}` : ""}`;
+
+  return useQuery<ListConversationsResponse>({
+    queryKey: ["conversations", params],
+    queryFn: () => apiFetch<ListConversationsResponse>(path),
+    refetchInterval: 5000,
+  });
+}
+
+export function useConversation(id: string | null) {
+  return useQuery<ConversationSummaryDto>({
+    queryKey: ["conversation", id],
+    queryFn: () => apiFetch<ConversationSummaryDto>(`/api/conversations/${id}`),
+    enabled: Boolean(id),
+    refetchInterval: 5000,
+  });
+}
+
+export function useConversationMessages(conversationId: string | null, cursor?: string) {
+  const query = new URLSearchParams();
+  if (cursor) query.set("cursor", cursor);
+  const qs = query.toString();
+  const path = `/api/conversations/${conversationId}/messages${qs ? `?${qs}` : ""}`;
+
+  return useQuery<ListMessagesResponse>({
+    queryKey: ["conversation-messages", conversationId, cursor],
+    queryFn: () => apiFetch<ListMessagesResponse>(path),
+    enabled: Boolean(conversationId),
+    refetchInterval: 3000,
+  });
+}
+
+export function useMarkConversationRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ ok: true; unreadCount: number }>(`/api/conversations/${id}/read`, {
+        method: "PATCH",
+      }),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["conversation", id] });
+    },
+  });
+}
+
+export function useSetConversationAiStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, aiStatus }: { id: string; aiStatus: ConversationAiStatus }) =>
+      apiFetch<ConversationSummaryDto>(`/api/conversations/${id}/ai-status`, {
+        method: "PATCH",
+        body: { aiStatus },
+      }),
+    onSuccess: (updated, { id }) => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["conversation", id] });
+      qc.setQueryData(["conversation", id], updated);
+    },
+  });
+}
+
+export function useBindConversationClient() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, clientId }: { id: string; clientId: string | null }) =>
+      apiFetch<ConversationSummaryDto>(`/api/conversations/${id}/client`, {
+        method: "PATCH",
+        body: { clientId },
+      }),
+    onSuccess: (updated, { id }) => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["conversation", id] });
+      qc.setQueryData(["conversation", id], updated);
+    },
+  });
+}
+

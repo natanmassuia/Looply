@@ -5,6 +5,7 @@ import {
   IconContents,
   IconCalendar,
   IconClients,
+  IconInbox,
   IconTeam,
   IconSettings,
 } from "./Icons";
@@ -25,6 +26,7 @@ export const NAV: NavItem[] = [
   { to: "/clients", label: "Clientes", short: "Clientes", Icon: IconClients, end: true, mobilePlacement: "primary" },
   { to: "/contents", label: "Demandas", short: "Demandas", Icon: IconContents, end: false, mobilePlacement: "primary" },
   { to: "/calendar", label: "Agenda", short: "Agenda", Icon: IconCalendar, end: true, mobilePlacement: "primary" },
+  { to: "/conversations", label: "Conversas", short: "Conversas", Icon: IconInbox, end: false, mobilePlacement: "secondary" },
   { to: "/team", label: "Equipe", short: "Equipe", Icon: IconTeam, end: true, mobilePlacement: "secondary" },
   { to: "/settings", label: "Configurações", short: "Configurações", Icon: IconSettings, end: true, mobilePlacement: "secondary" },
 ];
