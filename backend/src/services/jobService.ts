@@ -130,7 +130,7 @@ export async function getJob(db: DB, companyId: string, jobId: string) {
   return job;
 }
 
-export async function createJob(db: DB, companyId: string, actorUserId: string, input: CreateJobInput) {
+export async function createJob(db: DB, companyId: string, actorUserId: string | null, input: CreateJobInput) {
   const client = await db.client.findFirst({ where: { id: input.clientId, companyId }, select: { id: true } });
   if (!client) throw notFound("Cliente não encontrado");
   const workflow = await ensureDefaultWorkflow(db, companyId);
@@ -154,7 +154,7 @@ export async function createJob(db: DB, companyId: string, actorUserId: string, 
     await createActivity(tx, {
       companyId,
       jobId: job.id,
-      actorUserId,
+      actorUserId: actorUserId ?? undefined,
       type: "JOB_CREATED",
       metadata: { stageId: firstStage.id },
     });
@@ -165,7 +165,7 @@ export async function createJob(db: DB, companyId: string, actorUserId: string, 
 export async function updateJob(
   db: DB,
   companyId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   jobId: string,
   input: {
     title?: string;
@@ -201,7 +201,7 @@ export async function updateJob(
     await createActivity(tx, {
       companyId,
       jobId,
-      actorUserId,
+      actorUserId: actorUserId ?? undefined,
       type: "JOB_UPDATED",
       metadata: { fields: Object.keys(data) },
     });
@@ -212,7 +212,7 @@ export async function updateJob(
 export async function transitionJobLifecycle(
   db: DB,
   companyId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   jobId: string,
   targetStatus: JobLifecycleStatus,
 ) {
@@ -238,7 +238,7 @@ export async function transitionJobLifecycle(
     await createActivity(tx, {
       companyId,
       jobId,
-      actorUserId,
+      actorUserId: actorUserId ?? undefined,
       type: targetStatus === "COMPLETED" ? "JOB_COMPLETED" : targetStatus === "CANCELLED" ? "JOB_CANCELLED" : "JOB_UPDATED",
       metadata: { fromLifecycleStatus: existing.lifecycleStatus, toLifecycleStatus: targetStatus },
     });

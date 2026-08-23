@@ -424,6 +424,7 @@ export interface ConversationMessageDto {
     url?: string | null;
   } | null;
   transcription: string | null;
+  transcriptionStatus?: "PENDING" | "COMPLETED" | "FAILED" | null;
   deliveryStatus: MessageDeliveryStatus;
   action: {
     type: string;

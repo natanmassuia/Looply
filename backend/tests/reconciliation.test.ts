@@ -22,6 +22,7 @@ describe("attachment reconciliation", () => {
     };
     const storage: ObjectStorage = {
       createUploadUrl: async () => ({ url: "", expiresAt: new Date() }),
+      putObject: async () => undefined,
       headObject: async (key) => key === "present" ? { sizeBytes: 1 } : null,
       createDownloadUrl: async () => ({ url: "", expiresAt: new Date() }),
       deleteObject: async () => undefined,

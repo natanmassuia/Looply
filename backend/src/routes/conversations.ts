@@ -12,6 +12,7 @@ import {
   setConversationAiStatus,
 } from "../services/conversationService";
 import type { DB } from "../lib/db";
+import type { ObjectStorage } from "../lib/storage";
 
 // ── Conversations Router (F15.2) ──────────────────────────────────────────
 // Read-only + state management API for AI Inbox. All routes inherit session
@@ -39,7 +40,7 @@ const updateClientBindingSchema = z.object({
   clientId: z.string().min(1).max(64).nullable(),
 }).strict();
 
-export function makeConversationsRouter(db: DB) {
+export function makeConversationsRouter(db: DB, deps?: { storage?: ObjectStorage }) {
   const router = Router();
 
   // GET /api/conversations — List conversations in active workspace
@@ -80,6 +81,33 @@ export function makeConversationsRouter(db: DB) {
     const input = parse(updateClientBindingSchema, req.body);
     const updated = await bindConversationClient(db, req.auth!.companyId, req.params.id, input.clientId);
     res.json(updated);
+  }));
+
+  // GET /api/conversations/:id/messages/:messageId/media — Presigned download/playback URL for message media
+  router.get("/:id/messages/:messageId/media", asyncHandler(async (req, res) => {
+    const msg = await db.conversationMessage.findFirst({
+      where: {
+        id: req.params.messageId,
+        conversationId: req.params.id,
+        companyId: req.auth!.companyId,
+      },
+      select: {
+        mediaStorageKey: true,
+        mediaFilename: true,
+        mediaMimeType: true,
+      },
+    });
+    if (!msg || !msg.mediaStorageKey) {
+      res.status(404).json({ error: { code: "not_found", message: "Mídia não encontrada" } });
+      return;
+    }
+    const { getObjectStorage } = await import("../lib/storage");
+    const storage = deps?.storage ?? getObjectStorage();
+    const download = await storage.createDownloadUrl({
+      key: msg.mediaStorageKey,
+      filename: msg.mediaFilename || "audio.ogg",
+    });
+    res.redirect(download.url);
   }));
 
   return router;

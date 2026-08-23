@@ -8,20 +8,22 @@ import {
   getRuntimeTransientStore,
   getWhatsAppProvider,
 } from "../lib/assistantRuntime";
-import { handleWhatsAppInboundText } from "../services/whatsappTextAdapter";
+import {
+  dispatchWhatsAppInbound,
+  handleWhatsAppStatusUpdate,
+} from "../services/whatsappTextAdapter";
 import type { WhatsAppProvider } from "../services/whatsappProvider";
 import type { AssistantLanguageModel } from "../services/assistantLanguageModel";
 import type { AudioTranscriptionService } from "../services/audioTranscriptionService";
 import type { AssistantDomainServices } from "../services/assistantCommandService";
 import type { TransientStore } from "../lib/transientStore";
+import type { ObjectStorage } from "../lib/storage";
 import type { DB } from "../lib/db";
 
-// ── WhatsApp provider webhook (A3.1) ─────────────────────────────────────
+// ── WhatsApp provider webhook (A3.1 + F15.4) ─────────────────────────────
 // GET  /api/webhooks/whatsapp → Meta subscription verification handshake.
 // POST /api/webhooks/whatsapp → raw-body X-Hub-Signature-256 verification,
-// normalization, then the transport adapter. The route is mounted
-// BEFORE the JSON parser (signature needs the raw bytes) and BEFORE the
-// session chain: provider authenticity replaces session auth here.
+// status updates + normalization, then the transport adapter dispatcher.
 
 export function makeWhatsAppWebhookRouter(deps?: {
   db?: DB;
@@ -29,6 +31,7 @@ export function makeWhatsAppWebhookRouter(deps?: {
   store?: TransientStore | null;
   languageModel?: AssistantLanguageModel;
   transcriptionService?: AudioTranscriptionService;
+  storage?: ObjectStorage;
   services?: AssistantDomainServices;
 }) {
   const router = Router();
@@ -69,18 +72,35 @@ export function makeWhatsAppWebhookRouter(deps?: {
         return;
       }
 
+      // Process status updates first if present
+      if (provider.normalizeStatusUpdates) {
+        const statusUpdates = provider.normalizeStatusUpdates(payload);
+        for (const update of statusUpdates) {
+          try {
+            await handleWhatsAppStatusUpdate(deps?.db ?? prisma, update);
+          } catch (error) {
+            logger.error("whatsapp_status_update_failed", {
+              providerMessageId: update.providerMessageId,
+              status: update.status,
+              detail: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
+      }
+
       const events = provider.normalizeInbound(payload);
       for (const event of events) {
         // Per-event outcome is logged masked; webhook is always acknowledged
         // so the provider does not retry (duplicate delivery is still safe:
         // the idempotency claim runs before any side effect).
         try {
-          const outcome = await handleWhatsAppInboundText({
+          const outcome = await dispatchWhatsAppInbound({
             db: deps?.db ?? prisma,
             store,
             provider,
             languageModel: deps?.languageModel ?? getAssistantLanguageModel(),
             transcriptionService: deps?.transcriptionService ?? getAssistantAudioTranscriptionService(),
+            storage: deps?.storage,
             services: deps?.services,
           }, event);
           logger.info("whatsapp_inbound", { outcome, sender: `******${event.senderPhone.slice(-4)}` });

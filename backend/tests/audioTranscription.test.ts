@@ -80,6 +80,11 @@ class FakeWhatsAppProvider extends MetaWhatsAppProvider {
 
   override async sendText(to: string, text: string) {
     this.sent.push({ to, text });
+    return {
+      providerMessageId: "meta-audio-" + this.sent.length,
+      provider: "whatsapp" as const,
+      sentAt: new Date(),
+    };
   }
 
   override async downloadMedia(_media: WhatsAppMediaPayload) {
@@ -103,6 +108,10 @@ class FakeTranscriptionService implements AudioTranscriptionService {
 
 function makeDb(seed: { identity?: boolean; membershipActive?: boolean } = {}) {
   return {
+    whatsAppChannel: {
+      findUnique: async () => null,
+      findFirst: async () => null,
+    },
     whatsAppIdentity: {
       findUnique: async () => (seed.identity !== false)
         ? { userId: "u1", companyId: "c1", enabled: true, user: { id: "u1", active: true }, company: { id: "c1", isActive: true, workspaceTemplate: "MARKETING_AGENCY" } }

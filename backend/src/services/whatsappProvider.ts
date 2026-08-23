@@ -23,6 +23,7 @@ export interface WhatsAppMediaPayload {
   url?: string;
   mimeType?: string;
   fileSize?: number;
+  filename?: string;
 }
 
 export interface WhatsAppInboundEvent {
@@ -33,6 +34,26 @@ export interface WhatsAppInboundEvent {
   text?: string;
   media?: WhatsAppMediaPayload;
   timestamp?: Date;
+  externalAccountId?: string;
+  sourcePhoneNumber?: string;
+  contactName?: string;
+}
+
+export type WhatsAppDeliveryStatusType = "sent" | "delivered" | "read" | "failed";
+
+export interface WhatsAppStatusUpdateEvent {
+  provider: WhatsAppProviderName;
+  providerMessageId: string;
+  recipientPhone?: string;
+  status: WhatsAppDeliveryStatusType;
+  timestamp?: Date;
+  rawError?: unknown;
+}
+
+export interface WhatsAppOutboundResult {
+  providerMessageId: string | null;
+  provider: WhatsAppProviderName;
+  sentAt?: Date;
 }
 
 export interface WhatsAppProviderConfig {
@@ -50,7 +71,8 @@ export interface WhatsAppProvider {
   isValidSignature(rawBody: Buffer, signatureHeader: string | undefined): boolean;
   isValidVerification(mode: string | undefined, token: string | undefined): boolean;
   normalizeInbound(payload: unknown): WhatsAppInboundEvent[];
-  sendText(to: string, text: string): Promise<void>;
+  normalizeStatusUpdates?(payload: unknown): WhatsAppStatusUpdateEvent[];
+  sendText(to: string, text: string): Promise<WhatsAppOutboundResult | void>;
   downloadMedia?(media: WhatsAppMediaPayload): Promise<{ buffer: Buffer; contentType: string }>;
 }
 
@@ -102,23 +124,29 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
       const changes = (entry as { changes?: unknown[] })?.changes;
       if (!Array.isArray(changes)) continue;
       for (const change of changes) {
-        const messages = (change as { value?: { messages?: unknown[] } })?.value?.messages;
+        const changeValue = (change as { value?: { metadata?: { phone_number_id?: string; display_phone_number?: string }; contacts?: Array<{ profile?: { name?: string } }>; messages?: unknown[] } })?.value;
+        const messages = changeValue?.messages;
         if (!Array.isArray(messages)) continue; // status callbacks have no messages
+        const externalAccountId = changeValue?.metadata?.phone_number_id;
+        const sourcePhoneNumber = changeValue?.metadata?.display_phone_number;
+        const contactName = changeValue?.contacts?.[0]?.profile?.name;
+
         for (const message of messages) {
           const m = message as { id?: string; from?: string; timestamp?: string; type?: string; text?: { body?: string } };
           if (typeof m.id !== "string" || typeof m.from !== "string") continue;
           const type = typeof m.type === "string" ? m.type : "other";
           const isText = type === "text" && typeof m.text?.body === "string";
           if (!isText && KNOWN_NON_TEXT_TYPES.has(type) === false && type !== "text") continue; // unknown shapes ignored
-          const rawMedia = (m as { audio?: { id?: string; mime_type?: string }; voice?: { id?: string; mime_type?: string }; image?: { id?: string; mime_type?: string }; video?: { id?: string; mime_type?: string }; document?: { id?: string; mime_type?: string } }).audio
+          const rawMedia = (m as { audio?: { id?: string; mime_type?: string }; voice?: { id?: string; mime_type?: string }; image?: { id?: string; mime_type?: string }; video?: { id?: string; mime_type?: string }; document?: { id?: string; mime_type?: string; filename?: string } }).audio
             ?? (m as { voice?: { id?: string; mime_type?: string } }).voice
             ?? (m as { image?: { id?: string; mime_type?: string } }).image
             ?? (m as { video?: { id?: string; mime_type?: string } }).video
-            ?? (m as { document?: { id?: string; mime_type?: string } }).document;
+            ?? (m as { document?: { id?: string; mime_type?: string; filename?: string } }).document;
           const media: WhatsAppMediaPayload | undefined = rawMedia && (rawMedia.id || (rawMedia as { url?: string }).url) ? {
             id: rawMedia.id,
             url: (rawMedia as { url?: string }).url,
             mimeType: rawMedia.mime_type,
+            filename: (rawMedia as { filename?: string }).filename,
           } : undefined;
 
           events.push({
@@ -129,6 +157,9 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
             ...(isText ? { text: (m.text as { body: string }).body } : {}),
             ...(media ? { media } : {}),
             ...(typeof m.timestamp === "string" && /^\d+$/.test(m.timestamp) ? { timestamp: new Date(Number(m.timestamp) * 1000) } : {}),
+            ...(externalAccountId ? { externalAccountId } : {}),
+            ...(sourcePhoneNumber ? { sourcePhoneNumber } : {}),
+            ...(contactName ? { contactName } : {}),
           });
         }
       }
@@ -136,7 +167,42 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
     return events;
   }
 
-  async sendText(to: string, text: string): Promise<void> {
+  normalizeStatusUpdates(payload: unknown): WhatsAppStatusUpdateEvent[] {
+    if (typeof payload !== "object" || payload === null) return [];
+    const root = payload as { object?: string; entry?: unknown[] };
+    if (root.object !== "whatsapp_business_account" || !Array.isArray(root.entry)) return [];
+    const updates: WhatsAppStatusUpdateEvent[] = [];
+    for (const entry of root.entry) {
+      const changes = (entry as { changes?: unknown[] })?.changes;
+      if (!Array.isArray(changes)) continue;
+      for (const change of changes) {
+        const statuses = (change as { value?: { statuses?: unknown[] } })?.value?.statuses;
+        if (!Array.isArray(statuses)) continue;
+        for (const statusObj of statuses) {
+          const s = statusObj as { id?: string; status?: string; timestamp?: string; recipient_id?: string; errors?: unknown };
+          if (typeof s.id !== "string" || typeof s.status !== "string") continue;
+          let status: WhatsAppDeliveryStatusType | null = null;
+          if (s.status === "sent") status = "sent";
+          else if (s.status === "delivered") status = "delivered";
+          else if (s.status === "read") status = "read";
+          else if (s.status === "failed") status = "failed";
+          if (!status) continue;
+
+          updates.push({
+            provider: WHATSAPP_PROVIDER_NAME,
+            providerMessageId: s.id,
+            recipientPhone: s.recipient_id,
+            status,
+            ...(typeof s.timestamp === "string" && /^\d+$/.test(s.timestamp) ? { timestamp: new Date(Number(s.timestamp) * 1000) } : {}),
+            ...(s.errors ? { rawError: s.errors } : {}),
+          });
+        }
+      }
+    }
+    return updates;
+  }
+
+  async sendText(to: string, text: string): Promise<WhatsAppOutboundResult> {
     const doFetch = this.config.fetchImpl ?? fetch;
     const version = this.config.graphApiVersion ?? "v21.0";
     const response = await doFetch(
@@ -152,6 +218,13 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
       },
     );
     if (!response.ok) throw new Error("WhatsApp outbound send failed");
+    const data = (await response.json().catch(() => null)) as { messages?: Array<{ id?: string }> } | null;
+    const providerMessageId = data?.messages?.[0]?.id ?? null;
+    return {
+      providerMessageId,
+      provider: WHATSAPP_PROVIDER_NAME,
+      sentAt: new Date(),
+    };
   }
 
   async downloadMedia(media: WhatsAppMediaPayload): Promise<{ buffer: Buffer; contentType: string }> {

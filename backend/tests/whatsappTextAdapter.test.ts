@@ -65,11 +65,20 @@ class FakeWhatsAppProvider extends MetaWhatsAppProvider {
   override async sendText(to: string, text: string) {
     if (this.failSends) throw new Error("send failed");
     this.sent.push({ to, text });
+    return {
+      providerMessageId: "meta-out-" + this.sent.length,
+      provider: "whatsapp" as const,
+      sentAt: new Date(),
+    };
   }
 }
 
 function makeDb(seed: { identity?: boolean; membershipActive?: boolean }) {
   return {
+    whatsAppChannel: {
+      findUnique: async () => null,
+      findFirst: async () => null,
+    },
     whatsAppIdentity: {
       findUnique: async () => seed.identity
         ? { userId: "u1", companyId: "c1", enabled: true, user: { id: "u1", active: true }, company: { id: "c1", isActive: true, workspaceTemplate: "MARKETING_AGENCY" } }

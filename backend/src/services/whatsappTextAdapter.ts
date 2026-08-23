@@ -2,6 +2,7 @@ import type { DB } from "../lib/db";
 import { AppError } from "../lib/errors";
 import { logger } from "../lib/logger";
 import type { TransientStore } from "../lib/transientStore";
+import type { ObjectStorage } from "../lib/storage";
 import type { AssistantLanguageModel } from "./assistantLanguageModel";
 import { interpretAssistantMessage } from "./assistantLanguageAdapter";
 import {
@@ -20,8 +21,21 @@ import {
   MAX_AUDIO_SIZE_BYTES,
   type AudioTranscriptionService,
 } from "./audioTranscriptionService";
-import type { WhatsAppInboundEvent, WhatsAppMediaPayload } from "./whatsappProvider";
+import type {
+  WhatsAppInboundEvent,
+  WhatsAppMediaPayload,
+  WhatsAppOutboundResult,
+  WhatsAppStatusUpdateEvent,
+} from "./whatsappProvider";
 import { formatAssistantResult, WHATSAPP_COPY, confirmationPrompt } from "./whatsappReplyFormatter";
+import {
+  handleCustomerWhatsAppInbound,
+  type WhatsAppCustomerOutcome,
+} from "./whatsappCustomerAdapter";
+import {
+  resolveWhatsAppChannelDetails,
+  updateMessageDeliveryStatus,
+} from "./conversationService";
 
 // ── WhatsApp transport adapter (A3.1 Text + A3.2 Audio Transcription V1) ─
 // Transport only: idempotency → audio transcription / text extraction →
@@ -45,11 +59,12 @@ export interface WhatsAppAdapterDeps {
   db: DB;
   store: TransientStore;
   provider: {
-    sendText(to: string, text: string): Promise<void>;
+    sendText(to: string, text: string): Promise<WhatsAppOutboundResult | void>;
     downloadMedia?(media: WhatsAppMediaPayload): Promise<{ buffer: Buffer; contentType: string }>;
   };
   languageModel: AssistantLanguageModel;
   transcriptionService?: AudioTranscriptionService;
+  storage?: ObjectStorage;
   services?: AssistantDomainServices;
   now?: () => Date;
 }
@@ -251,6 +266,56 @@ export async function handleWhatsAppInboundText(
 
   await send(deps, event.senderPhone, formatAssistantResult(result));
   return "processed";
+}
+
+export async function handleWhatsAppStatusUpdate(
+  db: DB,
+  update: WhatsAppStatusUpdateEvent,
+): Promise<boolean> {
+  const msg = await db.conversationMessage.findFirst({
+    where: {
+      provider: update.provider,
+      providerMessageId: update.providerMessageId,
+    },
+    select: { id: true, companyId: true },
+  });
+  if (!msg) return false;
+  const mappedStatus =
+    update.status === "sent" ? "SENT"
+    : update.status === "delivered" ? "DELIVERED"
+    : update.status === "read" ? "READ"
+    : "FAILED";
+  await updateMessageDeliveryStatus(db, msg.companyId, update.provider, update.providerMessageId, mappedStatus as any);
+  return true;
+}
+
+export async function dispatchWhatsAppInbound(
+  deps: WhatsAppAdapterDeps,
+  event: WhatsAppInboundEvent,
+): Promise<WhatsAppInboundOutcome | WhatsAppCustomerOutcome> {
+  // 1. Internal operator precedence: an authorized WhatsAppIdentity sender
+  //    ALWAYS uses the internal Assistant flow (admin capabilities), regardless
+  //    of any CUSTOMER_AI channel the message transport maps to. A customer can
+  //    never reach administrative capabilities this way.
+  const actor = await resolveWhatsAppActor(deps.db, event.provider, event.senderPhone);
+  if (actor) {
+    return handleWhatsAppInboundText(deps, event);
+  }
+
+  // 2. Non-operator: route to the customer pipeline only when the transport
+  //    (externalAccountId / sourcePhoneNumber) resolves to a CUSTOMER_AI channel.
+  const channel = await resolveWhatsAppChannelDetails(
+    deps.db,
+    event.provider,
+    event.externalAccountId,
+    event.sourcePhoneNumber,
+  );
+  if (channel && channel.purpose === "CUSTOMER_AI") {
+    return handleCustomerWhatsAppInbound(deps, channel, event);
+  }
+
+  // 3. Fallback: internal pipeline (unknown senders stay unauthorized there).
+  return handleWhatsAppInboundText(deps, event);
 }
 
 export { WHATSAPP_IDENTITY_PROVIDER, handleWhatsAppInboundText as handleWhatsAppInbound };

@@ -2,6 +2,7 @@ import type { DB } from "../lib/db";
 import { badRequest, notFound } from "../lib/errors";
 import { normalizePhoneNumber } from "../lib/phone";
 import type {
+  AudioTranscriptionStatus,
   Conversation,
   ConversationAiStatus,
   ConversationMessage,
@@ -9,9 +10,10 @@ import type {
   MessageDeliveryStatus,
   MessageDirection,
   MessageSenderType,
+  WhatsAppChannelPurpose,
 } from "@prisma/client";
 
-// ── Conversation Domain Service (F15.2) ──────────────────────────────────
+// ── Conversation Domain Service (F15.2 + F15.4) ──────────────────────────
 // Canonical persistent repository and business logic for customer conversations.
 // All operations enforce strict multi-tenant isolation via companyId.
 
@@ -42,11 +44,14 @@ export interface ConversationMessageDto {
   type: ConversationMessageType;
   body: string | null;
   media: {
+    storageKey?: string | null;
     mimeType?: string | null;
     sizeBytes?: number | null;
     filename?: string | null;
+    url?: string | null;
   } | null;
   transcription: string | null;
+  transcriptionStatus?: AudioTranscriptionStatus | null;
   deliveryStatus: MessageDeliveryStatus;
   action: {
     type: string;
@@ -91,6 +96,7 @@ export interface AppendInboundMessageInput {
   mediaSizeBytes?: number | null;
   mediaFilename?: string | null;
   transcription?: string | null;
+  transcriptionStatus?: AudioTranscriptionStatus | null;
   deliveryStatus?: MessageDeliveryStatus;
   actionType?: string | null;
   actionMetadata?: Record<string, unknown> | null;
@@ -132,6 +138,7 @@ export interface NormalizedConversationInbound {
     filename?: string;
   };
   transcription?: string;
+  transcriptionStatus?: AudioTranscriptionStatus;
   actionType?: string;
   actionMetadata?: Record<string, unknown>;
   receivedAt?: Date;
@@ -158,9 +165,11 @@ export function toConversationSummaryDto(row: Conversation & { client?: { id: st
 export function toConversationMessageDto(row: ConversationMessage & { senderUser?: { id: string; name: string } | null }): ConversationMessageDto {
   const hasMedia = Boolean(row.mediaMimeType || row.mediaSizeBytes || row.mediaFilename || row.mediaStorageKey);
   const media = hasMedia ? {
+    storageKey: row.mediaStorageKey,
     mimeType: row.mediaMimeType,
     sizeBytes: row.mediaSizeBytes,
     filename: row.mediaFilename,
+    url: row.mediaStorageKey ? `/api/conversations/${row.conversationId}/messages/${row.id}/media` : null,
   } : null;
 
   const action = row.actionType ? {
@@ -180,6 +189,7 @@ export function toConversationMessageDto(row: ConversationMessage & { senderUser
     body: row.body,
     media,
     transcription: row.transcription,
+    transcriptionStatus: row.transcriptionStatus ?? null,
     deliveryStatus: row.deliveryStatus,
     action,
     createdAt: row.createdAt.toISOString(),
@@ -454,6 +464,7 @@ export async function appendInboundMessage(
       mediaSizeBytes: input.mediaSizeBytes ?? null,
       mediaFilename: input.mediaFilename ?? null,
       transcription: input.transcription ?? null,
+      transcriptionStatus: input.transcriptionStatus ?? null,
       deliveryStatus: input.deliveryStatus ?? "DELIVERED",
       actionType: input.actionType ?? null,
       actionMetadata: (input.actionMetadata as any) ?? undefined,
@@ -624,12 +635,19 @@ export async function bindConversationClient(
   return toConversationSummaryDto(updated);
 }
 
-export async function resolveCompanyForChannel(
+export interface ResolvedWhatsAppChannel {
+  channelId: string;
+  companyId: string;
+  purpose: WhatsAppChannelPurpose;
+  displayName?: string | null;
+}
+
+export async function resolveWhatsAppChannelDetails(
   db: DB,
   provider: string,
   externalAccountId?: string,
   sourcePhoneNumber?: string,
-): Promise<string | null> {
+): Promise<ResolvedWhatsAppChannel | null> {
   if (externalAccountId) {
     const channel = await db.whatsAppChannel.findUnique({
       where: {
@@ -638,9 +656,16 @@ export async function resolveCompanyForChannel(
           externalAccountId,
         },
       },
-      select: { companyId: true, isActive: true },
+      select: { id: true, companyId: true, purpose: true, displayName: true, isActive: true },
     });
-    if (channel && channel.isActive) return channel.companyId;
+    if (channel && channel.isActive) {
+      return {
+        channelId: channel.id,
+        companyId: channel.companyId,
+        purpose: channel.purpose,
+        displayName: channel.displayName,
+      };
+    }
   }
 
   if (sourcePhoneNumber) {
@@ -652,13 +677,76 @@ export async function resolveCompanyForChannel(
           sourcePhoneNumber: normalized,
           isActive: true,
         },
-        select: { companyId: true },
+        select: { id: true, companyId: true, purpose: true, displayName: true },
       });
-      if (channel) return channel.companyId;
+      if (channel) {
+        return {
+          channelId: channel.id,
+          companyId: channel.companyId,
+          purpose: channel.purpose,
+          displayName: channel.displayName,
+        };
+      }
     }
   }
 
   return null;
+}
+
+export async function resolveCompanyForChannel(
+  db: DB,
+  provider: string,
+  externalAccountId?: string,
+  sourcePhoneNumber?: string,
+): Promise<string | null> {
+  const details = await resolveWhatsAppChannelDetails(db, provider, externalAccountId, sourcePhoneNumber);
+  return details ? details.companyId : null;
+}
+
+const DELIVERY_STATUS_ORDER: Record<MessageDeliveryStatus, number> = {
+  PENDING: 1,
+  SENT: 2,
+  DELIVERED: 3,
+  READ: 4,
+  FAILED: 0,
+};
+
+export async function updateMessageDeliveryStatus(
+  db: DB,
+  companyId: string,
+  provider: string,
+  providerMessageId: string,
+  newStatus: MessageDeliveryStatus,
+): Promise<ConversationMessageDto | null> {
+  const msg = await db.conversationMessage.findFirst({
+    where: {
+      companyId,
+      provider,
+      providerMessageId,
+    },
+    include: { senderUser: { select: { id: true, name: true } } },
+  });
+  if (!msg) return null;
+
+  const currentOrder = DELIVERY_STATUS_ORDER[msg.deliveryStatus] ?? 0;
+  const newOrder = DELIVERY_STATUS_ORDER[newStatus] ?? 0;
+
+  // Never downgrade READ or DELIVERED to lower order
+  if (currentOrder >= newOrder && newStatus !== "FAILED") {
+    return toConversationMessageDto(msg);
+  }
+  // Never transition from READ to FAILED
+  if (msg.deliveryStatus === "READ" && newStatus === "FAILED") {
+    return toConversationMessageDto(msg);
+  }
+
+  const updated = await db.conversationMessage.update({
+    where: { id: msg.id },
+    data: { deliveryStatus: newStatus },
+    include: { senderUser: { select: { id: true, name: true } } },
+  });
+
+  return toConversationMessageDto(updated);
 }
 
 export async function persistNormalizedInboundMessage(
@@ -679,6 +767,7 @@ export async function persistNormalizedInboundMessage(
     mediaSizeBytes: event.media?.sizeBytes,
     mediaFilename: event.media?.filename,
     transcription: event.transcription,
+    transcriptionStatus: event.transcriptionStatus,
     actionType: event.actionType,
     actionMetadata: event.actionMetadata,
     receivedAt: event.receivedAt,

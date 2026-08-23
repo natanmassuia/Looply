@@ -151,7 +151,7 @@ export function validateAssistantCommand(input: unknown): AssistantCommand {
 
 export interface AssistantExecutionContext {
   companyId: string;
-  userId: string;
+  userId: string | null;
   capabilities: readonly Capability[];
 }
 

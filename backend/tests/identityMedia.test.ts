@@ -28,6 +28,9 @@ function makeMockStorage() {
       url: `https://storage.test/put/${encodeURIComponent(key)}`,
       expiresAt: new Date(Date.now() + 600_000),
     }),
+    putObject: async ({ key, buffer, contentType }) => {
+      store.set(key, { sizeBytes: buffer.length, contentType });
+    },
     headObject: async (key) => {
       const item = store.get(key);
       if (!item) return null;

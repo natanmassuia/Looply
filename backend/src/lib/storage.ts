@@ -17,6 +17,7 @@ export interface ObjectMetadata {
 
 export interface ObjectStorage {
   createUploadUrl(input: { key: string; contentType: string; sizeBytes: number }): Promise<{ url: string; expiresAt: Date }>;
+  putObject(input: { key: string; buffer: Buffer; contentType: string }): Promise<void>;
   headObject(key: string): Promise<ObjectMetadata | null>;
   createDownloadUrl(input: { key: string; filename: string }): Promise<{ url: string; expiresAt: Date }>;
   deleteObject(key: string): Promise<void>;
@@ -59,6 +60,17 @@ class S3ObjectStorage implements ObjectStorage {
       ContentLength: input.sizeBytes,
     });
     return { url: await getSignedUrl(this.presignClient, command, { expiresIn }), expiresAt: new Date(Date.now() + expiresIn * 1000) };
+  }
+
+  async putObject(input: { key: string; buffer: Buffer; contentType: string }): Promise<void> {
+    const command = new PutObjectCommand({
+      Bucket: env.STORAGE_BUCKET,
+      Key: input.key,
+      Body: input.buffer,
+      ContentType: input.contentType,
+      ContentLength: input.buffer.length,
+    });
+    await this.client.send(command);
   }
 
   async headObject(key: string): Promise<ObjectMetadata | null> {

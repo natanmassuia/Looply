@@ -85,11 +85,20 @@ class FakeGupshupProvider extends GupshupWhatsAppProvider {
   override async sendText(to: string, text: string) {
     if (this.failSends) throw new Error("send failed");
     this.sent.push({ to, text });
+    return {
+      providerMessageId: "gup-out-" + this.sent.length,
+      provider: "gupshup" as const,
+      sentAt: new Date(),
+    };
   }
 }
 
 function makeDb(seed: { identity?: boolean } = {}) {
   return {
+    whatsAppChannel: {
+      findUnique: async () => null,
+      findFirst: async () => null,
+    },
     whatsAppIdentity: {
       findUnique: async () => seed.identity
         ? { userId: "u1", companyId: "c1", enabled: true, user: { id: "u1", active: true }, company: { id: "c1", isActive: true, workspaceTemplate: "MARKETING_AGENCY" } }
@@ -214,6 +223,8 @@ describe("Gupshup inbound normalization", () => {
       type: "text",
       text: "cria um compromisso",
       timestamp: new Date(MS_TIMESTAMP),
+      externalAccountId: "GupShupWhatsAppApp",
+      contactName: "Ana",
     }]);
   });
 
@@ -252,8 +263,8 @@ describe("Gupshup inbound normalization", () => {
     }
   });
 
-  it("drops transport metadata: app, sender.name, country_code, dial_code, context never propagate", () => {
-    const events = provider.normalizeInbound(gupshupMessage({ app: "SomeOtherApp", senderName: "Evil Name" }));
+  it("extracts externalAccountId and contactName while dropping raw transport context", () => {
+    const events = provider.normalizeInbound(gupshupMessage({ app: "SomeOtherApp", senderName: "Sender Name" }));
     expect(events[0]).toEqual({
       provider: GUPSHUP_PROVIDER_NAME,
       providerMessageId: GUPSHUP_ID,
@@ -261,9 +272,11 @@ describe("Gupshup inbound normalization", () => {
       type: "text",
       text: "cria um compromisso",
       timestamp: new Date(MS_TIMESTAMP),
+      externalAccountId: "SomeOtherApp",
+      contactName: "Sender Name",
     });
     expect(Object.keys(events[0]).sort()).toEqual([
-      "provider", "providerMessageId", "senderPhone", "text", "timestamp", "type",
+      "contactName", "externalAccountId", "provider", "providerMessageId", "senderPhone", "text", "timestamp", "type",
     ]);
   });
 

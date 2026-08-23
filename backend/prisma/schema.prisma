@@ -167,6 +167,17 @@ enum MessageDeliveryStatus {
   FAILED
 }
 
+enum WhatsAppChannelPurpose {
+  CUSTOMER_AI
+  INTERNAL_ASSISTANT
+}
+
+enum AudioTranscriptionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
 // ── Models ─────────────────────────────────────────────────────────────
 
 model User {
@@ -576,15 +587,16 @@ model Appointment {
 // Resolves inbound messages from external accounts (Meta phoneNumberId / Gupshup appId)
 // to a specific Company.
 model WhatsAppChannel {
-  id                String   @id @default(cuid())
+  id                String                 @id @default(cuid())
   companyId         String
-  provider          String   @default("whatsapp")
+  provider          String                 @default("whatsapp")
+  purpose           WhatsAppChannelPurpose @default(CUSTOMER_AI)
   externalAccountId String?  // Meta phone_number_id or Gupshup appName
   sourcePhoneNumber String?  // canonical E.164 business number (e.g. +551133334444)
   displayName       String?
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  isActive          Boolean                @default(true)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
@@ -617,25 +629,26 @@ model Conversation {
 }
 
 model ConversationMessage {
-  id                String                  @id @default(cuid())
-  conversationId    String
-  companyId         String
-  provider          String                  @default("whatsapp")
-  direction         MessageDirection
-  senderType        MessageSenderType
-  senderUserId      String?
-  type              ConversationMessageType @default(TEXT)
-  body              String?
-  providerMessageId String?
-  mediaStorageKey   String?
-  mediaMimeType     String?
-  mediaSizeBytes    Int?
-  mediaFilename     String?
-  transcription     String?
-  deliveryStatus    MessageDeliveryStatus   @default(PENDING)
-  actionType        String?                 // e.g. "CONFIRMATION_PENDING", "CONFIRMATION_ACCEPTED", "CONFIRMATION_REJECTED", "APPOINTMENT_CREATED", "JOB_CREATED", "AI_ERROR"
-  actionMetadata    Json?                   // { appointmentId?: string, jobId?: string, summary?: string }
-  createdAt         DateTime                @default(now())
+  id                  String                    @id @default(cuid())
+  conversationId      String
+  companyId           String
+  provider            String                    @default("whatsapp")
+  direction           MessageDirection
+  senderType          MessageSenderType
+  senderUserId        String?
+  type                ConversationMessageType   @default(TEXT)
+  body                String?
+  providerMessageId   String?
+  mediaStorageKey     String?
+  mediaMimeType       String?
+  mediaSizeBytes      Int?
+  mediaFilename       String?
+  transcription       String?
+  transcriptionStatus AudioTranscriptionStatus?
+  deliveryStatus      MessageDeliveryStatus     @default(PENDING)
+  actionType          String?                   // e.g. "CONFIRMATION_PENDING", "CONFIRMATION_ACCEPTED", "CONFIRMATION_REJECTED", "APPOINTMENT_CREATED", "JOB_CREATED", "AI_ERROR"
+  actionMetadata      Json?                     // { appointmentId?: string, jobId?: string, summary?: string }
+  createdAt           DateTime                  @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   company      Company      @relation(fields: [companyId], references: [id], onDelete: Restrict)

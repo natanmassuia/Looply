@@ -2,9 +2,12 @@ import { isIP } from "node:net";
 import { safeMediaDownload } from "../lib/ssrfGuard";
 import {
   GUPSHUP_PROVIDER_NAME,
+  type WhatsAppDeliveryStatusType,
   type WhatsAppInboundEvent,
   type WhatsAppInboundEventType,
+  type WhatsAppOutboundResult,
   type WhatsAppProvider,
+  type WhatsAppStatusUpdateEvent,
 } from "./whatsappProvider";
 
 // ── Gupshup official WhatsApp provider (A3.G1) ───────────────────────────
@@ -38,8 +41,10 @@ const OUTBOUND_TIMEOUT_MS = 10000;
 const GUPSHUP_NON_TEXT: Record<string, WhatsAppInboundEventType> = {
   image: "image",
   audio: "audio",
+  voice: "audio",
   video: "video",
   file: "document",
+  document: "document",
 };
 
 function messageTypeToEvent(type: string | undefined): WhatsAppInboundEventType | null {
@@ -147,15 +152,12 @@ export class GupshupWhatsAppProvider implements WhatsAppProvider {
   // top-level { app, timestamp (ms), version: 2, type, payload }.
   // Only type === "message" enters the Assistant; transport events
   // (message-event, user-event, system-event, billing-event, template-event)
-  // are acknowledged at the route and never normalized. payload.id is the
-  // unique inbound message id (idempotency), payload.source the sender E.164
-  // phone (canonical normalization happens downstream). app, sender.name,
-  // country_code and context are transport metadata and are NOT propagated.
+  // are acknowledged at the route and normalized via normalizeStatusUpdates.
   normalizeInbound(payload: unknown): WhatsAppInboundEvent[] {
     if (typeof payload !== "object" || payload === null) return [];
-    const root = payload as { type?: unknown; timestamp?: unknown; payload?: unknown };
+    const root = payload as { app?: unknown; type?: unknown; timestamp?: unknown; payload?: unknown };
     if (root.type !== "message") return [];
-    const inner = root.payload as { id?: unknown; source?: unknown; type?: unknown; payload?: unknown } | null | undefined;
+    const inner = root.payload as { id?: unknown; source?: unknown; destination?: unknown; type?: unknown; payload?: unknown; sender?: { name?: unknown } } | null | undefined;
     if (typeof inner !== "object" || inner === null) return [];
     if (typeof inner.id !== "string" || inner.id.length === 0) return [];
     if (typeof inner.source !== "string" || inner.source.length === 0) return [];
@@ -168,14 +170,15 @@ export class GupshupWhatsAppProvider implements WhatsAppProvider {
       if (typeof raw !== "string" || raw.trim().length === 0) return [];
       text = raw;
     }
-    let media: { id?: string; url?: string; mimeType?: string } | undefined;
+    let media: { id?: string; url?: string; mimeType?: string; filename?: string } | undefined;
     if (!isText && typeof inner.payload === "object" && inner.payload !== null) {
-      const p = inner.payload as { url?: unknown; id?: unknown; contentType?: unknown };
+      const p = inner.payload as { url?: unknown; id?: unknown; contentType?: unknown; name?: unknown; filename?: unknown };
       if (typeof p.url === "string" || typeof p.id === "string") {
         media = {
           url: typeof p.url === "string" ? p.url : undefined,
           id: typeof p.id === "string" ? p.id : undefined,
           mimeType: typeof p.contentType === "string" ? p.contentType : undefined,
+          filename: typeof p.name === "string" ? p.name : typeof p.filename === "string" ? p.filename : undefined,
         };
       }
     }
@@ -183,6 +186,11 @@ export class GupshupWhatsAppProvider implements WhatsAppProvider {
       typeof root.timestamp === "number" && Number.isFinite(root.timestamp) && root.timestamp > 0
         ? new Date(root.timestamp)
         : undefined;
+
+    const externalAccountId = typeof root.app === "string" ? root.app : undefined;
+    const sourcePhoneNumber = typeof inner.destination === "string" ? inner.destination : undefined;
+    const contactName = typeof inner.sender?.name === "string" ? inner.sender.name : undefined;
+
     return [{
       provider: GUPSHUP_PROVIDER_NAME,
       providerMessageId: inner.id,
@@ -191,10 +199,45 @@ export class GupshupWhatsAppProvider implements WhatsAppProvider {
       ...(text !== undefined ? { text } : {}),
       ...(media !== undefined ? { media } : {}),
       ...(timestamp ? { timestamp } : {}),
+      ...(externalAccountId ? { externalAccountId } : {}),
+      ...(sourcePhoneNumber ? { sourcePhoneNumber } : {}),
+      ...(contactName ? { contactName } : {}),
     }];
   }
 
-  async sendText(to: string, text: string): Promise<void> {
+  normalizeStatusUpdates(payload: unknown): WhatsAppStatusUpdateEvent[] {
+    if (typeof payload !== "object" || payload === null) return [];
+    const root = payload as { type?: unknown; timestamp?: unknown; payload?: unknown };
+    if (root.type !== "message-event") return [];
+    const inner = root.payload as { id?: unknown; type?: unknown; destination?: unknown; timestamp?: unknown; cause?: unknown } | null | undefined;
+    if (typeof inner !== "object" || inner === null) return [];
+    if (typeof inner.id !== "string" || typeof inner.type !== "string") return [];
+
+    let status: WhatsAppDeliveryStatusType | null = null;
+    if (inner.type === "enqueued" || inner.type === "sent") status = "sent";
+    else if (inner.type === "delivered") status = "delivered";
+    else if (inner.type === "read") status = "read";
+    else if (inner.type === "failed") status = "failed";
+    if (!status) return [];
+
+    const timestamp =
+      typeof root.timestamp === "number" && Number.isFinite(root.timestamp) && root.timestamp > 0
+        ? new Date(root.timestamp)
+        : typeof inner.timestamp === "number" && Number.isFinite(inner.timestamp) && inner.timestamp > 0
+        ? new Date(inner.timestamp)
+        : undefined;
+
+    return [{
+      provider: GUPSHUP_PROVIDER_NAME,
+      providerMessageId: inner.id,
+      recipientPhone: typeof inner.destination === "string" ? inner.destination : undefined,
+      status,
+      ...(timestamp ? { timestamp } : {}),
+      ...(inner.cause ? { rawError: inner.cause } : {}),
+    }];
+  }
+
+  async sendText(to: string, text: string): Promise<WhatsAppOutboundResult> {
     if (!this.config.apiKey || !this.config.sourceNumber || !this.config.appName) {
       throw new Error("Gupshup outbound send failed");
     }
@@ -216,6 +259,13 @@ export class GupshupWhatsAppProvider implements WhatsAppProvider {
       signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("Gupshup outbound send failed");
+    const data = (await response.json().catch(() => null)) as { status?: string; messageId?: string } | null;
+    const providerMessageId = data?.messageId ?? null;
+    return {
+      providerMessageId,
+      provider: GUPSHUP_PROVIDER_NAME,
+      sentAt: new Date(),
+    };
   }
 
   async downloadMedia(media: { id?: string; url?: string; mimeType?: string }): Promise<{ buffer: Buffer; contentType: string }> {

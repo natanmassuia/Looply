@@ -105,6 +105,7 @@ describe("public approval file authorization", () => {
     };
     const storage: ObjectStorage = {
       createUploadUrl: async () => ({ url: "", expiresAt: new Date() }),
+      putObject: async () => undefined,
       headObject: async () => null,
       createDownloadUrl: async () => ({ url: "", expiresAt: new Date() }),
       deleteObject: async () => undefined,
@@ -126,6 +127,7 @@ describe("public approval file authorization", () => {
     };
     const storage: ObjectStorage = {
       createUploadUrl: async () => ({ url: "", expiresAt: new Date() }),
+      putObject: async () => undefined,
       headObject: async () => null,
       createDownloadUrl: async ({ key }) => ({ url: `signed:${key}`, expiresAt: new Date(Date.now() + 60000) }),
       deleteObject: async () => undefined,

@@ -19,6 +19,7 @@ function makeWorld() {
   const storage: ObjectStorage & { deleted: string[] } = {
     deleted: [],
     createUploadUrl: async ({ key }) => ({ url: `https://storage.test/put/${key}`, expiresAt: new Date(Date.now() + 600_000) }),
+    putObject: async () => undefined,
     headObject: async (key) => {
       const file = state.files.find((f) => f.storageKey === key);
       return file?.head ?? null;

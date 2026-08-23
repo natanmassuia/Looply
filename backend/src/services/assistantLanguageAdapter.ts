@@ -31,6 +31,7 @@ export async function interpretAssistantMessage(
   model: AssistantLanguageModel,
   message: string,
   context: AssistantLanguageContext,
+  options?: { allowMissingTicketClientId?: boolean },
 ): Promise<AssistantLanguageResult> {
   const trimmed = message.trim();
   if (!trimmed || trimmed.length > 4000) {
@@ -61,7 +62,14 @@ export async function interpretAssistantMessage(
   }
 
   try {
-    return { kind: "command", command: validateAssistantCommand({ operation: output.data.operation, payload: output.data.payload }) };
+    let payload: unknown = output.data.payload;
+    if (output.data.operation === "ticket.create" && options?.allowMissingTicketClientId) {
+      // Customer conversations resolve the client at runtime (conversation
+      // binding or tenant-safe phone match), so the LLM output may omit it.
+      const p = (payload ?? {}) as Record<string, unknown>;
+      payload = { ...p, clientId: typeof p.clientId === "string" ? p.clientId : "__CUSTOMER_PENDING_CLIENT__" };
+    }
+    return { kind: "command", command: validateAssistantCommand({ operation: output.data.operation, payload }) };
   } catch (error) {
     if (error instanceof AppError || error instanceof z.ZodError) {
       return { kind: "error", code: "ASSISTANT_LANGUAGE_MODEL_ERROR", message: "Comando estruturado inválido" };
