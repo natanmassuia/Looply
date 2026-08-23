@@ -1,0 +1,36 @@
+# ==============================================================================
+# SOURCE OF TRUTH TEMPLATE: looply-minio.service
+# Target Host Location: /etc/systemd/system/looply-minio.service
+#
+# NOTE: Live unit requires explicit install/reload:
+#   sudo cp ops/systemd/looply-minio.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now looply-minio
+# ==============================================================================
+
+[Unit]
+Description=Looply MinIO S3 Object Storage Service
+After=network.target
+
+[Service]
+Type=simple
+User=ops
+Group=verbum-ai
+WorkingDirectory=/var/lib/verbum-ai/natan/home/.local/share/minio
+EnvironmentFile=/var/lib/verbum-ai/natan/home/.local/share/minio/minio.env
+ExecStart=/var/lib/verbum-ai/natan/home/.local/bin/minio server /var/lib/verbum-ai/natan/home/.local/share/minio/data --address 127.0.0.1:9000 --console-address 127.0.0.1:9001
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=looply-minio
+
+# Security Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/var/lib/verbum-ai/natan/home/.local/share/minio
+
+[Install]
+WantedBy=multi-user.target

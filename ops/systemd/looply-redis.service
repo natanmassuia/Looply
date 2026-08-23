@@ -1,0 +1,35 @@
+# ==============================================================================
+# SOURCE OF TRUTH TEMPLATE: looply-redis.service
+# Target Host Location: /etc/systemd/system/looply-redis.service
+#
+# NOTE: Live unit requires explicit install/reload:
+#   sudo cp ops/systemd/looply-redis.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now looply-redis
+# ==============================================================================
+
+[Unit]
+Description=Looply Redis Transient Store Service
+After=network.target
+
+[Service]
+Type=simple
+User=ops
+Group=verbum-ai
+WorkingDirectory=/var/lib/verbum-ai/natan/home/.local/share/redis
+ExecStart=/var/lib/verbum-ai/natan/home/.local/bin/redis-server /var/lib/verbum-ai/natan/home/.local/share/redis/redis.conf
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=looply-redis
+
+# Security Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/var/lib/verbum-ai/natan/home/.local/share/redis
+
+[Install]
+WantedBy=multi-user.target

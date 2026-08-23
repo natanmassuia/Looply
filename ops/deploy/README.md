@@ -7,10 +7,12 @@ This document defines the canonical, reproducible deployment procedures for Loop
 ## 1. Architecture Overview
 
 - **Domain:** `https://looply.verbumlab.com.br`
-- **Reverse Proxy / TLS:** Nginx (`169.58.210.205:80`, `:443`) with Let's Encrypt certificates managed by Certbot.
+- **Reverse Proxy / TLS:** Nginx (`169.58.210.205:80`, `:443`) with Let's Encrypt certificates managed by Certbot. Reverse proxies API (`/api/`), S3 Public Presigned Uploads/Downloads (`/looply-attachments/`), and serves Frontend SPA.
 - **Frontend Document Root:** `/srv/verbum/apps/looply/frontend` (Static SPA distribution).
 - **Backend Application:** Node.js service running on `127.0.0.1:4000` managed by systemd (`looply-backend.service`).
 - **Database:** Private PostgreSQL instance on Docker bridge (`172.20.0.10:5432`), managed via Prisma.
+- **Transient Store (Redis):** Private Redis 7 instance on loopback (`127.0.0.1:6379`), managed by systemd (`looply-redis.service`). Volatile-ttl eviction policy for ephemeral WhatsApp idempotency and pending confirmations.
+- **Object Storage (MinIO):** Private MinIO S3 instance on loopback (`127.0.0.1:9000`), managed by systemd (`looply-minio.service`). Data stored in `/var/lib/verbum-ai/natan/home/.local/share/minio/data`. Console bound strictly to `127.0.0.1:9001` (never exposed publicly).
 - **Development / Repository Workspace:** `/srv/verbum/workspaces/looply`.
 
 ---
@@ -80,13 +82,14 @@ Before deploying any release to staging:
    mv /srv/verbum/apps/looply/frontend /srv/verbum/apps/looply/frontend_old
    mv /srv/verbum/apps/looply/frontend_new /srv/verbum/apps/looply/frontend
    ```
-5. **Restart Backend Service:**
+5. **Restart & Enable Services:**
    ```bash
-   sudo systemctl restart looply-backend
+   sudo systemctl restart looply-redis looply-minio looply-backend
+   sudo systemctl enable looply-redis looply-minio looply-backend
    ```
 6. **Verify Services & Endpoints:**
    ```bash
-   systemctl is-active looply-backend
+   systemctl is-active looply-redis looply-minio looply-backend
    curl -s -i https://looply.verbumlab.com.br/health
    curl -s -I https://looply.verbumlab.com.br/
    ```
@@ -133,8 +136,8 @@ Execute the following post-deploy smoke checks:
    ```
 4. **Port Binding Verification:**
    ```bash
-   ss -tulpn | grep 4000
-   # Expected: 127.0.0.1:4000 (never 0.0.0.0:4000)
+   ss -tulpn | grep -E "4000|6379|9000|9001"
+   # Expected: 127.0.0.1:4000, 127.0.0.1:6379, 127.0.0.1:9000, 127.0.0.1:9001 (all strictly private loopback, never 0.0.0.0)
    ```
 
 ---

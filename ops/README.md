@@ -7,8 +7,11 @@ This directory contains versioned operational templates, deployment runbooks, se
 ## Directory Layout
 
 - **`deploy/`**: [Deployment Runbook](deploy/README.md) detailing the repeatable staging deployment flow, pre-deploy checklists, migration rules, and rollback procedures.
-- **`systemd/`**: [Systemd Service Template](systemd/looply-backend.service) (`looply-backend.service`) configured with process hardening, non-root execution, and loopback binding.
-- **`nginx/`**: [Nginx Configuration Template](nginx/looply.verbumlab.com.br.conf) (`looply.verbumlab.com.br.conf`) covering reverse proxying, SPA routing, asset caching, security headers, and Certbot TLS hooks.
+- **`systemd/`**: Systemd Service Templates configured with process hardening, non-root execution, and loopback binding:
+  - `looply-backend.service`: Main Express API application.
+  - `looply-redis.service`: Redis 7 transient store daemon (`127.0.0.1:6379`).
+  - `looply-minio.service`: MinIO S3 object storage daemon (`127.0.0.1:9000`).
+- **`nginx/`**: [Nginx Configuration Template](nginx/looply.verbumlab.com.br.conf) (`looply.verbumlab.com.br.conf`) covering reverse proxying, SPA routing, asset caching, security headers, S3 presigned proxy (`/looply-attachments/`), and Certbot TLS hooks.
 - **`backup/`**: Automated PostgreSQL database backup, verify, and restore scripts (`backup.sh`, `restore.sh`, `verify.sh`).
 - **`security-gates.md`**: Formal specification of application security gates, SAST, secret scanning, and SCA compliance.
 
