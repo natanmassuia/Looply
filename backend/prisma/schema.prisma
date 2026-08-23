@@ -132,6 +132,41 @@ enum ApprovalDecisionType {
   REJECTED
 }
 
+enum ConversationAiStatus {
+  ACTIVE
+  PAUSED
+  NEEDS_ATTENTION
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageSenderType {
+  CONTACT
+  AI
+  USER
+}
+
+enum ConversationMessageType {
+  TEXT
+  AUDIO
+  IMAGE
+  VIDEO
+  DOCUMENT
+  SYSTEM
+  OTHER
+}
+
+enum MessageDeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
 // ── Models ─────────────────────────────────────────────────────────────
 
 model User {
@@ -159,6 +194,7 @@ model User {
   createdAppointments Appointment[] @relation("AppointmentCreator")
   whatsappIdentities WhatsAppIdentity[]
   passwordResetTokens PasswordResetToken[]
+  messagesSent ConversationMessage[]
 }
 
 // Tenant / workspace. Resources (Client, Content, ...) are NOT yet bound to
@@ -202,6 +238,9 @@ model Company {
   approvals   Approval[]
   appointments Appointment[]
   whatsappIdentities WhatsAppIdentity[]
+  whatsappChannels WhatsAppChannel[]
+  conversations Conversation[]
+  conversationMessages ConversationMessage[]
 }
 
 model CompanyMember {
@@ -313,6 +352,7 @@ model Client {
   company Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
   jobs Job[]
   appointments Appointment[]
+  conversations Conversation[]
 
   @@unique([companyId, name])
   @@index([companyId])
@@ -530,4 +570,78 @@ model Appointment {
   createdBy User?   @relation("AppointmentCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@index([companyId, startsAt])
+}
+
+// Customer-facing WhatsApp channel binding for tenant routing.
+// Resolves inbound messages from external accounts (Meta phoneNumberId / Gupshup appId)
+// to a specific Company.
+model WhatsAppChannel {
+  id                String   @id @default(cuid())
+  companyId         String
+  provider          String   @default("whatsapp")
+  externalAccountId String?  // Meta phone_number_id or Gupshup appName
+  sourcePhoneNumber String?  // canonical E.164 business number (e.g. +551133334444)
+  displayName       String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalAccountId])
+  @@index([companyId])
+}
+
+model Conversation {
+  id                 String               @id @default(cuid())
+  companyId          String
+  clientId           String?
+  provider           String               @default("whatsapp")
+  remotePhone        String               // canonical E.164 customer phone (e.g. +5511999998888)
+  contactName        String?
+  contactAvatarUrl   String?
+  lastMessagePreview String?
+  lastMessageAt      DateTime?
+  unreadCount        Int                  @default(0)
+  aiStatus           ConversationAiStatus @default(ACTIVE)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  company  Company               @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  client   Client?               @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  messages ConversationMessage[]
+
+  @@unique([companyId, provider, remotePhone])
+  @@index([companyId, lastMessageAt])
+  @@index([clientId])
+}
+
+model ConversationMessage {
+  id                String                  @id @default(cuid())
+  conversationId    String
+  companyId         String
+  provider          String                  @default("whatsapp")
+  direction         MessageDirection
+  senderType        MessageSenderType
+  senderUserId      String?
+  type              ConversationMessageType @default(TEXT)
+  body              String?
+  providerMessageId String?
+  mediaStorageKey   String?
+  mediaMimeType     String?
+  mediaSizeBytes    Int?
+  mediaFilename     String?
+  transcription     String?
+  deliveryStatus    MessageDeliveryStatus   @default(PENDING)
+  actionType        String?                 // e.g. "CONFIRMATION_PENDING", "CONFIRMATION_ACCEPTED", "CONFIRMATION_REJECTED", "APPOINTMENT_CREATED", "JOB_CREATED", "AI_ERROR"
+  actionMetadata    Json?                   // { appointmentId?: string, jobId?: string, summary?: string }
+  createdAt         DateTime                @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  company      Company      @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  senderUser   User?        @relation(fields: [senderUserId], references: [id], onDelete: SetNull)
+
+  @@unique([companyId, provider, providerMessageId])
+  @@index([conversationId, createdAt])
+  @@index([companyId])
 }

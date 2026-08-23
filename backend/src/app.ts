@@ -30,6 +30,7 @@ import whatsappIdentitiesRouter from "./routes/whatsappIdentities";
 import whatsappWebhookRouter from "./routes/whatsappWebhook";
 import gupshupWebhookRouter from "./routes/whatsappGupshupWebhook";
 import mediaRouter from "./routes/media";
+import conversationsRouter from "./routes/conversations";
 import { csrfOriginGuard } from "./middleware/csrf";
 
 const app = express();
@@ -60,6 +61,7 @@ app.use("/api/public/approvals", approvalsRouter);
 app.use("/api", requireAuth, requirePasswordChanged, requireWorkspaceActive);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/clients", clientsRouter);
+app.use("/api/conversations", conversationsRouter);
 app.use("/api/jobs", jobsRouter);
 app.use("/api/workflows", workflowsRouter);
 app.use("/api", filesRouter);
