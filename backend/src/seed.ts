@@ -6,6 +6,7 @@ import { PrismaClient, ContentStatus, ApprovalStatus } from "@prisma/client";
 import { randomBytes } from "node:crypto";
 import { hashPassword } from "./lib/password";
 import { hashToken } from "./lib/password";
+import { ensureDefaultWorkflow } from "./services/workflowService";
 
 const db = new PrismaClient();
 
@@ -191,6 +192,26 @@ async function main() {
     }),
   };
 
+  // ── Ensure Default Workflow ─────────────────────────────────────────
+  const workflow = await ensureDefaultWorkflow(db, company.id);
+  const stagesBySemantic = new Map<string, { id: string }>();
+  const stagesByPosition = new Map<number, { id: string }>();
+  for (const s of workflow.stages) {
+    if (s.semanticKey) stagesBySemantic.set(s.semanticKey, s);
+    stagesByPosition.set(s.position, s);
+  }
+  const defaultFirstStage = workflow.stages[0];
+
+  function resolveSeedStage(status: ContentStatus) {
+    if (status === "APPROVED") return stagesBySemantic.get("APPROVED") ?? defaultFirstStage;
+    if (status === "SCHEDULED") return stagesBySemantic.get("SCHEDULED") ?? defaultFirstStage;
+    if (status === "PUBLISHED") return stagesBySemantic.get("COMPLETED") ?? defaultFirstStage;
+    if (["IN_REVIEW", "AWAITING_CLIENT", "CHANGES_REQUESTED"].includes(status)) {
+      return stagesByPosition.get(2) ?? defaultFirstStage;
+    }
+    return defaultFirstStage;
+  }
+
   // Helper to create a content with its initial version + status + responsible.
   type Cfg = {
     title: string;
@@ -207,8 +228,20 @@ async function main() {
   };
 
   async function makeContent(cfg: Cfg) {
-    const existing = await db.job.findFirst({ where: { title: cfg.title } });
-    if (existing) return existing;
+    const stage = resolveSeedStage(cfg.status);
+    const existing = await db.job.findFirst({ where: { title: cfg.title, companyId: company.id } });
+    if (existing) {
+      if (!existing.workflowId || !existing.currentStageId) {
+        await db.job.update({
+          where: { id: existing.id },
+          data: {
+            workflowId: workflow.id,
+            currentStageId: existing.currentStageId || stage.id,
+          },
+        });
+      }
+      return existing;
+    }
     return db.job.create({
       data: {
         companyId: company.id,
@@ -219,6 +252,9 @@ async function main() {
         responsibleId: cfg.responsibleId,
         createdById: cfg.responsibleId,
         status: cfg.status,
+        lifecycleStatus: cfg.status === "PUBLISHED" ? "COMPLETED" : "OPEN",
+        workflowId: workflow.id,
+        currentStageId: stage.id,
         publicationTarget: cfg.publicationTarget ?? null,
         scheduledAt: cfg.scheduledAt ?? null,
         publishedAt: cfg.publishedAt ?? null,

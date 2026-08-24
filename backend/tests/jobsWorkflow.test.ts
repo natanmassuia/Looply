@@ -168,6 +168,66 @@ describe.skipIf(!process.env.DATABASE_URL)("Jobs + Workflow + Activity", () => {
     await logout(prisma, b.token);
   });
 
+  it("transition rejects job without workflow with HTTP 409 Conflict", async () => {
+    const a = await login(prisma, emailA(), seedCredentials().password);
+    const clientRes = await request(app).get("/api/clients").set("Cookie", `${SESSION_COOKIE}=${a.token}`);
+    const clientId = clientRes.body.clients?.[0]?.id ?? clientRes.body?.[0]?.id;
+    const workflow = (await request(app).get("/api/workflows").set("Cookie", `${SESSION_COOKIE}=${a.token}`)).body.workflows[0];
+    const targetStage = workflow.stages.find((s: any) => !s.semanticKey);
+
+    // Job with missing workflow
+    const orphanJob = await prisma.job.create({
+      data: {
+        companyId: a.user.companyId!,
+        clientId,
+        title: "Orphan Job",
+        workflowId: null,
+        currentStageId: targetStage.id,
+      },
+    });
+    cleanupJobs.push(orphanJob.id);
+
+    const res = await request(app)
+      .post(`/api/jobs/${orphanJob.id}/transition`)
+      .set("Cookie", `${SESSION_COOKIE}=${a.token}`)
+      .send({ stageId: workflow.stages[0].id });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.message).toBe("Job sem workflow");
+
+    await logout(prisma, a.token);
+  });
+
+  it("transition target stage belonging to another workflow is rejected with HTTP 400", async () => {
+    const a = await login(prisma, emailA(), seedCredentials().password);
+    const b = await tenantBLogin(prisma);
+
+    const clientRes = await request(app).get("/api/clients").set("Cookie", `${SESSION_COOKIE}=${a.token}`);
+    const clientId = clientRes.body.clients?.[0]?.id ?? clientRes.body?.[0]?.id;
+    const created = await request(app)
+      .post("/api/jobs")
+      .set("Cookie", `${SESSION_COOKIE}=${a.token}`)
+      .send({ title: "Cross-Workflow Target Job", clientId });
+    expect(created.status).toBe(201);
+    cleanupJobs.push(created.body.id);
+
+    // Tenant B's stage
+    const bWorkflow = (await request(app).get("/api/workflows").set("Cookie", `${SESSION_COOKIE}=${b.token}`)).body.workflows[0];
+    const bStage = bWorkflow.stages[0];
+
+    const res = await request(app)
+      .post(`/api/jobs/${created.body.id}/transition`)
+      .set("Cookie", `${SESSION_COOKIE}=${a.token}`)
+      .send({ stageId: bStage.id });
+
+    // When the stage belongs to a different company / different workflowId:
+    // assertStageInWorkflow returns 400 "Stage inválido para este workflow"
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toBe("Stage inválido para este workflow");
+
+    await Promise.all([logout(prisma, a.token), logout(prisma, b.token)]);
+  });
+
   afterAll(async () => {
     await prisma.activity.deleteMany({ where: { jobId: { in: cleanupJobs } } });
     await prisma.job.deleteMany({ where: { id: { in: cleanupJobs } } });

@@ -116,7 +116,7 @@ export async function syncJobStageToSemantic(
   if (!stage) return null;
   await db.job.updateMany({
     where: { id: jobId, companyId },
-    data: { currentStageId: stage.id },
+    data: { currentStageId: stage.id, workflowId: stage.workflowId },
   });
   return stage.id;
 }

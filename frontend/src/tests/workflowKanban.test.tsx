@@ -146,6 +146,21 @@ describe("Workflow Kanban (R1.3)", () => {
     expect(statusCalls).toHaveLength(0);
   });
 
+  it("transition failure with 409 displays error alert, does not retry, and card stays in place", async () => {
+    const transition = vi
+      .spyOn(apiModule, "apiFetch")
+      .mockRejectedValue(new apiModule.ApiError(409, "Job sem workflow", "conflict"));
+    renderBoard([makeItem({ id: "job-nowf", title: "Card No Workflow", currentStageId: "s1" })], kanbanStages);
+
+    dragCardToStage("Card No Workflow", "job-nowf", "s2");
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("Job sem workflow");
+    });
+    expect(transition).toHaveBeenCalledTimes(1);
+    expect(columnOf("Card No Workflow")).toBe("s1");
+  });
+
   it("SCHEDULED destination opens the canonical scheduling interaction (no transition call)", async () => {
     const transition = vi.spyOn(apiModule, "apiFetch");
     renderBoard(
