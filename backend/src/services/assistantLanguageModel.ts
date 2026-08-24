@@ -13,9 +13,9 @@ export interface AssistantLanguageModel {
 
 const responseSchema = z.object({
   choices: z.array(z.object({
-    message: z.object({ content: z.string() }).strict(),
-  }).strict()).min(1),
-}).strict();
+    message: z.object({ content: z.string() }),
+  })).min(1),
+});
 
 export interface OpenAICompatibleConfig {
   baseUrl?: string;
