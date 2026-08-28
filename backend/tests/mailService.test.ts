@@ -69,4 +69,16 @@ describe("ResendMailService password-reset email template", () => {
     // Raw token is not leaked as a bare string
     expect(html).not.toContain(token);
   });
+
+  it("escapes malicious HTML in user-supplied name (A3 XSS mitigation)", async () => {
+    const maliciousName = '<img src=x onerror=alert(1)>';
+    const html = await renderWithCapturedHtml(maliciousName, "token123");
+    expect(html).not.toContain("<img");
+    expect(html).toContain("&lt;img src=x onerror=alert(1)&gt;");
+
+    const quotedXss = '<script>alert("XSS & \'attack\'")</script>';
+    const html2 = await renderWithCapturedHtml(quotedXss, "token123");
+    expect(html2).not.toContain("<script>");
+    expect(html2).toContain("&lt;script&gt;alert(&quot;XSS &amp; &#39;attack&#39;&quot;)&lt;/script&gt;");
+  });
 });

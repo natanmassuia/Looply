@@ -10,26 +10,31 @@ export interface MailService {
   sendPasswordResetEmail(input: SendPasswordResetEmailInput): Promise<{ id?: string; simulated?: boolean }>;
 }
 
-export class ResendMailService implements MailService {
-  private readonly apiKey: string | undefined;
-  private readonly from: string;
-  private readonly replyTo: string;
-  private readonly appUrl: string;
+// A3 (auditoria): dado de usuário interpolado em template de e-mail precisa
+// de escape HTML — o campo name é texto livre do perfil (PATCH /api/auth/me).
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
-  constructor() {
-    this.apiKey = process.env.RESEND_API_KEY;
-    this.from = process.env.RESEND_FROM || process.env.MAIL_FROM || "Looply <acesso@auth.verbumlab.com.br>";
-    this.replyTo = process.env.RESEND_REPLY_TO || process.env.MAIL_REPLY_TO || "suporte@verbumlab.com.br";
-    this.appUrl = process.env.FRONTEND_URL || process.env.APP_URL || process.env.PUBLIC_APP_URL || "https://looply.verbumlab.com.br";
-  }
+// Render puro (sem rede) do e-mail de recuperação — testável diretamente.
+// Únicas interpolações de dado de usuário: name (escapado abaixo) e token
+// (server-side, encodeURIComponent). appUrl vem de env (confiável).
+export function renderPasswordResetEmail(input: { name: string; token: string; appUrl: string }): {
+  subject: string;
+  text: string;
+  html: string;
+} {
+  const resetUrl = `${input.appUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(input.token)}`;
 
-  async sendPasswordResetEmail(input: SendPasswordResetEmailInput): Promise<{ id?: string; simulated?: boolean }> {
-    const resetUrl = `${this.appUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(input.token)}`;
+  const subject = "Redefina sua senha do Looply";
+  const text = `Olá, ${input.name}!\n\nRecebemos uma solicitação para redefinir a senha da sua conta no Looply.\n\nPara cadastrar uma nova senha, acesse o link abaixo:\n${resetUrl}\n\nEste link é válido por 1 hora e só pode ser utilizado uma única vez.\n\nSe você não solicitou esta alteração, ignore este e-mail. Sua senha atual permanecerá segura.\n\nEquipe Looply`;
 
-    const subject = "Redefina sua senha do Looply";
-    const text = `Olá, ${input.name}!\n\nRecebemos uma solicitação para redefinir a senha da sua conta no Looply.\n\nPara cadastrar uma nova senha, acesse o link abaixo:\n${resetUrl}\n\nEste link é válido por 1 hora e só pode ser utilizado uma única vez.\n\nSe você não solicitou esta alteração, ignore este e-mail. Sua senha atual permanecerá segura.\n\nEquipe Looply`;
-
-    const html = `
+  const html = `
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -76,7 +81,7 @@ export class ResendMailService implements MailService {
           <tr>
             <td style="padding:32px 40px 8px 40px;">
               <p style="font-family:Manrope,'Segoe UI',Arial,Helvetica,sans-serif; margin:0 0 18px 0; font-size:15px; line-height:1.6; color:#5C4A52;">
-                Olá, <strong style="color:#2A171F;">${input.name}</strong>!
+                Olá, <strong style="color:#2A171F;">${escapeHtml(input.name)}</strong>!
               </p>
               <p style="font-family:Manrope,'Segoe UI',Arial,Helvetica,sans-serif; margin:0 0 24px 0; font-size:15px; line-height:1.6; color:#5C4A52;">
                 Recebemos uma solicitação para redefinir a senha da sua conta no Looply. Para cadastrar uma nova senha, use o botão abaixo.
@@ -127,6 +132,30 @@ export class ResendMailService implements MailService {
 </html>
     `.trim();
 
+  return { subject, text, html };
+}
+
+
+export class ResendMailService implements MailService {
+  private readonly apiKey: string | undefined;
+  private readonly from: string;
+  private readonly replyTo: string;
+  private readonly appUrl: string;
+
+  constructor() {
+    this.apiKey = process.env.RESEND_API_KEY;
+    this.from = process.env.RESEND_FROM || process.env.MAIL_FROM || "Looply <acesso@auth.verbumlab.com.br>";
+    this.replyTo = process.env.RESEND_REPLY_TO || process.env.MAIL_REPLY_TO || "suporte@verbumlab.com.br";
+    this.appUrl = process.env.FRONTEND_URL || process.env.APP_URL || process.env.PUBLIC_APP_URL || "https://looply.verbumlab.com.br";
+  }
+
+  async sendPasswordResetEmail(input: SendPasswordResetEmailInput): Promise<{ id?: string; simulated?: boolean }> {
+    const { subject, text, html } = renderPasswordResetEmail({
+      name: input.name,
+      token: input.token,
+      appUrl: this.appUrl,
+    });
+
     if (!this.apiKey || this.apiKey === "disabled" || process.env.NODE_ENV === "test") {
       logger.info("[MailService] Simulating password reset email", {
         to: input.to,
@@ -147,7 +176,7 @@ export class ResendMailService implements MailService {
           from: this.from,
           to: [input.to],
           reply_to: this.replyTo,
-          subject: "Redefinição de senha — Looply",
+          subject,
           html,
           text,
         }),
