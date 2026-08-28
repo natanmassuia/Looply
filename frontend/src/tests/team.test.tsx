@@ -417,4 +417,34 @@ describe("Team Feature — B2 Functional Wiring", () => {
     // Admin action buttons should NOT be rendered when role is missing/undefined
     expect(screen.queryByRole("button", { name: /Convidar membro/i })).not.toBeInTheDocument();
   });
+
+  it("A5 (positive gate): renders all management controls when currentRole is OWNER", () => {
+    vi.spyOn(apiModule, "useMe").mockReturnValue({
+      data: mockSessionOwner,
+      isLoading: false,
+    } as any);
+
+    vi.spyOn(apiModule, "useMembers").mockReturnValue({
+      data: mockMembers,
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    vi.spyOn(apiModule, "useInvitations").mockReturnValue({
+      data: mockInvitations,
+      isLoading: false,
+    } as any);
+
+    renderWithClient(<Team />);
+
+    // Convidar membro button MUST appear for OWNER
+    expect(screen.getByRole("button", { name: /Convidar membro/i })).toBeInTheDocument();
+
+    // Revogar convite button for pending invitation MUST appear for OWNER
+    expect(screen.getByRole("button", { name: /Revogar convite/i })).toBeInTheDocument();
+
+    // Role select dropdowns MUST appear for OWNER
+    const selects = screen.getAllByRole("combobox");
+    expect(selects.length).toBeGreaterThan(0);
+  });
 });

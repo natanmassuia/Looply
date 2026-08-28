@@ -642,4 +642,95 @@ describe("Jobs Feature — B4 Metadata Editing + Ungroup Wiring", () => {
       expect(PILL_SRC).not.toMatch(/truncate|max-h-|overflow-hidden/);
     });
   });
+
+  describe("A1: safeHref VersionHistory media URL rendering", () => {
+    it("renders inert span when version mediaUrl has dangerous javascript: or data: scheme", () => {
+      const maliciousJob: ContentDetailType = {
+        ...mockJobDetail,
+        versions: [
+          {
+            id: "v-malicious",
+            contentId: "job-1",
+            versionNumber: 1,
+            caption: "Versão com payload malicioso",
+            mediaUrl: "javascript:alert(document.cookie)",
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: "v-data",
+            contentId: "job-1",
+            versionNumber: 2,
+            caption: "Versão com payload data uri",
+            mediaUrl: "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==",
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      };
+
+      vi.spyOn(apiModule, "useContent").mockReturnValue({
+        data: maliciousJob,
+        isLoading: false,
+      } as any);
+
+      vi.spyOn(apiModule, "useJobActivityPage").mockReturnValue({
+        data: { activities: [], total: 0 },
+        isLoading: false,
+      } as any);
+
+      renderWithProviders(
+        <Routes>
+          <Route path="/contents/:id" element={<ContentDetail />} />
+        </Routes>,
+        "/contents/job-1",
+      );
+
+      // Must render inert warning text instead of clickable dangerous link
+      const invalidSpans = screen.getAllByText("Mídia com URL inválida");
+      expect(invalidSpans.length).toBe(2);
+
+      // Verify no anchor tag contains javascript:
+      const links = screen.queryAllByRole("link");
+      const dangerousLink = links.find((l) => l.getAttribute("href")?.startsWith("javascript:"));
+      expect(dangerousLink).toBeUndefined();
+    });
+
+    it("renders active link with target=_blank when version mediaUrl is valid https", () => {
+      const safeJob: ContentDetailType = {
+        ...mockJobDetail,
+        versions: [
+          {
+            id: "v-safe",
+            contentId: "job-1",
+            versionNumber: 1,
+            caption: "Versão segura",
+            mediaUrl: "https://cdn.example.com/assets/banner.png",
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      };
+
+      vi.spyOn(apiModule, "useContent").mockReturnValue({
+        data: safeJob,
+        isLoading: false,
+      } as any);
+
+      vi.spyOn(apiModule, "useJobActivityPage").mockReturnValue({
+        data: { activities: [], total: 0 },
+        isLoading: false,
+      } as any);
+
+      renderWithProviders(
+        <Routes>
+          <Route path="/contents/:id" element={<ContentDetail />} />
+        </Routes>,
+        "/contents/job-1",
+      );
+
+      const mediaLink = screen.getByRole("link", { name: "Ver mídia" });
+      expect(mediaLink).toBeInTheDocument();
+      expect(mediaLink).toHaveAttribute("href", "https://cdn.example.com/assets/banner.png");
+      expect(mediaLink).toHaveAttribute("target", "_blank");
+      expect(mediaLink).toHaveAttribute("rel", "noopener noreferrer");
+    });
+  });
 });
