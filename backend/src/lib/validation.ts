@@ -5,6 +5,27 @@ import { APPEARANCE_MODES, APPEARANCE_PRESETS, HEX_COLOR_RE } from "../domain/ap
 
 export const uuidish = z.string().min(1).max(64);
 
+// A1 (auditoria de segurança): z.string().url() aceita qualquer esquema com
+// dois-pontos — incluindo javascript: e data: — e o frontend renderiza essas
+// URLs em href clicável. Todo campo de URL vindo do usuário exige https
+// absoluto. Caminhos canônicos de mídia (/api/media/file?key=...) são gravados
+// direto no banco pelos endpoints de upload, nunca por esses schemas.
+const HTTPS_URL_MESSAGE = "URL inválida: informe um endereço https absoluto";
+export const httpsUrl = (maxLength: number) =>
+  z
+    .string()
+    .max(maxLength)
+    .refine(
+      (value) => {
+        try {
+          return new URL(value).protocol === "https:";
+        } catch {
+          return false;
+        }
+      },
+      { message: HTTPS_URL_MESSAGE },
+    );
+
 export const createContentSchema = z.object({
   title: z.string().min(1).max(200),
   clientId: uuidish,
@@ -15,14 +36,14 @@ export const createContentSchema = z.object({
   notes: z.string().max(2000).optional(),
   // initial version payload
   caption: z.string().min(1).max(5000),
-  mediaUrl: z.string().url().max(2000).optional().or(z.literal("")).optional(),
+  mediaUrl: httpsUrl(2000).optional().or(z.literal("")).optional(),
   mediaType: z.string().max(80).optional(),
 });
 export type CreateContentInput = z.infer<typeof createContentSchema>;
 
 export const createVersionSchema = z.object({
   caption: z.string().min(1).max(5000),
-  mediaUrl: z.string().url().max(2000).optional().or(z.literal("")).optional(),
+  mediaUrl: httpsUrl(2000).optional().or(z.literal("")).optional(),
   mediaType: z.string().max(80).optional(),
   changeNote: z.string().max(1000).optional(),
 });

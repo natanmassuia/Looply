@@ -3,6 +3,7 @@ import { prisma } from "../lib/db";
 import { asyncHandler, unauthorized, badRequest, conflict, tooManyRequests } from "../lib/errors";
 import { z } from "zod";
 import { parse } from "../lib/parse";
+import { httpsUrl } from "../lib/validation";
 import { setSessionCookie, clearSessionCookie, cookiesFromReq, SESSION_COOKIE } from "../lib/session";
 import { login, logout, switchCompany } from "../services/authService";
 import { checkLoginRate } from "../lib/loginLimiter";
@@ -26,7 +27,7 @@ const updateProfileSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   email: z.string().email().max(160).optional(),
   phone: z.string().max(40).nullable().optional(),
-  avatarUrl: z.string().url().max(500).nullable().optional(),
+  avatarUrl: httpsUrl(500).nullable().optional(),
 });
 
 router.post(

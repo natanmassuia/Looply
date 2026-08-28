@@ -35,6 +35,9 @@ import { csrfOriginGuard } from "./middleware/csrf";
 
 const app = express();
 
+// TODO(A1/CSP): o HTML do app é servido pelo nginx/vite, não por este backend
+// (API-only), então a CSP vive no proxy. Diretiva sugerida no server do nginx:
+//   add_header Content-Security-Policy "default-src 'self'; script-src 'self'; frame-ancestors 'none'; object-src 'none'" always;
 app.use(helmet());
 app.set("trust proxy", env.TRUST_PROXY);
 app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));

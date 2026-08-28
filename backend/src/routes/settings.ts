@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "../lib/db";
 import { asyncHandler, badRequest, notFound } from "../lib/errors";
 import { parse } from "../lib/parse";
-import { updateAppearanceSchema } from "../lib/validation";
+import { updateAppearanceSchema, httpsUrl } from "../lib/validation";
 import { getAppearance, updateAppearance } from "../services/workspaceAppearanceService";
 import { requireAuth, requireRole } from "../middleware/requireAuth";
 import { requireWorkspaceActive } from "../middleware/requireWorkspaceActive";
@@ -44,7 +44,7 @@ export function isValidTimezone(tz: string): boolean {
 const updateCompanySchema = z.object({
   name: z.string().min(1).max(160).optional(),
   timezone: z.string().min(1).max(64).optional(),
-  logoUrl: z.string().url().max(500).nullable().optional(),
+  logoUrl: httpsUrl(500).nullable().optional(),
   legalName: z.string().max(200).nullable().optional(),
   document: z.string().max(40).nullable().optional(),
   email: z.string().email().max(160).nullable().optional(),

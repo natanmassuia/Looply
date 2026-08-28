@@ -857,6 +857,18 @@ function ScheduleForm({
   );
 }
 
+// A1 (auditoria): mídia com URL que não seja http/https (ex.: javascript:
+// gravado antes da validação de esquema) não vira link clicável.
+function safeHref(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+
 function VersionHistory({ versions }: { versions?: ContentVersion[] }) {
   if (!versions || versions.length === 0) return null;
   const sorted = [...versions].reverse();
@@ -884,16 +896,20 @@ function VersionHistory({ versions }: { versions?: ContentVersion[] }) {
                 </div>
               )}
             </div>
-            {v.mediaUrl && (
+            {v.mediaUrl && safeHref(v.mediaUrl) ? (
               <a
-                href={v.mediaUrl}
+                href={safeHref(v.mediaUrl) ?? undefined}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-ghost btn-sm text-[var(--looply-color-action-primary)] hover:underline"
               >
                 Ver mídia
               </a>
-            )}
+            ) : v.mediaUrl ? (
+              <span className="btn-ghost btn-sm text-[var(--looply-color-text-muted)] cursor-default">
+                Mídia com URL inválida
+              </span>
+            ) : null}
           </div>
         ))}
       </div>
