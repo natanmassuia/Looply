@@ -20,7 +20,12 @@ describe.skipIf(!process.env.DATABASE_URL)("Calendar projection", () => {
     });
     const dates = jobs.flatMap((j) => [j.scheduledAt, j.publicationTarget]).filter((d): d is Date => d !== null);
     const day = 24 * 60 * 60 * 1000;
-    const range = `from=${new Date(Math.min(...dates.map((d) => d.getTime())) - day).toISOString()}&to=${new Date(Math.max(...dates.map((d) => d.getTime())) + day).toISOString()}`;
+    // ponytail: parallel test files share this DB and may insert outlier-dated
+    // jobs; clamp the derived window to the API's 90-day max or it 400s.
+    const maxRange = 90 * day - 2 * day;
+    const latest = Math.max(...dates.map((d) => d.getTime())) + day;
+    const earliest = Math.max(Math.min(...dates.map((d) => d.getTime())) - day, latest - maxRange);
+    const range = `from=${new Date(earliest).toISOString()}&to=${new Date(latest).toISOString()}`;
     const [calendarA, calendarB] = await Promise.all([
       request(app).get(`/api/calendar?${range}`).set("Cookie", `${SESSION_COOKIE}=${a.token}`),
       request(app).get(`/api/calendar?${range}`).set("Cookie", `${SESSION_COOKIE}=${b.token}`),
