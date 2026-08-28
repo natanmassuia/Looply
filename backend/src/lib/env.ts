@@ -53,6 +53,23 @@ export const env = {
 
 export const isProd = env.NODE_ENV === "production";
 
+// A4 (auditoria): rejeita valores placeholder de segredos em produção.
+const PLACEHOLDER_SECRET_RE =
+  /change[ _-]?me|placeholder|example|dummy|password123|^password$|^secret$|^123456$/i;
+
+const PRODUCTION_SECRET_KEYS = [
+  "SEED_ADMIN_PASSWORD",
+  "WHATSAPP_APP_SECRET",
+  "WHATSAPP_VERIFY_TOKEN",
+  "WHATSAPP_ACCESS_TOKEN",
+  "GUPSHUP_API_KEY",
+  "STORAGE_SECRET_KEY",
+  "STORAGE_ACCESS_KEY",
+  "ASSISTANT_LLM_API_KEY",
+  "AUDIO_TRANSCRIPTION_API_KEY",
+  "RESEND_API_KEY",
+] as const;
+
 // Fail fast on missing required runtime config. Called by server startup —
 // NOT at import time, so unit tests can run without a live DB configured.
 // Only vars the current code actually needs are required; future-battery
@@ -72,5 +89,17 @@ export function validateEnv(): void {
   }
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
+  }
+
+  const nodeEnv = process.env.NODE_ENV ?? env.NODE_ENV;
+  if (nodeEnv === "production") {
+    for (const key of PRODUCTION_SECRET_KEYS) {
+      const val = process.env[key];
+      if (typeof val === "string" && val.trim() !== "") {
+        if (PLACEHOLDER_SECRET_RE.test(val)) {
+          throw new Error(`[env] ${key} contém valor placeholder em produção`);
+        }
+      }
+    }
   }
 }
