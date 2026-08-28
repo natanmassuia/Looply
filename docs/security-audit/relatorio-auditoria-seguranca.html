@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de Auditoria de Segurança — Looply</title>
+<style>
+  @page { size: A4; }
+  * { box-sizing: border-box; }
+  body { font-family: 'DejaVu Sans', 'Segoe UI', sans-serif; font-size: 10pt; color: #1C1917; line-height: 1.55; margin: 0; }
+  h1 { font-size: 21pt; color: #7C2D12; margin: 0 0 6px; }
+  h2 { font-size: 13.5pt; color: #7C2D12; margin: 26px 0 10px; border-bottom: 2px solid #E7E5E4; padding-bottom: 4px; }
+  h3 { font-size: 11pt; margin: 14px 0 6px; }
+  .mono, code { font-family: 'DejaVu Sans Mono', monospace; }
+  .cover { text-align: left; padding-top: 130px; }
+  .cover .kicker { font-size: 10pt; letter-spacing: .18em; text-transform: uppercase; color: #EA580C; font-weight: 700; }
+  .cover h1 { font-size: 26pt; line-height: 1.15; margin: 10px 0 4px; }
+  .cover .sub { font-size: 12pt; color: #57534E; margin-bottom: 34px; }
+  .cover .meta { border-top: 3px solid #7C2D12; padding-top: 18px; }
+  .cover .meta div { margin: 4px 0; font-size: 10.5pt; }
+  .box { background: #FAFAF9; border: 1px solid #E7E5E4; border-radius: 10px; padding: 12px 16px; margin: 10px 0; }
+  .avoid-break { break-inside: avoid; page-break-inside: avoid; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+  th, td { border: 1px solid #E7E5E4; padding: 8px 10px; text-align: left; vertical-align: top; font-size: 9.5pt; }
+  th { background: #FDF3EC; color: #7C2D12; font-size: 9pt; text-transform: uppercase; letter-spacing: .04em; }
+  .chip { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 8.5pt; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+  .fid { font-size: 8pt; color: #57534E; margin-top: 4px; }
+  .ftitle { font-weight: 700; margin-bottom: 3px; }
+  .floc { font-size: 8.5pt; color: #57534E; margin-bottom: 6px; }
+  pre.code { background: #27272A; color: #F4F4F5; border-radius: 8px; padding: 8px 10px; font-size: 8pt; line-height: 1.45; white-space: pre-wrap; word-break: break-all; margin: 4px 0 6px; }
+  .fdesc { font-size: 9pt; color: #44403C; }
+  .chart-wrap { display: flex; gap: 26px; align-items: center; margin: 10px 0 16px; }
+  .lg-col { display: flex; flex-direction: column; gap: 6px; }
+  .lg-row { font-size: 10.5pt; }
+  .lg-dot { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 7px; }
+  .card { border-radius: 10px; padding: 10px 14px; margin: 8px 0; border: 1px solid #E7E5E4; }
+  .card.forte { background: #ECFDF5; border-color: #A7F3D0; }
+  .card.forte .ft { font-weight: 700; color: #065F46; }
+  .card.forte .fe { font-size: 8pt; color: #57534E; margin-top: 4px; word-break: break-word; }
+  .rec { display: flex; gap: 12px; margin: 10px 0; align-items: flex-start; }
+  .prio { flex-shrink: 0; width: 34px; height: 24px; border-radius: 6px; color: #fff; font-weight: 800; font-size: 10pt; display: flex; align-items: center; justify-content: center; }
+  .p1 { background: #B91C1C; } .p2 { background: #EA580C; } .p3 { background: #D97706; }
+  .issue { margin: 12px 0; }
+  .issue-head { font-family: 'DejaVu Sans Mono', monospace; font-size: 9pt; font-weight: 700; color: #57534E; margin: 8px 0 4px; }
+  pre.issue-body { background: #FAFAF9; border: 1px solid #E7E5E4; border-left: 4px solid #EA580C; border-radius: 8px; padding: 12px 14px; font-size: 8.5pt; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .sevline { display: flex; gap: 10px; flex-wrap: wrap; margin: 8px 0 4px; }
+  .sevstat { border-radius: 10px; padding: 10px 18px; color: #fff; font-weight: 800; min-width: 86px; text-align: center; }
+  .sevstat span { display: block; font-size: 17pt; }
+</style></head><body>
+
+<div class="cover">
+  <div class="kicker">Auditoria de segurança aplicada</div>
+  <h1>Relatório de Auditoria de Segurança — Looply</h1>
+  <div class="sub">Gestão operacional de conteúdo para agências de marketing/social (Demo V1)</div>
+  <div class="meta">
+    <div><b>Data:</b> 28 de agosto de 2026</div>
+    <div><b>Versão do código:</b> looply@750d2df (main) · verbumlab@311dd8c</div>
+    <div><b>Auditor:</b> agente automatizado (opencode) com verificação manual arquivo por arquivo</div>
+    <div><b>Total de achados:</b> 5 — 0 crítica · 2 alta · 0 média · 2 baixa · 1 informativa</div>
+  </div>
+  <h2 style="margin-top:34px">Escopo auditado</h2>
+  <div class="box">Backend: /srv/verbum/workspaces/looply/backend — 24 arquivos de rotas, 15 services, 5 middlewares, lib (app.ts, env.ts, session.ts, password.ts, rateLimit.ts, loginLimiter.ts, validation.ts)</div><div class="box">Frontend: /srv/verbum/workspaces/looply/frontend/src — componentes, features (inbox, contents, team, settings, media), lib/api.ts</div><div class="box">Deploy/ops: ecosystem.config.cjs (pm2), ops/ (backup, nginx, systemd, deploy), .env.example, .gitignore</div><div class="box">Histórico git (looply e verbumlab) e bundle de produção do frontend (apps/looply/frontend/assets)</div>
+  <h2>Nota metodológica — mapeamento das categorias para a stack detectada</h2>
+  <div class="box">
+    <b>Stack detectada:</b> linguagem: TypeScript (Node.js 24 / backend CommonJS; frontend ESM) · framework: Express 4 (backend) · React 19 + Vite (frontend SPA) · orm: Prisma 5 + PostgreSQL 16 (sem RLS — isolamento por filtro manual de companyId) · auth: Sessão própria em cookie httpOnly (token aleatório 256-bit, sha256 em restingação), membership OWNER/ADMIN/MEMBER por empresa · frontend: React 19 + react-router + Tailwind; comunicação via cookie de sessão (sem tokens no bundle) · deploy: pm2 (ecosystem.config.cjs) + nginx proxy; sem Docker/Helm/Terraform no repositório.
+  </div>
+  <div class="box">
+    <b>Cat. 1 (banco sem tranco):</b> sem Supabase/RLS — o mecanismo de isolamento é o middleware de sessão (requireAuth) que resolve <code>req.auth.companyId</code> a partir da sessão (nunca do cliente) + filtro manual de companyId em cada service Prisma. Auditei todas as rotas de listagem/agregação/relatório e os where de cada service.<br>
+    <b>Cat. 2 (permissão no navegador):</b> cruzei cada gate de papel do React (isOwner/isAdminOrOwner em Team, EditCompanyModal) com o endpoint correspondente (requireRole + checagens em service).<br>
+    <b>Cat. 3 (IDOR):</b> percorri os 24 arquivos de rotas e os 15 services, handler por handler, verificando lookup por ID sempre pareado com companyId.<br>
+    <b>Cat. 4 (chaves expostas):</b> grep de código/configs/CI/ops, .env.example, histórico git de ambos os repositórios (git grep em 200 commits + git log de .env) e bundle de produção do frontend.<br>
+    <b>Cat. 5 (XSS):</b> frontend — dangerouslySetInnerHTML/eval/href dinâmicos/markdown; backend — templates de e-mail. Sem lib de sanitização no projeto (confirmado em ambos package.json).
+  </div>
+</div>
+
+<h2>Resumo executivo</h2>
+<div class="sevline">
+  <div class="sevstat" style="background:#EA580C"><span>2</span>Alta</div><div class="sevstat" style="background:#2563EB"><span>2</span>Baixa</div><div class="sevstat" style="background:undefined"><span>1</span>Informativa</div>
+</div>
+<p>O Looply tem uma base de autorização notavelmente consistente para um Demo V1: <b>zero falhas de isolamento de tenant e zero IDOR</b> nas 24 rotas auditadas — o companyId derivado da sessão acompanha toda query, incluindo agregações do dashboard e download de mídia por chave. Os riscos centrais estão fora desse núcleo: <b>um XSS armazenado</b> via validação permissiva de URL em mídias de conteúdo, e <b>a senha de administrador de produção commitada</b> no repositório vizinho verbumlab (script de captura). Os demais achados são de hardening.</p>
+<div class="chart-wrap">
+    <svg width="180" height="180" viewBox="0 0 180 180" role="img" aria-label="Rosca de achados por severidade">
+      <path d="M 90.00 20.00 A 70 70 0 0 1 132.27 145.80" fill="none" stroke="#EA580C" stroke-width="30" stroke-linecap="butt"/><path d="M 131.14 146.63 A 70 70 0 0 1 23.01 69.70" fill="none" stroke="#2563EB" stroke-width="30" stroke-linecap="butt"/><path d="M 23.43 68.37 A 70 70 0 0 1 88.60 20.01" fill="none" stroke="undefined" stroke-width="30" stroke-linecap="butt"/><circle cx="90" cy="90" r="51" fill="none" stroke="#E7E5E4" stroke-width="1"/>
+      <text x="90" y="86" text-anchor="middle" font-size="34" font-weight="800" fill="#1C1917">5</text>
+      <text x="90" y="110" text-anchor="middle" font-size="11" fill="#57534E">achados</text>
+    </svg><div class="lg-col"><div class="lg-row"><span class="lg-dot" style="background:#EA580C"></span>Alta <b>2</b></div><div class="lg-row"><span class="lg-dot" style="background:#2563EB"></span>Baixa <b>2</b></div><div class="lg-row"><span class="lg-dot" style="background:undefined"></span>Informativa <b>1</b></div></div></div>
+<svg width="100%" viewBox="0 0 700 234" role="img" aria-label="Barras de achados por categoria" style="max-width:640px"><text x="226" y="28" text-anchor="end" font-size="12.5" fill="#1C1917">Banco sem tranca (Cat. 1)</text>
+      <rect x="236" y="10" width="360" height="24" rx="6" fill="#FAFAF9" stroke="#E7E5E4"/>
+      <rect x="236" y="10" width="3" height="24" rx="6" fill="#64748B"/>
+      <text x="249" y="27" font-size="13" font-weight="700" fill="#1C1917">0 ✓ sem falhas</text><text x="226" y="72" text-anchor="end" font-size="12.5" fill="#1C1917">Permissão no navegador (Cat. 2)</text>
+      <rect x="236" y="54" width="360" height="24" rx="6" fill="#FAFAF9" stroke="#E7E5E4"/>
+      <rect x="236" y="54" width="180" height="24" rx="6" fill="undefined"/>
+      <text x="426" y="71" font-size="13" font-weight="700" fill="#1C1917">1</text><text x="226" y="116" text-anchor="end" font-size="12.5" fill="#1C1917">IDOR (Cat. 3)</text>
+      <rect x="236" y="98" width="360" height="24" rx="6" fill="#FAFAF9" stroke="#E7E5E4"/>
+      <rect x="236" y="98" width="3" height="24" rx="6" fill="#64748B"/>
+      <text x="249" y="115" font-size="13" font-weight="700" fill="#1C1917">0 ✓ sem falhas</text><text x="226" y="160" text-anchor="end" font-size="12.5" fill="#1C1917">Chaves expostas (Cat. 4)</text>
+      <rect x="236" y="142" width="360" height="24" rx="6" fill="#FAFAF9" stroke="#E7E5E4"/>
+      <rect x="236" y="142" width="360" height="24" rx="6" fill="#EA580C"/>
+      <text x="606" y="159" font-size="13" font-weight="700" fill="#1C1917">2</text><text x="226" y="204" text-anchor="end" font-size="12.5" fill="#1C1917">Inputs sem tratamento (Cat. 5)</text>
+      <rect x="236" y="186" width="360" height="24" rx="6" fill="#FAFAF9" stroke="#E7E5E4"/>
+      <rect x="236" y="186" width="360" height="24" rx="6" fill="#EA580C"/>
+      <text x="606" y="203" font-size="13" font-weight="700" fill="#1C1917">2</text></svg>
+
+<h2>Pontos fortes (verificado e correto)</h2>
+
+  <div class="card forte avoid-break"><div class="ft">Isolamento de tenant em 100% das rotas de listagem/agregação</div><div class="fe mono">Toda rota derivava req.auth.companyId do middleware (middleware/requireAuth.ts:17) e todo service filtra por companyId: dashboardService.ts:27-56 (groupBy), clientService.ts:63,111,131,137,145, jobService.ts:120,179,199,219,233,250,276, contentService.ts:114-241, appointmentService.ts:115, activityService.ts:29, approvalService.ts:33,76,87,96,100, attachmentService.ts:43,75,89,95,107,115,119, conversationService.ts:341,360,439,588,611. Nenhum handler de listagem/busca/relatório sem filtro de tenant.</div></div>
+  <div class="card forte avoid-break"><div class="ft">Zero IDOR nos handlers por-ID</div><div class="fe mono">Todos os lookups por ID usam findFirst({ id, companyId }) antes de mutar (padrão verify-then-update). O endpoint por-chave /api/media/file valida prefixo do storageKey contra membership ativo (identityMediaService.ts:347-374). Arquivos de aprovação pública escopam por token+empresa+job (approvalService.ts:175-182).</div></div>
+  <div class="card forte avoid-break"><div class="ft">Privilégio sempre revalidado no servidor</div><div class="fe mono">requireRole(OWNER, ADMIN) em settings.ts:53,86 e workflows.ts:38,54,74,91; checagem de papel no service em memberService.ts:38 (só OWNER gerencia papéis), :210 (ADMIN não reseta OWNER/ADMIN), :72 (convite), whatsappActorService.ts:71, media.ts:36-41 (requireAdminOrOwner). O frontend nunca é a única barreira.</div></div>
+  <div class="card forte avoid-break"><div class="ft">Webhooks fail-closed</div><div class="fe mono">Meta: HMAC sha256 + timingSafeEqual com raw body (whatsappProvider.ts:100-111; rota whatsappWebhook.ts:76-86 — 503 se não configurado, 401 se assinatura inválida). Gupshup: allowlist de IP obrigatória, 503 sem configuração (whatsappGupshupWebhook.ts:52-63).</div></div>
+  <div class="card forte avoid-break"><div class="ft">Segredos fora do repo do Looply</div><div class="fe mono">.env no .gitignore e nunca commitado (git log --all vazio para .env); .env.example só com placeholders CHANGE_ME; scripts ops/ exigem variáveis com :?required (ops/backup/verify.sh:32-33); bundle do frontend sem chaves (scan por sk-/AIza/ghp_/xox-); nenhuma credencial hardcode nos últimos 200 commits (git grep em ts/tsx/md/json).</div></div>
+  <div class="card forte avoid-break"><div class="ft">Sessão e recuperação de senha robustas</div><div class="fe mono">Token de sessão hasheado (sha256) em banco (authService.ts:116); membership revalidado a cada request (:123-131); troca de senha revoga todas as sessões (auth.ts:107-118); recovery com token 256-bit hasheado, single-use, 1h de TTL, rate-limit e resposta que não vaza existência de conta (recoveryService.ts:27-67); rate-limit em login (10/15min), invitation-accept, password-reset e aprovações públicas (lib/rateLimit.ts).</div></div>
+  <div class="card forte avoid-break"><div class="ft">Frontend sem sinks de XSS direto</div><div class="fe mono">Nenhum dangerouslySetInnerHTML/eval/new Function no src (grep). Links de chat aceitam só http/https (formatMessageText.tsx:40-42,62); DocumentBubble restringe href a http/https//api (DocumentBubble.tsx:27-33); avatares/logos vão apenas para &lt;img src&gt; (esquemas javascript:/data: são inertes em img).</div></div>
+
+<h2>Pontos fracos (riscos centrais)</h2>
+<div class="box"><b>1. Cadeia de confiança de mídia:</b> a validação de URL aceita qualquer esquema e o frontend renderiza em href clicável (A1) — única rota de XSS encontrada.</div>
+<div class="box"><b>2. Higiene de segredos entre repositórios:</b> a credencial admin real vazou para o repo de marketing/captura (A2) — o repo do Looply em si está limpo.</div>
+<div class="box"><b>3. Defesa de configuração:</b> startup não rejeita placeholders de segredo (A4); e-mail usa input sem escape (A3).</div>
+
+<h2>Achados detalhados por categoria</h2>
+<table>
+  <thead><tr><th style="width:110px">Severidade</th><th>Achado (arquivo:linha · código · explorabilidade)</th></tr></thead>
+  <tbody>
+  <tr class="avoid-break">
+    <td style="width:110px"><span class="chip" style="background:#EA580C1a;color:#EA580C;border:1px solid #EA580C55">Alta</span><div class="fid">A1 · XSS (Cat. 5)</div></td>
+    <td><div class="ftitle">XSS armazenado via mediaUrl com scheme javascript:</div>
+        <div class="floc mono">backend/src/lib/validation.ts:18,25 · frontend/src/features/ContentDetail.tsx:889</div>
+        <pre class="code">// validation.ts:25 — z.string().url() aceita "javascript:alert(1)" (verificado empiricamente)
+mediaUrl: z.string().url().max(2000).optional().or(z.literal("")).optional(),
+// ContentDetail.tsx:889 — href recebe a URL sem restrição de esquema
+&lt;a href={v.mediaUrl} target="_blank" rel="noopener noreferrer"&gt;Ver mídia&lt;/a&gt;</pre>
+        <div class="fdesc">Membro autenticado do workspace cria uma versão de conteúdo (POST /api/contents/:id/versions) com mediaUrl="javascript:payload". O validador zod .url() aceita qualquer esquema com dois-pontos (testado: javascript: e data: passam). Outro usuário da mesma equipe abre o conteúdo e clica em "Ver mídia" — o anchor executa o scheme javascript: no contexto da aplicação. Não há biblioteca de sanitização no projeto. Condições: atacante precisa ser membro convidado + vítima clica; reflete-se em roubo de cookie de sessão (httpOnly mitiga exfiltração direta, mas o script roda como a vítima na origem).</div></td>
+  </tr>
+  <tr class="avoid-break">
+    <td style="width:110px"><span class="chip" style="background:#EA580C1a;color:#EA580C;border:1px solid #EA580C55">Alta</span><div class="fid">A2 · Chaves expostas (Cat. 4)</div></td>
+    <td><div class="ftitle">Senha do admin de produção commitada no repositório verbumlab</div>
+        <div class="floc mono">/srv/verbum/workspaces/verbumlab/scripts/capture-looply.ts:32</div>
+        <pre class="code">await page.fill('input[type="password"]', 'REDACTED_LOOPLY_ADMIN_PASSWORD');</pre>
+        <div class="fdesc">É a SEED_ADMIN_PASSWORD real da instância pública https://looply.verbumlab.com.br — validada em execução: o login com essa senha retornou 200 e sessão ativa. Está commitada em dois commits do histórico do verbumlab (47b42b8 e 0816379). Qualquer leitor do repositório obtém acesso de administrador (persona OWNER) à instância de produção do Looply, incluindo dados de todos os workspaces de demonstração e rotas administrativas.</div></td>
+  </tr>
+  <tr class="avoid-break">
+    <td style="width:110px"><span class="chip" style="background:#2563EB1a;color:#2563EB;border:1px solid #2563EB55">Baixa</span><div class="fid">A3 · Inputs sem tratamento (Cat. 5)</div></td>
+    <td><div class="ftitle">Nome do usuário sem escape no HTML do e-mail de recuperação</div>
+        <div class="floc mono">backend/src/services/mailService.ts:79 (fonte do dado: routes/auth.ts:169-186)</div>
+        <pre class="code">Olá, &lt;strong style="color:#2A171F;"&gt;${input.name}&lt;/strong&gt;!  // mailService.ts:79
+// name é livre: updateProfileSchema aceita qualquer string de até 120 chars (auth.ts)</pre>
+        <div class="fdesc">PATCH /api/auth/me permite gravar name com marcação HTML. O template do e-mail de recuperação injeta ${input.name} sem escape. O e-mail só é enviado para o próprio endereço do usuário (self-injection), limitando o impacto a phishing/injeção visual no cliente de e-mail do próprio atacante — por isso baixa. Ainda é um sink real de HTML não sanitizado no backend.</div></td>
+  </tr>
+  <tr class="avoid-break">
+    <td style="width:110px"><span class="chip" style="background:#2563EB1a;color:#2563EB;border:1px solid #2563EB55">Baixa</span><div class="fid">A4 · Chaves expostas (Cat. 4)</div></td>
+    <td><div class="ftitle">validateEnv não rejeita valores placeholder/default de segredo</div>
+        <div class="floc mono">backend/src/lib/env.ts:68-85</div>
+        <pre class="code">if (!process.env.DATABASE_URL) missing.push("DATABASE_URL");
+if (env.CORS_ORIGIN === "*") throw new Error("CORS_ORIGIN must not be wildcard");
+// única validação: presença de DATABASE_URL e CORS não-curinga</pre>
+        <div class="fdesc">A validação de startup checa presença, não valor. SEED_ADMIN_PASSWORD="CHANGE_ME_SEED_ADMIN_PASSWORD" (o placeholder do .env.example) passa direto e vira a senha de admin se ninguém sobrescrever — exatamente o padrão "default público que vira segredo real". Os segredos de webhook (WHATSAPP_APP_SECRET etc.) falham fechado quando ausentes (bom), mas valores placeholder óbvios não são rejeitados em nenhum ponto.</div></td>
+  </tr>
+  <tr class="avoid-break">
+    <td style="width:110px"><span class="chip" style="background:undefined1a;color:undefined;border:1px solid undefined55">Informativa</span><div class="fid">A5 · Permissão no navegador (Cat. 2)</div></td>
+    <td><div class="ftitle">Gate de papel do frontend trata role ausente como privilegiado (fail-open na UI)</div>
+        <div class="floc mono">frontend/src/features/Team.tsx:62-63 · frontend/src/features/EditCompanyModal.tsx:48</div>
+        <pre class="code">const isOwner = currentRole === "OWNER" || !currentRole;            // Team.tsx:62
+const isAdminOrOwner = currentRole === "OWNER" || currentRole === "ADMIN" || !currentRole; // :63
+const isOwnerOrAdmin = activeRole === "OWNER" || activeRole === "ADMIN" || !activeRole;    // EditCompanyModal.tsx:48</pre>
+        <div class="fdesc">Com role indefinida (edge: membership ainda carregando), a UI exibe controles de OWNER/ADMIN. O servidor valida em toda rota sensível (requireRole + checagens de service — verificado handler por handler), então o pior caso é um 403; não há bypass real. Registrado como informativa/hardening de UX.</div></td>
+  </tr></tbody>
+</table>
+
+<h2>Recomendações priorizadas</h2>
+
+  <div class="rec avoid-break"><span class="prio p1">P1</span><div><b>Rotacionar a senha admin do Looply e purgar a credencial do repositório verbumlab</b> (A2) — trocar SEED_ADMIN_PASSWORD no .env, remover do script de captura (ler de env), reescrever/invalidar os 2 commits com a senha e considerar o histórico exposto.</div></div>
+  <div class="rec avoid-break"><span class="prio p1">P2</span><div><b>Restringir esquema de URL em mediaUrl/logoUrl/avatarUrl</b> (A1) — substituir z.string().url() por refine que aceite apenas https:// (e, para mídia, o domínio de storage); sanitizar a renderização ou abrir links de mídia só após validação. Adiciona defesa em profundidade: CSP via helmet (script-src 'self').</div></div>
+  <div class="rec avoid-break"><span class="prio p2">P3</span><div><b>Escapar input.name no template de e-mail</b> (A3) — função de escape HTML mínima ou renderizar em texto puro;idealmente mover nome para fora de marcação.</div></div>
+  <div class="rec avoid-break"><span class="prio p2">P4</span><div><b>validateEnv rejeita placeholders</b> (A4) — deny-list de valores (CHANGE_ME, password, secret…) para SEED_ADMIN_PASSWORD e segredos de webhook em produção (NODE_ENV=production ⇒ falha de startup).</div></div>
+  <div class="rec avoid-break"><span class="prio p3">P5</span><div><b>Gate de papel fail-closed na UI</b> (A5) — tratar role ausente como MEMBER (esconder controles) em Team.tsx e EditCompanyModal.tsx; mantém o backend como está (já correto).</div></div>
+
+<h2>Issues para o GitHub</h2>
+<p style="color:#57534E;font-size:9pt">Copie e cole cada bloco como uma issue. Achados triviais relacionados foram mantidos individuais por tocarem repositórios/times diferentes.</p>
+
+<div class="issue avoid-break">
+  <div class="issue-head">--- ISSUE 1 ---</div>
+<pre class="issue-body">**[Segurança] XSS armazenado via mediaUrl com scheme javascript:**
+
+Labels: `security, alta`
+
+## Descrição do problema
+Membro autenticado do workspace cria uma versão de conteúdo (POST /api/contents/:id/versions) com mediaUrl="javascript:payload". O validador zod .url() aceita qualquer esquema com dois-pontos (testado: javascript: e data: passam). Outro usuário da mesma equipe abre o conteúdo e clica em "Ver mídia" — o anchor executa o scheme javascript: no contexto da aplicação. Não há biblioteca de sanitização no projeto. Condições: atacante precisa ser membro convidado + vítima clica; reflete-se em roubo de cookie de sessão (httpOnly mitiga exfiltração direta, mas o script roda como a vítima na origem).
+
+## Evidência
+`backend/src/lib/validation.ts:18,25 · frontend/src/features/ContentDetail.tsx:889`
+
+```
+// validation.ts:25 — z.string().url() aceita "javascript:alert(1)" (verificado empiricamente)
+mediaUrl: z.string().url().max(2000).optional().or(z.literal("")).optional(),
+// ContentDetail.tsx:889 — href recebe a URL sem restrição de esquema
+<a href={v.mediaUrl} target="_blank" rel="noopener noreferrer">Ver mídia</a>
+```
+
+## Impacto
+Comprometimento de conta/sessão de usuário autenticado ou de administrador da instância.
+
+## Sugestão de correção
+Trocar `z.string().url()` por `z.string().refine(u => /^https:\/\//.test(u))` nos schemas de mediaUrl/logoUrl/avatarUrl (validation.ts, auth.ts, settings.ts) e adicionar CSP `script-src 'self'` no helmet.
+
+## Critérios de aceite
+- [ ] POST /api/contents/:id/versions com mediaUrl="javascript:alert(1)" retorna 400
+- [ ] Conteúdo existente com mediaUrl javascript: renderiza link inerte/bloqueado
+- [ ] Teste unitário cobrindo schemes não-https rejeitados
+- [ ] helmet CSP ativo em produção
+</pre>
+  <div class="issue-head">--- FIM ISSUE 1 ---</div>
+</div>
+<div class="issue avoid-break">
+  <div class="issue-head">--- ISSUE 2 ---</div>
+<pre class="issue-body">**[Segurança] Senha do admin de produção commitada no repositório verbumlab**
+
+Labels: `security, alta`
+
+## Descrição do problema
+É a SEED_ADMIN_PASSWORD real da instância pública https://looply.verbumlab.com.br — validada em execução: o login com essa senha retornou 200 e sessão ativa. Está commitada em dois commits do histórico do verbumlab (47b42b8 e 0816379). Qualquer leitor do repositório obtém acesso de administrador (persona OWNER) à instância de produção do Looply, incluindo dados de todos os workspaces de demonstração e rotas administrativas.
+
+## Evidência
+`/srv/verbum/workspaces/verbumlab/scripts/capture-looply.ts:32`
+
+```
+await page.fill('input[type="password"]', 'REDACTED_LOOPLY_ADMIN_PASSWORD');
+```
+
+## Impacto
+Comprometimento de conta/sessão de usuário autenticado ou de administrador da instância.
+
+## Sugestão de correção
+Rotacionar a senha, ler credenciais do script via process.env (não commitar), invalidar os commits antigos (filter-repo/BFG) e auditar access logs de login admin.
+
+## Critérios de aceite
+- [ ] Senha antiga não autentica mais (verificado em /login)
+- [ ] capture-looply.ts lê credenciais de process.env
+- [ ] git log -S"senha antiga" não retorna resultado no verbumlab
+- [ ] .env atualizado com nova senha fora do repo
+</pre>
+  <div class="issue-head">--- FIM ISSUE 2 ---</div>
+</div>
+<div class="issue avoid-break">
+  <div class="issue-head">--- ISSUE 3 ---</div>
+<pre class="issue-body">**[Segurança] Nome do usuário sem escape no HTML do e-mail de recuperação**
+
+Labels: `security, baixa`
+
+## Descrição do problema
+PATCH /api/auth/me permite gravar name com marcação HTML. O template do e-mail de recuperação injeta ${input.name} sem escape. O e-mail só é enviado para o próprio endereço do usuário (self-injection), limitando o impacto a phishing/injeção visual no cliente de e-mail do próprio atacante — por isso baixa. Ainda é um sink real de HTML não sanitizado no backend.
+
+## Evidência
+`backend/src/services/mailService.ts:79 (fonte do dado: routes/auth.ts:169-186)`
+
+```
+Olá, <strong style="color:#2A171F;">${input.name}</strong>!  // mailService.ts:79
+// name é livre: updateProfileSchema aceita qualquer string de até 120 chars (auth.ts)
+```
+
+## Impacto
+Injeção limitada / risco de configuração insegura silenciosa.
+
+## Sugestão de correção
+Aplicar escape HTML (função de 5 linhas) em `input.name` antes de interpolar no template de mailService.ts.
+
+## Critérios de aceite
+- [ ] E-mail de recuperação com name contendo <img> exibe o texto literal, não marcação
+- [ ] Teste unitário do template com nome hostil
+</pre>
+  <div class="issue-head">--- FIM ISSUE 3 ---</div>
+</div>
+<div class="issue avoid-break">
+  <div class="issue-head">--- ISSUE 4 ---</div>
+<pre class="issue-body">**[Segurança] validateEnv não rejeita valores placeholder/default de segredo**
+
+Labels: `security, baixa`
+
+## Descrição do problema
+A validação de startup checa presença, não valor. SEED_ADMIN_PASSWORD="CHANGE_ME_SEED_ADMIN_PASSWORD" (o placeholder do .env.example) passa direto e vira a senha de admin se ninguém sobrescrever — exatamente o padrão "default público que vira segredo real". Os segredos de webhook (WHATSAPP_APP_SECRET etc.) falham fechado quando ausentes (bom), mas valores placeholder óbvios não são rejeitados em nenhum ponto.
+
+## Evidência
+`backend/src/lib/env.ts:68-85`
+
+```
+if (!process.env.DATABASE_URL) missing.push("DATABASE_URL");
+if (env.CORS_ORIGIN === "*") throw new Error("CORS_ORIGIN must not be wildcard");
+// única validação: presença de DATABASE_URL e CORS não-curinga
+```
+
+## Impacto
+Injeção limitada / risco de configuração insegura silenciosa.
+
+## Sugestão de correção
+Em validateEnv(), quando NODE_ENV=production, rejeitar valores da deny-list (CHANGE_ME, exemplo, password123…) para SEED_ADMIN_PASSWORD e segredos de webhook.
+
+## Critérios de aceite
+- [ ] NODE_ENV=production + SEED_ADMIN_PASSWORD=CHANGE_ME_SEED_ADMIN_PASSWORD aborta o startup
+- [ ] Valores legítimos passam normalmente (teste de regressão)
+</pre>
+  <div class="issue-head">--- FIM ISSUE 4 ---</div>
+</div>
+<div class="issue avoid-break">
+  <div class="issue-head">--- ISSUE 5 ---</div>
+<pre class="issue-body">**[Hardening] Gate de papel do frontend trata role ausente como privilegiado (fail-open na UI)**
+
+Labels: `security, informativa`
+
+## Descrição do problema
+Com role indefinida (edge: membership ainda carregando), a UI exibe controles de OWNER/ADMIN. O servidor valida em toda rota sensível (requireRole + checagens de service — verificado handler por handler), então o pior caso é um 403; não há bypass real. Registrado como informativa/hardening de UX.
+
+## Evidência
+`frontend/src/features/Team.tsx:62-63 · frontend/src/features/EditCompanyModal.tsx:48`
+
+```
+const isOwner = currentRole === "OWNER" || !currentRole;            // Team.tsx:62
+const isAdminOrOwner = currentRole === "OWNER" || currentRole === "ADMIN" || !currentRole; // :63
+const isOwnerOrAdmin = activeRole === "OWNER" || activeRole === "ADMIN" || !activeRole;    // EditCompanyModal.tsx:48
+```
+
+## Impacto
+Somente cosmético — servidor já valida; melhoria de UX de segurança.
+
+## Sugestão de correção
+Nos componentes Team/EditCompanyModal, papel ausente deve resolver para o mínimo privilégio (MEMBER), não para OWNER/ADMIN.
+
+## Critérios de aceite
+- [ ] Team.tsx com currentRole undefined não exibe controles de gestão
+- [ ] EditCompanyModal com activeRole undefined não exibe campos administrativos
+</pre>
+  <div class="issue-head">--- FIM ISSUE 5 ---</div>
+</div>
+
+</body></html>
