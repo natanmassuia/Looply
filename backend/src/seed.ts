@@ -81,10 +81,10 @@ async function main() {
 
   // ── Team ────────────────────────────────────────────────────────────
   const users = {
-    natan: await db.user.upsert({
+    mariana: await db.user.upsert({
       where: { email: seedAdminEmail },
-      update: { passwordHash: demoHash },
-      create: { name: "Natan Massuia", email: seedAdminEmail, role: "ADMIN", active: true, passwordHash: demoHash },
+      update: { name: "Mariana Costa", passwordHash: demoHash },
+      create: { name: "Mariana Costa", email: seedAdminEmail, role: "ADMIN", active: true, passwordHash: demoHash },
     }),
     marina: await db.user.upsert({
       where: { email: "marina@looply.dev" },
@@ -110,7 +110,7 @@ async function main() {
 
   // ── Memberships (all demo users belong to the demo company) ─────────
   for (const [key, u] of Object.entries(users)) {
-    const role = key === "natan" ? "OWNER" : "MEMBER";
+    const role = key === "mariana" ? "OWNER" : "MEMBER";
     await db.companyMember.upsert({
       where: { userId_companyId: { userId: u.id, companyId: company.id } },
       update: { role },
@@ -388,6 +388,368 @@ async function main() {
     clientName: "Patrícia Souza",
     clientReviewedAt: new Date(),
   });
+
+  // ── Conversations & Messages (AI Inbox) ───────────────────────────
+  const hoursAgo = (h: number) => new Date(Date.now() - h * 3600 * 1000);
+
+  const conversationsData = [
+    {
+      client: clients.aurora,
+      remotePhone: "+5511987654321",
+      contactName: "Camila Rocha",
+      aiStatus: "ACTIVE" as const,
+      unreadCount: 0,
+      lastMessageAt: hoursAgo(1),
+      messages: [
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "Boa tarde! Gostaria de saber se vocês têm mesa disponível para 6 pessoas nesta sexta-feira às 20h para comemoração de aniversário.",
+          createdAt: hoursAgo(1.5),
+        },
+        {
+          direction: "OUTBOUND" as const,
+          senderType: "AI" as const,
+          body: "Olá, Camila! Temos sim. O salão principal tem disponibilidade para as 20h na sexta. Você gostaria que eu reserve agora e inclua a sobremesa cortesia de aniversário?",
+          createdAt: hoursAgo(1.4),
+        },
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "Perfeito, por favor! Em nome de Camila Rocha.",
+          createdAt: hoursAgo(1.2),
+        },
+        {
+          direction: "OUTBOUND" as const,
+          senderType: "AI" as const,
+          body: "Reserva confirmada com sucesso para sexta-feira (28/08) às 20h para 6 pessoas no Restaurante Aurora. Enviamos a confirmação por aqui. Aguardamos vocês!",
+          actionType: "APPOINTMENT_CREATED",
+          actionMetadata: { summary: "Mesa para 6 pessoas · Sex 20:00" },
+          createdAt: hoursAgo(1),
+        },
+      ],
+    },
+    {
+      client: clients.move,
+      remotePhone: "+5511981112233",
+      contactName: "Rodrigo Mendes",
+      aiStatus: "NEEDS_ATTENTION" as const,
+      unreadCount: 1,
+      lastMessageAt: hoursAgo(2),
+      messages: [
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "Olá, vi o post sobre o novo plano semestral de musculação + cross. Como funciona o agendamento da aula experimental?",
+          createdAt: hoursAgo(3),
+        },
+        {
+          direction: "OUTBOUND" as const,
+          senderType: "AI" as const,
+          body: "Olá, Rodrigo! A aula experimental é gratuita e pode ser agendada para qualquer dia útil das 6h às 21h. Temos horários disponíveis com o instrutor Felipe amanhã às 18h ou quinta às 19h. Qual prefere?",
+          createdAt: hoursAgo(2.8),
+        },
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "Pode ser quinta às 19h. Uma dúvida: tem como trancar a matrícula se eu viajar no fim do ano?",
+          createdAt: hoursAgo(2),
+        },
+      ],
+    },
+    {
+      client: clients.vitta,
+      remotePhone: "+5511982223344",
+      contactName: "Beatriz Faria",
+      aiStatus: "ACTIVE" as const,
+      unreadCount: 0,
+      lastMessageAt: hoursAgo(4),
+      messages: [
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "Bom dia! Gostaria de consultar os horários para avaliação dermatológica na próxima semana.",
+          createdAt: hoursAgo(4.5),
+        },
+        {
+          direction: "OUTBOUND" as const,
+          senderType: "AI" as const,
+          body: "Olá, Beatriz! Temos horários na terça-feira às 14h30 com a Dra. Helena Martins e na quinta-feira às 10h. Algum desses horários atende você?",
+          createdAt: hoursAgo(4.3),
+        },
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "Terça às 14h30 fica ótimo para mim!",
+          createdAt: hoursAgo(4.1),
+        },
+        {
+          direction: "OUTBOUND" as const,
+          senderType: "AI" as const,
+          body: "Agendamento pré-reservado para terça-feira às 14h30 na Clínica Vitta (Unidade Jardins). Enviamos as orientações de preparo logo abaixo.",
+          actionType: "APPOINTMENT_CREATED",
+          actionMetadata: { summary: "Avaliação Dermatológica · Ter 14:30" },
+          createdAt: hoursAgo(4),
+        },
+      ],
+    },
+    {
+      client: clients.norte,
+      remotePhone: "+5511983334455",
+      contactName: "Lucas Alencar",
+      aiStatus: "PAUSED" as const,
+      unreadCount: 0,
+      lastMessageAt: hoursAgo(6),
+      messages: [
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "Vocês fazem captação externa com drone para campanha institucional de arquitetura?",
+          createdAt: hoursAgo(7),
+        },
+        {
+          direction: "OUTBOUND" as const,
+          senderType: "USER" as const,
+          senderUserId: users.mariana.id,
+          body: "Olá, Lucas! Fazemos sim, nossa equipe possui operador certificado pela ANAC. Já inseri sua demanda no nosso fluxo de produção para alinharmos os detalhes técnicos.",
+          createdAt: hoursAgo(6.5),
+        },
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "Excelente, vou enviar a planta e referências por e-mail.",
+          createdAt: hoursAgo(6),
+        },
+      ],
+    },
+    {
+      client: clients.onze,
+      remotePhone: "+5511984445566",
+      contactName: "Fernanda Lima",
+      aiStatus: "ACTIVE" as const,
+      unreadCount: 0,
+      lastMessageAt: hoursAgo(8),
+      messages: [
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "Olá! O menu degustação de vinhos da primavera já está disponível no almoço executivo?",
+          createdAt: hoursAgo(9),
+        },
+        {
+          direction: "OUTBOUND" as const,
+          senderType: "AI" as const,
+          body: "Olá, Fernanda! O menu especial de primavera está disponível tanto no almoço quanto no jantar de quarta a domingo. Deseja conhecer os rótulos harmonizados?",
+          createdAt: hoursAgo(8.8),
+        },
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "Sim, por favor! Adoraria ver a carta de harmonização.",
+          createdAt: hoursAgo(8.4),
+        },
+        {
+          direction: "OUTBOUND" as const,
+          senderType: "AI" as const,
+          body: "Enviamos o PDF da carta e harmonização em anexo. Caso queira reservar mesa para hoje, estou à disposição!",
+          createdAt: hoursAgo(8),
+        },
+      ],
+    },
+    {
+      client: clients.aurora,
+      remotePhone: "+5511985556677",
+      contactName: "Guilherme Santos",
+      aiStatus: "NEEDS_ATTENTION" as const,
+      unreadCount: 2,
+      lastMessageAt: hoursAgo(10),
+      messages: [
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "Boa noite, queria tirar uma dúvida sobre opções sem glúten no cardápio de massas.",
+          createdAt: hoursAgo(11),
+        },
+        {
+          direction: "OUTBOUND" as const,
+          senderType: "AI" as const,
+          body: "Olá, Guilherme! Temos opções de massas artesanais 100% sem glúten preparadas em praça isolada, além de risotos e grelhados.",
+          createdAt: hoursAgo(10.8),
+        },
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "Ótimo saber! Vocês abrem no feriado de segunda?",
+          createdAt: hoursAgo(10.2),
+        },
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "E qual a taxa de rolha caso eu queira levar um vinho especial?",
+          createdAt: hoursAgo(10),
+        },
+      ],
+    },
+    {
+      client: clients.move,
+      remotePhone: "+5511986667788",
+      contactName: "Juliana Prado",
+      aiStatus: "ACTIVE" as const,
+      unreadCount: 0,
+      lastMessageAt: hoursAgo(14),
+      messages: [
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "Bom dia! Onde consigo ver a grade de horários das aulas de Spinning e Pilates?",
+          createdAt: hoursAgo(15),
+        },
+        {
+          direction: "OUTBOUND" as const,
+          senderType: "AI" as const,
+          body: "Olá, Juliana! A grade completa atualizada está disponível no app da Move. Spinning acontece seg/qua/sex às 7h, 12h e 19h; Pilates de ter/qui às 8h e 18h.",
+          createdAt: hoursAgo(14.8),
+        },
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "Perfeito, muito obrigada pela agilidade no retorno!",
+          createdAt: hoursAgo(14),
+        },
+      ],
+    },
+    {
+      client: clients.vitta,
+      remotePhone: "+5511987778899",
+      contactName: "Carlos Henrique",
+      aiStatus: "ACTIVE" as const,
+      unreadCount: 0,
+      lastMessageAt: hoursAgo(18),
+      messages: [
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "Olá! Vocês atendem pelo plano Bradesco Saúde Top Nacional?",
+          createdAt: hoursAgo(19),
+        },
+        {
+          direction: "OUTBOUND" as const,
+          senderType: "AI" as const,
+          body: "Olá, Carlos! Atendemos Bradesco Saúde na modalidade de reembolso assistido com emissão ágil de laudos e notas fiscais.",
+          createdAt: hoursAgo(18.8),
+        },
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "Entendido! Obrigado pela informação clara.",
+          createdAt: hoursAgo(18),
+        },
+      ],
+    },
+    {
+      client: clients.norte,
+      remotePhone: "+5511988889900",
+      contactName: "Patrícia Vasconcelos",
+      aiStatus: "ACTIVE" as const,
+      unreadCount: 0,
+      lastMessageAt: hoursAgo(22),
+      messages: [
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "Boa tarde! Gostaria de solicitar orçamento para produção e edição contínua de 8 Reels por mês.",
+          createdAt: hoursAgo(23),
+        },
+        {
+          direction: "OUTBOUND" as const,
+          senderType: "AI" as const,
+          body: "Olá, Patrícia! Nosso pacote de Reels inclui roteirização, gravação guiada e edição profissional. Nossa equipe de atendimento enviou a proposta no seu e-mail.",
+          createdAt: hoursAgo(22),
+        },
+      ],
+    },
+    {
+      client: clients.onze,
+      remotePhone: "+5511989990011",
+      contactName: "Marcelo Siqueira",
+      aiStatus: "PAUSED" as const,
+      unreadCount: 0,
+      lastMessageAt: hoursAgo(26),
+      messages: [
+        {
+          direction: "INBOUND" as const,
+          senderType: "CONTACT" as const,
+          body: "Gostaria de fechar o mezanino reservado para evento corporativo de 25 pessoas.",
+          createdAt: hoursAgo(27),
+        },
+        {
+          direction: "OUTBOUND" as const,
+          senderType: "USER" as const,
+          senderUserId: users.mariana.id,
+          body: "Olá, Marcelo! Já reservei o mezanino com exclusividade e nosso chef preparou 3 opções de menu fechado para sua equipe.",
+          createdAt: hoursAgo(26),
+        },
+      ],
+    },
+  ];
+
+  for (const item of conversationsData) {
+    const lastMsg = item.messages[item.messages.length - 1];
+    const conv = await db.conversation.upsert({
+      where: {
+        companyId_provider_remotePhone: {
+          companyId: company.id,
+          provider: "whatsapp",
+          remotePhone: item.remotePhone,
+        },
+      },
+      update: {
+        clientId: item.client.id,
+        contactName: item.contactName,
+        aiStatus: item.aiStatus,
+        unreadCount: item.unreadCount,
+        lastMessagePreview: lastMsg?.body ?? null,
+        lastMessageAt: item.lastMessageAt,
+      },
+      create: {
+        companyId: company.id,
+        clientId: item.client.id,
+        provider: "whatsapp",
+        remotePhone: item.remotePhone,
+        contactName: item.contactName,
+        aiStatus: item.aiStatus,
+        unreadCount: item.unreadCount,
+        lastMessagePreview: lastMsg?.body ?? null,
+        lastMessageAt: item.lastMessageAt,
+      },
+    });
+
+    // Delete existing messages for clean idempotency
+    await db.conversationMessage.deleteMany({
+      where: { conversationId: conv.id },
+    });
+
+    // Create messages
+    for (let i = 0; i < item.messages.length; i++) {
+      const m = item.messages[i];
+      await db.conversationMessage.create({
+        data: {
+          conversationId: conv.id,
+          companyId: company.id,
+          provider: "whatsapp",
+          direction: m.direction,
+          senderType: m.senderType,
+          senderUserId: (m as any).senderUserId ?? null,
+          type: "TEXT",
+          body: m.body,
+          deliveryStatus: "DELIVERED",
+          actionType: (m as any).actionType ?? null,
+          actionMetadata: (m as any).actionMetadata ?? null,
+          createdAt: m.createdAt,
+        },
+      });
+    }
+  }
 
   console.log("\n── Looply demo seed concluído ──");
   if (diaApproval.created && diaApproval.token) {
