@@ -389,4 +389,32 @@ describe("Team Feature — B2 Functional Wiring", () => {
     expect(screen.getByText("Carlos Designer")).toBeInTheDocument();
     expect(screen.queryByText("Ana Proprietária")).not.toBeInTheDocument();
   });
+
+  it("A5: fails closed when session or role is undefined (no admin controls rendered)", () => {
+    vi.spyOn(apiModule, "useMe").mockReturnValue({
+      data: {
+        user: { id: "u-anon", name: "Sem Role", email: "anon@agencia.com" },
+        activeCompanyId: "c-1",
+        mustChangePassword: false,
+        memberships: [], // No membership / undefined role
+      },
+      isLoading: false,
+    } as any);
+
+    vi.spyOn(apiModule, "useMembers").mockReturnValue({
+      data: mockMembers,
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    vi.spyOn(apiModule, "useInvitations").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as any);
+
+    renderWithClient(<Team />);
+
+    // Admin action buttons should NOT be rendered when role is missing/undefined
+    expect(screen.queryByRole("button", { name: /Convidar membro/i })).not.toBeInTheDocument();
+  });
 });

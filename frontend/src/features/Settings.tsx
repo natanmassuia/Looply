@@ -168,7 +168,7 @@ export default function Settings() {
   const activeRole = session?.memberships?.find(
     (m) => m.companyId === session.activeCompanyId,
   )?.role;
-  const isOwnerOrAdmin = activeRole === "OWNER" || activeRole === "ADMIN" || !activeRole;
+  const isOwnerOrAdmin = activeRole === "OWNER" || activeRole === "ADMIN";
 
   const handleSaveAppearance = async (e: React.FormEvent) => {
     e.preventDefault();

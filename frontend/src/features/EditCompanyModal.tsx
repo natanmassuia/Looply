@@ -45,7 +45,7 @@ export default function EditCompanyModal({ isOpen, onClose }: EditCompanyModalPr
   const activeRole = session?.memberships?.find(
     (m) => m.companyId === session.activeCompanyId,
   )?.role;
-  const isOwnerOrAdmin = activeRole === "OWNER" || activeRole === "ADMIN" || !activeRole;
+  const isOwnerOrAdmin = activeRole === "OWNER" || activeRole === "ADMIN";
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

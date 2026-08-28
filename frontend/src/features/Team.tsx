@@ -59,8 +59,8 @@ export default function Team() {
     (m) => m.companyId === session.activeCompanyId,
   );
   const currentRole = activeMembership?.role;
-  const isOwner = currentRole === "OWNER" || !currentRole;
-  const isAdminOrOwner = currentRole === "OWNER" || currentRole === "ADMIN" || !currentRole;
+  const isOwner = currentRole === "OWNER";
+  const isAdminOrOwner = currentRole === "OWNER" || currentRole === "ADMIN";
 
   const { data: members, isLoading: membersLoading, isError: membersIsError, error: membersError } = useMembers(isAdminOrOwner);
   const { data: team, isLoading: teamLoading, isError: teamIsError, error: teamError } = useTeam();
