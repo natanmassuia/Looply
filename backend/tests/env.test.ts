@@ -48,12 +48,34 @@ describe("validateEnv", () => {
       );
     });
 
+    it("aborts when DATABASE_URL contains CHANGE_ME template placeholder in production", () => {
+      process.env.DATABASE_URL = "postgresql://looply:CHANGE_ME@localhost:5432/looply?schema=public";
+      process.env.PORT = "4000";
+      process.env.NODE_ENV = "production";
+
+      expect(() => validateEnv()).toThrow(
+        "[env] DATABASE_URL contém valor placeholder em produção",
+      );
+    });
+
+    it("aborts when REDIS_URL contains dummy placeholder in production", () => {
+      process.env.DATABASE_URL = "postgresql://looply:prod_secret_pass@localhost:5432/looply?schema=public";
+      process.env.PORT = "4000";
+      process.env.NODE_ENV = "production";
+      process.env.REDIS_URL = "redis://:dummy_pass@localhost:6379";
+
+      expect(() => validateEnv()).toThrow(
+        "[env] REDIS_URL contém valor placeholder em produção",
+      );
+    });
+
     it("allows valid strong secret in production", () => {
-      process.env.DATABASE_URL = "postgresql://x";
+      process.env.DATABASE_URL = "postgresql://looply:RealComplexDbPass9928!@localhost:5432/looply?schema=public";
       process.env.PORT = "4000";
       process.env.NODE_ENV = "production";
       process.env.SEED_ADMIN_PASSWORD = "StrongRandomPass_83bA#918!";
       process.env.WHATSAPP_APP_SECRET = "f8a7e3d2c1b0a9f8e7d6c5b4a3210987";
+      process.env.REDIS_URL = "redis://:RealRedisPass8812@localhost:6379";
 
       expect(() => validateEnv()).not.toThrow();
     });
