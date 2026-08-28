@@ -73,7 +73,7 @@ export const createClientSchema = z.object({
   primaryContactEmail: z.string().email().max(160).optional().or(z.literal("")).optional(),
   primaryContactPhone: z.string().max(40).optional(),
   channels: z.array(z.string().max(60)).max(10).optional(),
-  logoUrl: z.string().max(2000).optional().or(z.literal("")).nullable(),
+  logoUrl: httpsUrl(2000).optional().or(z.literal("")).nullable(),
 });
 export type CreateClientInput = z.infer<typeof createClientSchema>;
 
