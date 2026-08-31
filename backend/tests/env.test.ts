@@ -90,4 +90,38 @@ describe("validateEnv", () => {
       expect(() => validateEnv()).not.toThrow();
     });
   });
+
+  describe("demo/mock flags in production", () => {
+    it("aborts when DEMO_MODE=true in production", () => {
+      process.env.DATABASE_URL = "postgresql://x";
+      process.env.PORT = "4000";
+      process.env.NODE_ENV = "production";
+      process.env.DEMO_MODE = "true";
+
+      expect(() => validateEnv()).toThrow(
+        "[env] DEMO_MODE não é permitido em produção",
+      );
+    });
+
+    it("aborts when MOCK_PROVIDER=true in production", () => {
+      process.env.DATABASE_URL = "postgresql://x";
+      process.env.PORT = "4000";
+      process.env.NODE_ENV = "production";
+      process.env.MOCK_PROVIDER = "true";
+
+      expect(() => validateEnv()).toThrow(
+        "[env] MOCK_PROVIDER não é permitido em produção",
+      );
+    });
+
+    it("allows flags outside production", () => {
+      process.env.DATABASE_URL = "postgresql://x";
+      process.env.PORT = "4000";
+      process.env.NODE_ENV = "development";
+      process.env.DEMO_MODE = "true";
+      process.env.MOCK_PROVIDER = "true";
+
+      expect(() => validateEnv()).not.toThrow();
+    });
+  });
 });

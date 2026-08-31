@@ -34,6 +34,8 @@ export const env = {
   STORAGE_FORCE_PATH_STYLE: (process.env.STORAGE_FORCE_PATH_STYLE ?? "false").toLowerCase() === "true",
   STORAGE_PRESIGN_TTL_SECONDS: Number(process.env.STORAGE_PRESIGN_TTL_SECONDS ?? 600),
   TRUST_PROXY: (process.env.TRUST_PROXY ?? "false").toLowerCase() === "true",
+  DEMO_MODE: (process.env.DEMO_MODE ?? "false").toLowerCase() === "true",
+  MOCK_PROVIDER: (process.env.MOCK_PROVIDER ?? "false").toLowerCase() === "true",
   REDIS_URL: process.env.REDIS_URL,
   WHATSAPP_VERIFY_TOKEN: process.env.WHATSAPP_VERIFY_TOKEN,
   WHATSAPP_APP_SECRET: process.env.WHATSAPP_APP_SECRET,
@@ -95,6 +97,10 @@ export function validateEnv(): void {
 
   const nodeEnv = process.env.NODE_ENV ?? env.NODE_ENV;
   if (nodeEnv === "production") {
+    if ((process.env.DEMO_MODE ?? "false").toLowerCase() === "true")
+      throw new Error("[env] DEMO_MODE não é permitido em produção");
+    if ((process.env.MOCK_PROVIDER ?? "false").toLowerCase() === "true")
+      throw new Error("[env] MOCK_PROVIDER não é permitido em produção");
     for (const key of PRODUCTION_SECRET_KEYS) {
       const val = process.env[key];
       if (typeof val === "string" && val.trim() !== "") {
