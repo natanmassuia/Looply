@@ -133,8 +133,9 @@ export default function AudioPlayer({
 
     setIsDownloading(true);
     try {
+      const isLocal = downloadUrl.startsWith("/") || downloadUrl.startsWith(window.location.origin);
       const response = await fetch(downloadUrl, {
-        credentials: "include",
+        credentials: isLocal ? "include" : "omit",
       });
       if (!response.ok) throw new Error("audio-download-failed");
 
