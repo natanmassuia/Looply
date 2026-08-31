@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import request from "supertest";
 import app from "../src/app";
 import { prisma } from "../src/lib/db";
@@ -6,6 +6,7 @@ import { login, logout } from "../src/services/authService";
 import { seedCredentials } from "./seedCredentials";
 import { getTenantB, tenantBLogin } from "./fixtures";
 import { SESSION_COOKIE } from "../src/lib/session";
+import { hashPassword } from "../src/lib/password";
 
 // R2-01 — Tenant isolation proof for GET /api/team.
 //
@@ -38,6 +39,36 @@ async function memberIdentities(tenantEmail: string) {
 }
 
 describe.skipIf(!process.env.DATABASE_URL)("R2-01 /api/team tenant isolation", () => {
+  const memberEmail = `member-${Date.now()}@looply.dev`;
+  let memberUser: any;
+
+  beforeAll(async () => {
+    const creds = seedCredentials();
+    const company = await prisma.company.findFirst({ where: { slug: "looply-studio" } });
+    if (!company) throw new Error("No company found — seed must run before tests");
+    const hash = await hashPassword(creds.password);
+    memberUser = await prisma.user.create({
+      data: {
+        email: memberEmail,
+        name: "Test Member",
+        role: "CONTENT_MANAGER",
+        active: true,
+        passwordHash: hash,
+      },
+    });
+    await prisma.companyMember.create({
+      data: { userId: memberUser.id, companyId: company.id, role: "MEMBER", isActive: true },
+    });
+  });
+
+  afterAll(async () => {
+    if (memberUser) {
+      await prisma.session.deleteMany({ where: { userId: memberUser.id } });
+      await prisma.companyMember.deleteMany({ where: { userId: memberUser.id } });
+      await prisma.user.delete({ where: { id: memberUser.id } });
+    }
+  });
+
   it("Tenant A (Loyal Tech) sees ONLY A members and no Tenant B PII", async () => {
     const session = await login(prisma, TENANT_A().email, TENANT_A().password);
     const cookie = `${SESSION_COOKIE}=${session.token}`;
@@ -89,8 +120,8 @@ describe.skipIf(!process.env.DATABASE_URL)("R2-01 /api/team tenant isolation", (
     await logout(prisma, session.token);
   });
 
-  it("a non-owner MEMBER (marina@looply.dev) is also confined to Company A", async () => {
-    const session = await login(prisma, "marina@looply.dev", seedCredentials().password);
+  it("a non-owner MEMBER is also confined to Company A", async () => {
+    const session = await login(prisma, memberEmail, seedCredentials().password);
     const cookie = `${SESSION_COOKIE}=${session.token}`;
 
     const res = await request(app).get("/api/team").set("Cookie", cookie);
@@ -98,7 +129,7 @@ describe.skipIf(!process.env.DATABASE_URL)("R2-01 /api/team tenant isolation", (
 
     const emails = (res.body.team as { email: string }[]).map((u) => u.email);
     // MEMBER sees their own company only.
-    expect(emails).toContain("marina@looply.dev");
+    expect(emails).toContain(memberEmail);
     expect(emails).not.toContain((await getTenantB()).email);
     expect(emails).not.toContain((await getTenantB()).memberEmail);
 

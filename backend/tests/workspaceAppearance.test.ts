@@ -6,6 +6,7 @@ import { seedCredentials } from "./seedCredentials";
 import { tenantBLogin } from "./fixtures";
 import { SESSION_COOKIE } from "../src/lib/session";
 import { env } from "../src/lib/env";
+import { hashPassword } from "../src/lib/password";
 import {
   DEFAULT_MODE,
   DEFAULT_PRESET,
@@ -280,6 +281,8 @@ describe("appearance transitions", () => {
 // ── HTTP contract (28-35) — live local dev DB ────────────────────────────
 describe.skipIf(!process.env.DATABASE_URL)("appearance HTTP contract", () => {
   const cookie = (token: string) => `${SESSION_COOKIE}=${token}`;
+  const memberEmail = `member-${Date.now()}@looply.dev`;
+  let memberUser: any;
 
   beforeAll(async () => {
     await prisma.company.updateMany({
@@ -295,6 +298,31 @@ describe.skipIf(!process.env.DATABASE_URL)("appearance HTTP contract", () => {
         appearanceCustomBorder: null,
       },
     });
+
+    const creds = seedCredentials();
+    const company = await prisma.company.findFirst({ where: { slug: "looply-studio" } });
+    if (!company) throw new Error("No company found — seed must run before tests");
+    const hash = await hashPassword(creds.password);
+    memberUser = await prisma.user.create({
+      data: {
+        email: memberEmail,
+        name: "Test Member",
+        role: "CONTENT_MANAGER",
+        active: true,
+        passwordHash: hash,
+      },
+    });
+    await prisma.companyMember.create({
+      data: { userId: memberUser.id, companyId: company.id, role: "MEMBER", isActive: true },
+    });
+  });
+
+  afterAll(async () => {
+    if (memberUser) {
+      await prisma.session.deleteMany({ where: { userId: memberUser.id } });
+      await prisma.companyMember.deleteMany({ where: { userId: memberUser.id } });
+      await prisma.user.delete({ where: { id: memberUser.id } });
+    }
   });
 
   it("28. unauthenticated GET rejected", async () => {
@@ -308,7 +336,7 @@ describe.skipIf(!process.env.DATABASE_URL)("appearance HTTP contract", () => {
   });
 
   it("30. active MEMBER can read appearance", async () => {
-    const session = await login(prisma, "marina@looply.dev", seedCredentials().password);
+    const session = await login(prisma, memberEmail, seedCredentials().password);
     const res = await request(app)
       .get("/api/settings/appearance")
       .set("Cookie", cookie(session.token));
@@ -318,7 +346,7 @@ describe.skipIf(!process.env.DATABASE_URL)("appearance HTTP contract", () => {
   });
 
   it("31. active MEMBER cannot mutate appearance", async () => {
-    const session = await login(prisma, "marina@looply.dev", seedCredentials().password);
+    const session = await login(prisma, memberEmail, seedCredentials().password);
     const res = await request(app)
       .patch("/api/settings/appearance")
       .set("Cookie", cookie(session.token))
