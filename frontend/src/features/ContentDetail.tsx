@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { safeExternalUrl, safeHref } from "../lib/url";
 import {
   useContent,
   useClients,
@@ -450,7 +451,7 @@ export default function ContentDetail() {
                         onClick={async () => {
                           try {
                             const res = await downloadFile.mutateAsync(file.id);
-                            if (res?.url) {
+                            if (res?.url && safeExternalUrl(res.url)) {
                               window.open(res.url, "_blank", "noopener,noreferrer");
                             }
                           } catch (e) {
@@ -707,7 +708,7 @@ function ApprovalLinkBox({ url }: { url: string }) {
           Link de aprovação
         </div>
         <a
-          href={url}
+          href={safeHref(url) ?? undefined}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-1 text-xs font-medium text-[var(--looply-color-action-primary)] hover:underline"
@@ -855,18 +856,6 @@ function ScheduleForm({
       </button>
     </div>
   );
-}
-
-// A1 (auditoria): mídia com URL que não seja http/https (ex.: javascript:
-// gravado antes da validação de esquema) não vira link clicável.
-function safeHref(url: string | null | undefined): string | null {
-  if (!url) return null;
-  try {
-    const parsed = new URL(url, window.location.origin);
-    return parsed.protocol === "http:" || parsed.protocol === "https:" ? url : null;
-  } catch {
-    return null;
-  }
 }
 
 function VersionHistory({ versions }: { versions?: ContentVersion[] }) {

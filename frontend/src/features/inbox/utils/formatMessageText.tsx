@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { safeHref } from "../../../lib/url";
 
 export interface FormatOptions {
   searchQuery?: string;
@@ -59,7 +60,7 @@ export function formatMessageText(
         return (
           <a
             key={i}
-            href={part}
+            href={safeHref(part) ?? undefined}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[var(--looply-color-text-brand,#2563eb)] hover:underline break-all"

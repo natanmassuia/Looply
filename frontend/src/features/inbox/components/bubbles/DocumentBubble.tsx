@@ -1,5 +1,6 @@
 import { formatMessageText } from "../../utils/formatMessageText";
 import type { ConversationMessageDto } from "../../../../lib/types";
+import { safeHref } from "../../../../lib/url";
 
 interface Props {
   msg: ConversationMessageDto;
@@ -44,7 +45,7 @@ export default function DocumentBubble({
   return (
     <div className="w-full space-y-2">
       <a
-        href={docUrl || undefined}
+        href={safeHref(docUrl) ?? undefined}
         target="_blank"
         rel="noopener noreferrer"
         download={filename}
