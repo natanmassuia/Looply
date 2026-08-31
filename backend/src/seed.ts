@@ -85,27 +85,27 @@ async function main() {
   const users = {
     mariana: await db.user.upsert({
       where: { email: seedAdminEmail },
-      update: { name: "Mariana Costa", passwordHash: demoHash },
+      update: { name: "Mariana Costa" },
       create: { name: "Mariana Costa", email: seedAdminEmail, role: "ADMIN", active: true, passwordHash: demoHash },
     }),
     marina: await db.user.upsert({
       where: { email: "marina@looply.dev" },
-      update: { passwordHash: demoHash },
+      update: {},
       create: { name: "Marina Lopes", email: "marina@looply.dev", role: "CONTENT_MANAGER", active: true, passwordHash: demoHash },
     }),
     joao: await db.user.upsert({
       where: { email: "joao@looply.dev" },
-      update: { passwordHash: demoHash },
+      update: {},
       create: { name: "João Silva", email: "joao@looply.dev", role: "EDITOR", active: true, passwordHash: demoHash },
     }),
     ana: await db.user.upsert({
       where: { email: "ana@looply.dev" },
-      update: { passwordHash: demoHash },
+      update: {},
       create: { name: "Ana Costa", email: "ana@looply.dev", role: "SOCIAL_MEDIA", active: true, passwordHash: demoHash },
     }),
     lucas: await db.user.upsert({
       where: { email: "lucas@looply.dev" },
-      update: { passwordHash: demoHash },
+      update: {},
       create: { name: "Lucas Prado", email: "lucas@looply.dev", role: "DESIGNER", active: true, passwordHash: demoHash },
     }),
   };
