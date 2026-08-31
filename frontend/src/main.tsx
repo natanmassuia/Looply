@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import { shouldRetry } from "./lib/api";
 import "./index.css";
+import "./fonts.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
