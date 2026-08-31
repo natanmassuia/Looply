@@ -3,6 +3,7 @@ import { transientStoreFromEnv, type TransientStore } from "./transientStore";
 import {
   GUPSHUP_PROVIDER_NAME,
   MetaWhatsAppProvider,
+  MockWhatsAppProvider,
   WHATSAPP_PROVIDER_NAME,
   type WhatsAppProvider,
   type WhatsAppProviderName,
@@ -37,6 +38,9 @@ export function getRuntimeTransientStore(): TransientStore | null {
 // resolves its own config lazily; a provider whose env is absent reports
 // unconfigured and its routes fail closed.
 export function getWhatsAppProvider(provider: WhatsAppProviderName = WHATSAPP_PROVIDER_NAME): WhatsAppProvider {
+  if (process.env.MOCK_PROVIDER === "true" || process.env.DEMO_MODE === "true") {
+    return new MockWhatsAppProvider();
+  }
   if (provider === GUPSHUP_PROVIDER_NAME) {
     if (!gupshupProvider) {
       gupshupProvider = new GupshupWhatsAppProvider({

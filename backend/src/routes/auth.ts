@@ -9,6 +9,7 @@ import { login, logout, switchCompany } from "../services/authService";
 import { checkLoginRate } from "../lib/loginLimiter";
 import { PASSWORD_RESET_LIMIT } from "../lib/rateLimit";
 import { requireAuth } from "../middleware/requireAuth";
+import { demoGuard } from "../middleware/demoGuard";
 import { resolveWorkspaceContext } from "../domain/capabilities";
 import { assertNewPasswordOk } from "../services/onboardingService";
 import { hashPassword, newSessionToken, hashToken } from "../lib/password";
@@ -66,6 +67,7 @@ router.post(
 
 router.post(
   "/change-password",
+  demoGuard,
   requireAuth,
   asyncHandler(async (req, res) => {
     const { newPassword } = parse(

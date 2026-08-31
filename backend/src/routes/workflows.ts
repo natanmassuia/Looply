@@ -6,6 +6,7 @@ import { parse } from "../lib/parse";
 import { Capability } from "../domain/capabilities";
 import { requireCapability } from "../middleware/requireCapability";
 import { requireRole } from "../middleware/requireAuth";
+import { demoGuard } from "../middleware/demoGuard";
 import {
   addStage,
   getWorkflow,
@@ -63,6 +64,7 @@ router.post(
 
 router.delete(
   "/:id/stages/:stageId",
+  demoGuard,
   requireRole("OWNER", "ADMIN"),
   asyncHandler(async (req, res) => {
     const result = await removeStage(prisma, req.auth!.companyId, req.params.id, req.params.stageId);

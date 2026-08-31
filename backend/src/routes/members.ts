@@ -5,6 +5,7 @@ import { asyncHandler, forbidden } from "../lib/errors";
 import { parse } from "../lib/parse";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireWorkspaceActive } from "../middleware/requireWorkspaceActive";
+import { demoGuard } from "../middleware/demoGuard";
 import { listMembers, updateMember, resetMemberPassword } from "../services/memberService";
 
 const router = Router();
@@ -36,6 +37,7 @@ router.patch(
 
 router.post(
   "/:id/reset-password",
+  demoGuard,
   asyncHandler(async (req, res) => {
     const result = await resetMemberPassword(
       prisma,
