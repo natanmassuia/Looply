@@ -6,6 +6,7 @@ import { PrismaClient, ContentStatus, ApprovalStatus } from "@prisma/client";
 import { randomBytes } from "node:crypto";
 import { hashPassword } from "./lib/password";
 import { hashToken } from "./lib/password";
+import { assertSeedAllowed } from "./lib/seedGuard";
 import { ensureDefaultWorkflow } from "./services/workflowService";
 
 const db = new PrismaClient();
@@ -53,6 +54,7 @@ async function ensureApproval(cfg: {
 }
 
 async function main() {
+  assertSeedAllowed();
   // ── Company (tenant) ────────────────────────────────────────────────
   const company = await db.company.upsert({
     where: { slug: "looply-studio" },
