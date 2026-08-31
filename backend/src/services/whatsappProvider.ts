@@ -254,18 +254,3 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
   }
 }
 
-export class MockWhatsAppProvider implements WhatsAppProvider {
-  inboundConfigured() { return true; }
-  outboundConfigured() { return true; }
-  isValidSignature() { return true; }
-  isValidVerification() { return true; }
-  normalizeInbound() { return []; }
-  async sendText(_to: string, _text: string): Promise<WhatsAppOutboundResult> {
-    return {
-      providerMessageId: `mock_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
-      provider: WHATSAPP_PROVIDER_NAME,
-      sentAt: new Date(),
-    };
-  }
-}
-
