@@ -1,6 +1,6 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import type { ConversationSummaryDto } from "../../../lib/types";
-import { useConversationMessages } from "../../../lib/api";
+import { useConversationMessages, useSendConversationMessage } from "../../../lib/api";
 import ChatHeader from "./ChatHeader";
 import MessageList, { type MessageListHandle } from "./MessageList";
 import AIStatusFooter from "./AIStatusFooter";
@@ -19,6 +19,17 @@ export default function ChatWindow({ conversation, isMobile = false, onBack }: P
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSearchIndex, setActiveSearchIndex] = useState(0);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+  const sendMutation = useSendConversationMessage();
+
+  const handleSend = useCallback(() => {
+    const text = draft.trim();
+    if (!text || !conversation) return;
+    sendMutation.mutate(
+      { conversationId: conversation.id, body: text },
+      { onSuccess: () => setDraft("") },
+    );
+  }, [draft, conversation, sendMutation]);
 
   const { data: messagesData, isLoading } = useConversationMessages(
     conversation?.id ?? null,
@@ -139,6 +150,37 @@ export default function ChatWindow({ conversation, isMobile = false, onBack }: P
           activeSearchMessageId={activeSearchMessage?.id}
           isLoading={isLoading}
         />
+
+        {/* Human reply input */}
+        <div className="shrink-0 border-t border-[var(--looply-color-border-default,#e4e4e7)] bg-[var(--looply-color-bg-surface,#ffffff)] px-4 py-3">
+          <div className="flex items-end gap-2">
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              placeholder="Responder como humano..."
+              rows={1}
+              className="flex-1 resize-none rounded-lg border border-[var(--looply-color-border-default,#e4e4e7)] bg-[var(--looply-color-bg-canvas,#f8fafc)] px-3 py-2 text-sm text-[var(--looply-color-text-primary,#18181b)] placeholder:text-[var(--looply-color-text-muted,#a1a1aa)] focus:outline-none focus:ring-2 focus:ring-[var(--looply-color-text-brand,#2563eb)] focus:border-transparent"
+              style={{ maxHeight: 120 }}
+            />
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={!draft.trim() || sendMutation.isPending}
+              className="shrink-0 rounded-lg bg-[var(--looply-color-text-brand,#2563eb)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+            >
+              {sendMutation.isPending ? "Enviando..." : "Enviar"}
+            </button>
+          </div>
+          {sendMutation.isError && (
+            <p className="mt-1 text-xs text-red-500">Falha ao enviar. Tente novamente.</p>
+          )}
+        </div>
 
         {/* Autonomous AI Status Footer */}
         <AIStatusFooter conversation={conversation} />

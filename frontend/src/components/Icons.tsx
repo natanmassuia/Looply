@@ -272,3 +272,10 @@ export const IconMoon = (p: P) => (
     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
   </svg>
 );
+
+export const IconWhatsApp = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21" />
+    <path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1ZM14 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1Z" />
+  </svg>
+);

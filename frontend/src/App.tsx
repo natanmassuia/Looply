@@ -10,6 +10,7 @@ import ClientDetail from "./features/ClientDetail";
 import Team from "./features/Team";
 import Settings from "./features/Settings";
 import Inbox from "./features/Inbox";
+import WhatsAppManagement from "./features/WhatsAppManagement";
 import PublicApproval from "./features/PublicApproval";
 import Login, { ProtectedRoute } from "./features/Login";
 import Recovery from "./features/Recovery";
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/inbox/:id" element={<Inbox />} />
           <Route path="/conversations" element={<Inbox />} />
           <Route path="/conversations/:id" element={<Inbox />} />
+          <Route path="/whatsapp" element={<WhatsAppManagement />} />
         </Route>
       </Route>
 

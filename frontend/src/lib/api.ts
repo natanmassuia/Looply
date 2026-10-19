@@ -1103,6 +1103,22 @@ export function useSetConversationAiStatus() {
   });
 }
 
+export function useSendConversationMessage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ conversationId, body }: { conversationId: string; body: string }) =>
+      apiFetch<import("./types").ConversationMessageDto>(
+        `/api/conversations/${conversationId}/messages`,
+        { method: "POST", body: { body } },
+      ),
+    onSuccess: (_, { conversationId }) => {
+      qc.invalidateQueries({ queryKey: ["conversation-messages", conversationId] });
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["conversation", conversationId] });
+    },
+  });
+}
+
 export function useBindConversationClient() {
   const qc = useQueryClient();
   return useMutation({
@@ -1116,6 +1132,46 @@ export function useBindConversationClient() {
       qc.invalidateQueries({ queryKey: ["conversation", id] });
       qc.setQueryData(["conversation", id], updated);
     },
+  });
+}
+
+// ── WhatsApp Management (whatsapp_business_management) ──────────────────
+
+export interface WhatsAppPhoneNumber {
+  id: string;
+  display_phone_number: string;
+  verified_name: string;
+  quality_rating: string;
+  status: string;
+}
+
+export interface WhatsAppMessageTemplate {
+  id: string;
+  name: string;
+  language: string;
+  status: string;
+  category: string;
+  components: unknown[];
+}
+
+export function useWhatsAppPhoneNumbers() {
+  return useQuery<{ phoneNumbers: WhatsAppPhoneNumber[] }>({
+    queryKey: ["whatsapp-phone-numbers"],
+    queryFn: () => apiFetch<{ phoneNumbers: WhatsAppPhoneNumber[] }>("/api/whatsapp/phone-numbers"),
+  });
+}
+
+export function useWhatsAppTemplates() {
+  return useQuery<{ templates: WhatsAppMessageTemplate[] }>({
+    queryKey: ["whatsapp-templates"],
+    queryFn: () => apiFetch<{ templates: WhatsAppMessageTemplate[] }>("/api/whatsapp/templates"),
+  });
+}
+
+export function useSendWhatsAppTemplate() {
+  return useMutation({
+    mutationFn: (body: { to: string; templateName: string; languageCode: string; components?: unknown[] }) =>
+      apiFetch("/api/whatsapp/templates/send", { method: "POST", body }),
   });
 }
 

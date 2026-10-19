@@ -4,6 +4,7 @@ import { prisma } from "../lib/db";
 import { asyncHandler } from "../lib/errors";
 import { parse } from "../lib/parse";
 import {
+  appendOutboundMessage,
   bindConversationClient,
   getConversation,
   listConversations,
@@ -11,6 +12,7 @@ import {
   markConversationRead,
   setConversationAiStatus,
 } from "../services/conversationService";
+import { getWhatsAppProvider } from "../lib/assistantRuntime";
 import type { DB } from "../lib/db";
 import type { ObjectStorage } from "../lib/storage";
 
@@ -38,6 +40,10 @@ const updateAiStatusSchema = z.object({
 
 const updateClientBindingSchema = z.object({
   clientId: z.string().min(1).max(64).nullable(),
+}).strict();
+
+const sendMessageSchema = z.object({
+  body: z.string().trim().min(1).max(4096),
 }).strict();
 
 export function makeConversationsRouter(db: DB, deps?: { storage?: ObjectStorage }) {
@@ -81,6 +87,45 @@ export function makeConversationsRouter(db: DB, deps?: { storage?: ObjectStorage
     const input = parse(updateClientBindingSchema, req.body);
     const updated = await bindConversationClient(db, req.auth!.companyId, req.params.id, input.clientId);
     res.json(updated);
+  }));
+
+  // POST /api/conversations/:id/messages — Send a message as the authenticated human operator
+  router.post("/:id/messages", asyncHandler(async (req, res) => {
+    const input = parse(sendMessageSchema, req.body);
+    const conversation = await db.conversation.findFirst({
+      where: { id: req.params.id, companyId: req.auth!.companyId },
+      select: { id: true, remotePhone: true, provider: true },
+    });
+    if (!conversation) {
+      res.status(404).json({ error: { code: "not_found", message: "Conversa não encontrada" } });
+      return;
+    }
+
+    let providerMessageId: string | null = null;
+    let deliveryStatus: "SENT" | "FAILED" = "SENT";
+    try {
+      const provider = getWhatsAppProvider();
+      const result = await provider.sendText(conversation.remotePhone, input.body);
+      if (result && typeof result === "object" && "providerMessageId" in result) {
+        providerMessageId = result.providerMessageId;
+      }
+    } catch {
+      deliveryStatus = "FAILED";
+    }
+
+    const message = await appendOutboundMessage(db, {
+      companyId: req.auth!.companyId,
+      conversationId: conversation.id,
+      senderType: "USER",
+      senderUserId: req.auth!.userId,
+      provider: conversation.provider,
+      providerMessageId,
+      type: "TEXT",
+      body: input.body,
+      deliveryStatus,
+    });
+
+    res.status(201).json(message);
   }));
 
   // GET /api/conversations/:id/messages/:messageId/media — Presigned download/playback URL for message media

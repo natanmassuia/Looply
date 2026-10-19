@@ -612,6 +612,7 @@ export async function handleCustomerWhatsAppInbound(
   }
 
   if (interpretation.kind === "unsupported") {
+    await setConversationAiStatus(deps.db, channel.companyId, conversation.id, "NEEDS_ATTENTION");
     await sendCustomerReply(
       deps,
       channel.companyId,
