@@ -66,6 +66,11 @@ app.use("/api", requireAuth, requirePasswordChanged, requireWorkspaceActive);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/clients", clientsRouter);
 app.use("/api/conversations", conversationsRouter);
+// Mounted before the broad "/api" routers (files, approvalsInternal, media),
+// which carry router-level requireCapability guards. A specific router placed
+// after them would have its requests gated by those capabilities (e.g. a FILES
+// check 403ing /api/whatsapp for roles without that capability).
+app.use("/api/whatsapp", whatsappManagementRouter);
 app.use("/api/jobs", jobsRouter);
 app.use("/api/workflows", workflowsRouter);
 app.use("/api", filesRouter);
@@ -79,7 +84,6 @@ app.use("/api/members", membersRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api/contents", contentsRouter);
 app.use("/api/publications", publicationsRouter);
-app.use("/api/whatsapp", whatsappManagementRouter);
 app.use("/api", mediaRouter);
 
 app.use(notFoundHandler);
