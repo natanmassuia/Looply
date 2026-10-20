@@ -81,7 +81,7 @@ export const CUSTOMER_WHATSAPP_COPY = {
   confirmationCancelled:
     "Ação cancelada com sucesso.",
   unsupportedOperation:
-    "Esta operação não está disponível para autoatendimento. Nossa equipe entrará em contato se necessário.",
+    "Claro! Vou te encaminhar para um de nossos atendentes. Em breve alguém da equipe fala com você. 💬",
   clarificationFallback:
     "Poderia fornecer mais detalhes sobre o que você precisa?",
   errorFallback:
