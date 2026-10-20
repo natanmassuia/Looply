@@ -54,7 +54,7 @@ export default function MessageStatusIcon({ status, className = "w-3.5 h-3.5" }:
     case "READ":
       return (
         <svg
-          className={`${className} text-cyan-300 dark:text-cyan-400`}
+          className={`${className} text-[var(--looply-color-status-success)]`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -69,7 +69,7 @@ export default function MessageStatusIcon({ status, className = "w-3.5 h-3.5" }:
     case "FAILED":
       return (
         <svg
-          className={`${className} text-rose-400`}
+          className={`${className} text-[var(--looply-color-status-danger)]`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"

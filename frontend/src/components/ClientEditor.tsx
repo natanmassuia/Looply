@@ -19,7 +19,7 @@ import type { Client, ClientStatus } from "../lib/types";
 
 const blankForm = {
   name: "",
-  brandColor: "#2563eb",
+  brandColor: "#f06d55",
   status: "ACTIVE" as ClientStatus,
   primaryContactName: "",
   primaryContactEmail: "",
@@ -31,7 +31,7 @@ function initialForm(client?: Client | null) {
   if (!client) return blankForm;
   return {
     name: client.name,
-    brandColor: client.brandColor ?? "#2563eb",
+    brandColor: client.brandColor ?? "#f06d55",
     status: client.status ?? "ACTIVE",
     primaryContactName: client.primaryContactName ?? "",
     primaryContactEmail: client.primaryContactEmail ?? "",

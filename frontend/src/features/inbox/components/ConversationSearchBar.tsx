@@ -41,11 +41,18 @@ export default function ConversationSearchBar({
     <div
       role="search"
       aria-label="Buscar na conversa"
-      className="absolute top-0 left-0 right-0 z-20 p-2.5 bg-[var(--looply-color-bg-surface,#ffffff)]/95 backdrop-blur-md border-b border-[var(--looply-color-border-default,#e4e4e7)] flex items-center gap-2 shadow-sm transition-all"
+      className="
+        absolute left-0 right-0 top-0 z-20 flex items-center gap-2
+        border-b border-[var(--looply-color-border-default)]
+        bg-[var(--looply-color-bg-surface)] p-2.5 shadow-sm transition-all
+      "
     >
-      <div className="flex-1 relative">
+      <div className="relative flex-1">
         <svg
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--looply-color-text-muted,#71717a)]"
+          className="
+            pointer-events-none absolute left-3 top-1/2 h-4 w-4
+            -translate-y-1/2 text-[var(--looply-color-text-muted)]
+          "
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -62,12 +69,20 @@ export default function ConversationSearchBar({
           onKeyDown={handleKeyDown}
           placeholder="Buscar na conversa..."
           aria-label="Termo de busca na conversa"
-          className="w-full pl-9 pr-4 py-1.5 bg-[var(--looply-color-bg-subtle,#f4f4f5)] border border-[var(--looply-color-border-default,#e4e4e7)] focus:border-[var(--looply-color-text-brand,#2563eb)] rounded-lg text-sm transition-all outline-none text-[var(--looply-color-text-primary,#18181b)] placeholder:text-[var(--looply-color-text-muted,#71717a)]"
+          className="
+            w-full rounded-[10px] border
+            border-[var(--looply-color-border-default)]
+            bg-[var(--looply-color-bg-subtle)] py-1.5 pl-9 pr-4 text-xs
+            text-[var(--looply-color-text-primary)]
+            placeholder:text-[var(--looply-color-text-muted)]
+            focus:border-[var(--looply-color-action-primary)]
+            focus:outline-none transition-all
+          "
         />
       </div>
 
-      <div className="flex items-center gap-1 border-l border-[var(--looply-color-border-default,#e4e4e7)] pl-2">
-        <span className="text-[11px] font-semibold text-[var(--looply-color-text-muted,#71717a)] min-w-[50px] text-center tabular-nums">
+      <div className="flex items-center gap-1 border-l border-[var(--looply-color-border-default)] pl-2">
+        <span className="min-w-[50px] text-center text-[11px] font-semibold tabular-nums text-[var(--looply-color-text-muted)]">
           {matchesCount > 0
             ? `${activeIndex + 1} / ${matchesCount}`
             : query
@@ -82,9 +97,15 @@ export default function ConversationSearchBar({
           disabled={matchesCount === 0}
           aria-label="Resultado anterior"
           title="Resultado anterior (Shift + Enter)"
-          className="p-1.5 text-[var(--looply-color-text-muted,#71717a)] hover:text-[var(--looply-color-text-brand,#2563eb)] hover:bg-[var(--looply-color-bg-subtle,#f4f4f5)] disabled:opacity-30 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+          className="
+            cursor-pointer rounded-[8px] border-none bg-transparent p-1.5
+            text-[var(--looply-color-text-muted)] transition-colors
+            hover:bg-[var(--looply-color-bg-subtle)]
+            hover:text-[var(--looply-color-text-primary)]
+            disabled:opacity-30
+          "
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
           </svg>
         </button>
@@ -96,9 +117,15 @@ export default function ConversationSearchBar({
           disabled={matchesCount === 0}
           aria-label="Próximo resultado"
           title="Próximo resultado (Enter)"
-          className="p-1.5 text-[var(--looply-color-text-muted,#71717a)] hover:text-[var(--looply-color-text-brand,#2563eb)] hover:bg-[var(--looply-color-bg-subtle,#f4f4f5)] disabled:opacity-30 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+          className="
+            cursor-pointer rounded-[8px] border-none bg-transparent p-1.5
+            text-[var(--looply-color-text-muted)] transition-colors
+            hover:bg-[var(--looply-color-bg-subtle)]
+            hover:text-[var(--looply-color-text-primary)]
+            disabled:opacity-30
+          "
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
@@ -109,9 +136,14 @@ export default function ConversationSearchBar({
           onClick={onClose}
           aria-label="Fechar busca"
           title="Fechar busca (Esc)"
-          className="p-1.5 text-[var(--looply-color-text-muted,#71717a)] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+          className="
+            cursor-pointer rounded-[8px] border-none bg-transparent p-1.5
+            text-[var(--looply-color-text-muted)] transition-colors
+            hover:bg-[var(--looply-color-coral-100)]
+            hover:text-[var(--looply-color-status-danger)]
+          "
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>

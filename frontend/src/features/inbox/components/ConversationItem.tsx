@@ -39,7 +39,17 @@ export default function ConversationItem({
   const displayName =
     conversation.contactName || formatPhone(conversation.remotePhone);
   const aiStatus = conversation.aiStatus;
-  const timeLabel = formatTimeAgo(conversation.lastMessageAt || conversation.updatedAt, now);
+  const timeLabel = formatTimeAgo(
+    conversation.lastMessageAt || conversation.updatedAt,
+    now,
+  );
+
+  const statusTagLabel =
+    aiStatus === "ACTIVE"
+      ? "IA"
+      : aiStatus === "PAUSED"
+      ? "Pausa"
+      : "!";
 
   return (
     <button
@@ -48,20 +58,20 @@ export default function ConversationItem({
       role="button"
       aria-selected={isSelected}
       aria-label={`Conversa com ${displayName}`}
-      className={`w-full text-left p-3 rounded-xl transition-all border flex items-start gap-3 cursor-pointer select-none ${
+      className={`flex w-full cursor-pointer select-none items-start gap-2.5 rounded-[10px] border p-2.5 text-left transition-all ${
         isSelected
-          ? "bg-[var(--looply-color-bg-subtle,#f4f4f5)] border-[var(--looply-color-text-brand,#2563eb)]/30 shadow-xs"
-          : "bg-[var(--looply-color-bg-surface,#ffffff)] border-transparent hover:bg-[var(--looply-color-bg-subtle,#f4f4f5)]/60 hover:border-[var(--looply-color-border-default,#e4e4e7)]"
+          ? "border-transparent bg-[var(--looply-color-bg-subtle)]"
+          : "border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] hover:bg-[var(--looply-color-bg-subtle)]"
       }`}
     >
-      {/* Contact Avatar + AI Status Dot */}
+      {/* Contact Avatar (Figma 16 — 40×40 coral-100 circle + text-primary initials) */}
       <div className="relative shrink-0">
-        <div className="w-11 h-11 rounded-full flex items-center justify-center bg-[var(--looply-color-bg-subtle,#f4f4f5)] text-[var(--looply-color-text-brand,#2563eb)] font-bold text-sm border border-[var(--looply-color-border-default,#e4e4e7)] overflow-hidden">
+        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[var(--looply-color-coral-100)] text-xs font-bold text-[var(--looply-color-text-primary)]">
           {conversation.contactAvatarUrl ? (
             <img
               src={conversation.contactAvatarUrl}
               alt=""
-              className="w-full h-full object-cover"
+              className="h-full w-full object-cover"
             />
           ) : (
             <span>{initials(displayName)}</span>
@@ -70,12 +80,12 @@ export default function ConversationItem({
 
         {/* AI Status Dot */}
         <span
-          className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[var(--looply-color-bg-surface,#ffffff)] ${
+          className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[var(--looply-color-bg-surface)] ${
             aiStatus === "ACTIVE"
-              ? "bg-emerald-500"
+              ? "bg-[var(--looply-color-status-success)]"
               : aiStatus === "PAUSED"
-              ? "bg-amber-500"
-              : "bg-rose-500"
+              ? "bg-[var(--looply-color-status-warning)]"
+              : "bg-[var(--looply-color-status-danger)]"
           }`}
           title={
             aiStatus === "ACTIVE"
@@ -87,37 +97,49 @@ export default function ConversationItem({
         />
       </div>
 
-      {/* Content */}
+      {/* Main Content */}
       <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-1 mb-0.5">
-          <h3 className="text-sm font-semibold text-[var(--looply-color-text-primary,#18181b)] truncate">
+        <div className="flex items-center justify-between gap-1.5">
+          <h3 className="truncate text-[13px] font-bold text-[var(--looply-color-text-primary)]">
             {displayName}
           </h3>
-          <span className="text-[11px] text-[var(--looply-color-text-muted,#71717a)] tabular-nums shrink-0">
+          <span className="shrink-0 text-[10px] tabular-nums text-[var(--looply-color-text-muted)]">
             {timeLabel}
           </span>
         </div>
 
         {/* Client badge if linked */}
         {conversation.client && (
-          <div className="mb-1">
-            <span className="inline-block text-[10px] font-semibold px-1.5 py-0.2 rounded bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 truncate max-w-[160px]">
+          <div className="mt-0.5">
+            <span className="inline-block max-w-[160px] truncate rounded-[6px] bg-[var(--looply-color-coral-100)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--looply-color-text-primary)]">
               {conversation.client.name}
             </span>
           </div>
         )}
 
-        {/* Preview and Unread badge */}
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs text-[var(--looply-color-text-muted,#71717a)] truncate leading-relaxed">
+        {/* Preview and Status / Unread badges */}
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <p className="truncate text-[11px] leading-snug text-[var(--looply-color-text-secondary)]">
             {conversation.lastMessagePreview || "Nenhuma mensagem"}
           </p>
 
-          {conversation.unreadCount > 0 && (
-            <span className="shrink-0 min-w-[18px] h-[18px] px-1 bg-[var(--looply-color-text-brand,#2563eb)] text-white text-[10.5px] font-bold rounded-full flex items-center justify-center shadow-xs">
-              {conversation.unreadCount}
+          <div className="flex shrink-0 items-center gap-1">
+            <span
+              className={`rounded-[8px] px-1.5 py-0.5 text-[10px] font-semibold ${
+                isSelected
+                  ? "bg-[var(--looply-color-bg-surface)] text-[var(--looply-color-text-secondary)]"
+                  : "bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-secondary)]"
+              }`}
+            >
+              {statusTagLabel}
             </span>
-          )}
+
+            {conversation.unreadCount > 0 && (
+              <span className="flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-[var(--looply-color-action-primary)] px-1 text-[10px] font-bold text-[var(--looply-color-text-on-brand)]">
+                {conversation.unreadCount}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </button>

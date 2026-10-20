@@ -51,7 +51,7 @@ export default function AudioBubble({
 
       {/* Caption if provided */}
       {isCaption && (
-        <div className="text-[14px] leading-relaxed break-words whitespace-pre-wrap font-normal">
+        <div className="whitespace-pre-wrap break-words text-[13px] font-normal leading-relaxed">
           {formatMessageText(msg.body || "", {
             searchQuery,
             isSearchActive,
@@ -61,17 +61,11 @@ export default function AudioBubble({
 
       {/* AI Audio Transcription */}
       {msg.transcription && (
-        <div
-          className={`rounded-lg p-2.5 text-[12.5px] border ${
-            fromMe
-              ? "bg-white/10 border-white/20 text-white"
-              : "bg-[var(--looply-color-bg-subtle,#f4f4f5)] border-[var(--looply-color-border-default,#e4e4e7)] text-[var(--looply-color-text-primary,#18181b)]"
-          }`}
-        >
-          <div className="flex items-center justify-between gap-1 mb-1 font-semibold text-[11px] uppercase tracking-wider opacity-80">
+        <div className="rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] p-2.5 text-[12px] text-[var(--looply-color-text-primary)]">
+          <div className="mb-1 flex items-center justify-between gap-1 text-[10.5px] font-bold uppercase tracking-wider text-[var(--looply-color-text-muted)]">
             <span className="flex items-center gap-1">
               <svg
-                className="w-3.5 h-3.5"
+                className="h-3.5 w-3.5 text-[var(--looply-color-action-primary)]"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -88,13 +82,13 @@ export default function AudioBubble({
             <button
               type="button"
               onClick={() => setShowTranscription((v) => !v)}
-              className="text-[10px] opacity-75 hover:opacity-100 underline cursor-pointer bg-transparent border-none p-0"
+              className="cursor-pointer border-none bg-transparent p-0 text-[10px] text-[var(--looply-color-text-brand)] underline hover:opacity-80"
             >
               {showTranscription ? "Ocultar" : "Mostrar"}
             </button>
           </div>
           {showTranscription && (
-            <p className="leading-relaxed italic break-words">
+            <p className="break-words italic leading-relaxed text-[var(--looply-color-text-secondary)]">
               "{msg.transcription}"
             </p>
           )}

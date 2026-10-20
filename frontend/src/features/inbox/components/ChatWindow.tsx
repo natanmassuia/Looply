@@ -81,14 +81,14 @@ export default function ChatWindow({ conversation, isMobile = false, onBack }: P
 
   if (!conversation) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center h-full bg-[var(--looply-color-bg-canvas,#f8fafc)] dark:bg-zinc-950 text-center p-8 text-[var(--looply-color-text-muted,#71717a)]">
-        <div className="w-16 h-16 rounded-2xl bg-[var(--looply-color-bg-subtle,#f4f4f5)] flex items-center justify-center mb-4 text-[var(--looply-color-text-brand,#2563eb)]">
+      <div className="flex h-full flex-1 flex-col items-center justify-center rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] p-8 text-center text-[var(--looply-color-text-muted)]">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-[14px] bg-[var(--looply-color-coral-100)] text-[var(--looply-color-action-primary)]">
           <svg
-            className="w-8 h-8"
+            className="h-7 w-7"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
-            strokeWidth={1.5}
+            strokeWidth={1.75}
           >
             <path
               strokeLinecap="round"
@@ -97,10 +97,10 @@ export default function ChatWindow({ conversation, isMobile = false, onBack }: P
             />
           </svg>
         </div>
-        <h3 className="text-base font-bold text-[var(--looply-color-text-primary,#18181b)] mb-1">
+        <h3 className="mb-1 text-base font-bold text-[var(--looply-color-text-primary)]">
           Nenhuma conversa selecionada
         </h3>
-        <p className="text-sm max-w-sm">
+        <p className="max-w-sm text-xs leading-relaxed text-[var(--looply-color-text-secondary)]">
           Selecione um contato na lista ao lado para acompanhar o atendimento e as respostas do assistente de IA.
         </p>
       </div>
@@ -108,9 +108,9 @@ export default function ChatWindow({ conversation, isMobile = false, onBack }: P
   }
 
   return (
-    <div className="flex-1 flex min-w-0 min-h-0 h-full overflow-hidden">
-      {/* Central Thread View */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-0 h-full overflow-hidden relative bg-[var(--looply-color-bg-canvas,#f8fafc)] dark:bg-zinc-950">
+    <div className="flex h-full min-h-0 min-w-0 flex-1 gap-4 overflow-hidden">
+      {/* Central Thread Card (Figma 16 — 490:7 Conversation Thread) */}
+      <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)]">
         {/* Header */}
         <ChatHeader
           conversation={conversation}
@@ -151,9 +151,9 @@ export default function ChatWindow({ conversation, isMobile = false, onBack }: P
           isLoading={isLoading}
         />
 
-        {/* Human reply input */}
-        <div className="shrink-0 border-t border-[var(--looply-color-border-default,#e4e4e7)] bg-[var(--looply-color-bg-surface,#ffffff)] px-4 py-3">
-          <div className="flex items-end gap-2">
+        {/* Human reply input (Figma 16 — Composer) */}
+        <div className="shrink-0 border-t border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-4 py-3">
+          <div className="flex items-end gap-2.5">
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -165,20 +165,39 @@ export default function ChatWindow({ conversation, isMobile = false, onBack }: P
               }}
               placeholder="Responder como humano..."
               rows={1}
-              className="flex-1 resize-none rounded-lg border border-[var(--looply-color-border-default,#e4e4e7)] bg-[var(--looply-color-bg-canvas,#f8fafc)] px-3 py-2 text-sm text-[var(--looply-color-text-primary,#18181b)] placeholder:text-[var(--looply-color-text-muted,#a1a1aa)] focus:outline-none focus:ring-2 focus:ring-[var(--looply-color-text-brand,#2563eb)] focus:border-transparent"
+              className="
+                flex-1 resize-none rounded-[10px] border
+                border-[var(--looply-color-border-default)]
+                bg-[var(--looply-color-bg-subtle)] px-3.5 py-2 text-xs
+                text-[var(--looply-color-text-primary)]
+                placeholder:text-[var(--looply-color-text-muted)]
+                focus:border-[var(--looply-color-action-primary)]
+                focus:bg-[var(--looply-color-bg-surface)]
+                focus:outline-none focus:ring-2
+                focus:ring-[var(--looply-color-focus)]
+              "
               style={{ maxHeight: 120 }}
             />
             <button
               type="button"
               onClick={handleSend}
               disabled={!draft.trim() || sendMutation.isPending}
-              className="shrink-0 rounded-lg bg-[var(--looply-color-text-brand,#2563eb)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+              className="
+                shrink-0 cursor-pointer rounded-[10px]
+                bg-[var(--looply-color-action-primary)] px-4 py-2 text-xs
+                font-semibold text-[var(--looply-color-text-on-brand)]
+                transition-colors
+                hover:bg-[var(--looply-color-action-primary-hover)]
+                disabled:cursor-not-allowed disabled:opacity-40
+              "
             >
               {sendMutation.isPending ? "Enviando..." : "Enviar"}
             </button>
           </div>
           {sendMutation.isError && (
-            <p className="mt-1 text-xs text-red-500">Falha ao enviar. Tente novamente.</p>
+            <p className="mt-1 text-xs text-[var(--looply-color-status-danger)]">
+              Falha ao enviar. Tente novamente.
+            </p>
           )}
         </div>
 
@@ -186,7 +205,7 @@ export default function ChatWindow({ conversation, isMobile = false, onBack }: P
         <AIStatusFooter conversation={conversation} />
       </div>
 
-      {/* Right Desktop Context Panel */}
+      {/* Right Desktop Context Panel (Figma 16 — 490:7 Contact Context) */}
       {isInfoOpen && (
         <ContextPanel
           conversation={conversation}

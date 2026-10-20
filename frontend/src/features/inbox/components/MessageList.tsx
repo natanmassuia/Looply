@@ -53,16 +53,16 @@ const MessageList = forwardRef<MessageListHandle, Props>(function MessageList(
   );
 
   return (
-    <div className="relative flex-1 min-w-0 min-h-0 h-full bg-[var(--looply-color-bg-canvas,#f8fafc)] dark:bg-zinc-950">
+    <div className="relative h-full min-h-0 min-w-0 flex-1 bg-[var(--looply-color-bg-canvas)]">
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="h-full w-full min-w-0 overflow-y-auto overflow-x-hidden px-3 sm:px-4 md:px-6 py-4 space-y-1"
+        className="h-full w-full min-w-0 space-y-2 overflow-x-hidden overflow-y-auto px-3 py-4 sm:px-4 md:px-5"
       >
         {isLoading && messages.length === 0 ? (
-          <div className="flex justify-center items-center h-full text-xs text-[var(--looply-color-text-muted,#71717a)]">
+          <div className="flex h-full items-center justify-center text-xs text-[var(--looply-color-text-muted)]">
             <svg
-              className="w-5 h-5 animate-spin mr-2 text-[var(--looply-color-text-brand,#2563eb)]"
+              className="mr-2 h-5 w-5 animate-spin text-[var(--looply-color-action-primary)]"
               fill="none"
               viewBox="0 0 24 24"
             >
@@ -83,14 +83,14 @@ const MessageList = forwardRef<MessageListHandle, Props>(function MessageList(
             Carregando mensagens...
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center p-6 text-[var(--looply-color-text-muted,#71717a)]">
-            <div className="w-12 h-12 rounded-full bg-[var(--looply-color-bg-subtle,#f4f4f5)] flex items-center justify-center mb-2">
+          <div className="flex h-full flex-col items-center justify-center p-6 text-center text-[var(--looply-color-text-muted)]">
+            <div className="mb-2.5 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--looply-color-coral-100)]">
               <svg
-                className="w-6 h-6 text-[var(--looply-color-text-muted,#71717a)]"
+                className="h-6 w-6 text-[var(--looply-color-action-primary)]"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={1.5}
+                strokeWidth={1.75}
               >
                 <path
                   strokeLinecap="round"
@@ -99,8 +99,10 @@ const MessageList = forwardRef<MessageListHandle, Props>(function MessageList(
                 />
               </svg>
             </div>
-            <p className="text-sm font-medium">Nenhuma mensagem nesta conversa</p>
-            <p className="text-xs opacity-75 mt-1">
+            <p className="text-sm font-semibold text-[var(--looply-color-text-primary)]">
+              Nenhuma mensagem nesta conversa
+            </p>
+            <p className="mt-1 text-xs text-[var(--looply-color-text-secondary)]">
               As mensagens trocadas no WhatsApp aparecerão aqui em tempo real.
             </p>
           </div>
@@ -115,8 +117,8 @@ const MessageList = forwardRef<MessageListHandle, Props>(function MessageList(
             return (
               <Fragment key={msg.id}>
                 {isDifferentDay && (
-                  <div className="flex justify-center my-3">
-                    <span className="text-[10.5px] font-semibold tracking-wide uppercase px-3 py-1 rounded-full bg-[var(--looply-color-bg-subtle,#f4f4f5)] border border-[var(--looply-color-border-default,#e4e4e7)] text-[var(--looply-color-text-muted,#71717a)] select-none shadow-xs">
+                  <div className="my-3 flex justify-center">
+                    <span className="select-none rounded-full border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
                       {formatDateHeader(msg.createdAt)}
                     </span>
                   </div>
@@ -141,10 +143,10 @@ const MessageList = forwardRef<MessageListHandle, Props>(function MessageList(
           type="button"
           onClick={() => scrollToBottom(true)}
           aria-label="Rolar para o final"
-          className="absolute bottom-4 right-6 w-10 h-10 rounded-full bg-[var(--looply-color-bg-surface,#ffffff)] border border-[var(--looply-color-border-default,#e4e4e7)] text-[var(--looply-color-text-primary,#18181b)] shadow-lg hover:shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 z-10 cursor-pointer"
+          className="absolute bottom-4 right-6 z-10 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] text-[var(--looply-color-text-primary)] shadow-md transition-all hover:scale-105 active:scale-95"
         >
           <svg
-            className="w-5 h-5"
+            className="h-5 w-5"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"

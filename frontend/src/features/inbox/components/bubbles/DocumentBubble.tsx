@@ -49,26 +49,16 @@ export default function DocumentBubble({
         target="_blank"
         rel="noopener noreferrer"
         download={filename}
-        className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-          docUrl ? "hover:opacity-90 cursor-pointer" : "opacity-75 cursor-default"
-        } ${
-          msg.direction === "OUTBOUND"
-            ? "bg-white/10 border-white/20 text-white"
-            : "bg-[var(--looply-color-bg-subtle,#f4f4f5)] border-[var(--looply-color-border-default,#e4e4e7)] text-[var(--looply-color-text-primary,#18181b)]"
+        className={`flex items-center gap-3 rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] p-3 text-[var(--looply-color-text-primary)] transition-all ${
+          docUrl ? "cursor-pointer hover:opacity-90" : "cursor-default opacity-75"
         }`}
         onClick={(e) => {
           if (!docUrl) e.preventDefault();
         }}
       >
-        <div
-          className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-            msg.direction === "OUTBOUND"
-              ? "bg-white/20 text-white"
-              : "bg-[var(--looply-color-text-brand,#2563eb)]/10 text-[var(--looply-color-text-brand,#2563eb)]"
-          }`}
-        >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[var(--looply-color-coral-100)] text-[var(--looply-color-action-primary)]">
           <svg
-            className="w-5 h-5"
+            className="h-5 w-5"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -83,26 +73,20 @@ export default function DocumentBubble({
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold truncate leading-tight">
+          <p className="truncate text-[13px] font-semibold leading-tight text-[var(--looply-color-text-primary)]">
             {filename}
           </p>
           {sizeFormatted && (
-            <p
-              className={`text-[11px] mt-0.5 ${
-                msg.direction === "OUTBOUND"
-                  ? "text-white/70"
-                  : "text-[var(--looply-color-text-muted,#71717a)]"
-              }`}
-            >
+            <p className="mt-0.5 text-[11px] text-[var(--looply-color-text-muted)]">
               {sizeFormatted}
             </p>
           )}
         </div>
 
         {docUrl && (
-          <div className="shrink-0 opacity-75">
+          <div className="shrink-0 text-[var(--looply-color-text-muted)]">
             <svg
-              className="w-4 h-4"
+              className="h-4 w-4"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -119,7 +103,7 @@ export default function DocumentBubble({
       </a>
 
       {isCaption && (
-        <div className="text-[14px] leading-relaxed break-words whitespace-pre-wrap font-normal">
+        <div className="whitespace-pre-wrap break-words text-[13px] font-normal leading-relaxed">
           {formatMessageText(msg.body || "", {
             searchQuery,
             isSearchActive,

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   useWhatsAppPhoneNumbers,
   useWhatsAppTemplates,
@@ -7,15 +8,43 @@ import {
 } from "../lib/api";
 
 function StatusBadge({ status }: { status: string }) {
-  const color =
-    status === "APPROVED"
-      ? "bg-emerald-100 text-emerald-700"
-      : status === "REJECTED"
-      ? "bg-red-100 text-red-700"
-      : "bg-amber-100 text-amber-700";
+  const normalized = status?.toUpperCase() || "";
+  const isApproved =
+    normalized === "APPROVED" ||
+    normalized === "CONNECTED" ||
+    normalized === "VERIFIED";
+  const isRejected =
+    normalized === "REJECTED" ||
+    normalized === "DISCONNECTED" ||
+    normalized === "FLAGGED";
+
+  const dotClass = isApproved
+    ? "bg-[var(--looply-color-status-success)]"
+    : isRejected
+    ? "bg-[var(--looply-color-status-danger)]"
+    : "bg-[var(--looply-color-status-warning)]";
+
   return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${color}`}>
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--looply-color-text-primary)]">
+      <span className={`h-1.5 w-1.5 rounded-full ${dotClass}`} />
       {status}
+    </span>
+  );
+}
+
+function QualityBadge({ quality }: { quality: string }) {
+  const normalized = quality?.toUpperCase() || "";
+  const dotClass =
+    normalized === "GREEN" || normalized === "HIGH"
+      ? "bg-[var(--looply-color-status-success)]"
+      : normalized === "RED" || normalized === "LOW"
+      ? "bg-[var(--looply-color-status-danger)]"
+      : "bg-[var(--looply-color-status-warning)]";
+
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-[8px] bg-[var(--looply-color-bg-subtle)] px-2 py-0.5 text-[11px] font-semibold text-[var(--looply-color-text-secondary)]">
+      <span className={`h-1.5 w-1.5 rounded-full ${dotClass}`} />
+      {quality || "—"}
     </span>
   );
 }
@@ -33,44 +62,114 @@ function SendTemplateDialog({
   const handleSend = () => {
     if (!to.trim()) return;
     sendMutation.mutate(
-      { to: to.trim(), templateName: template.name, languageCode: template.language },
+      {
+        to: to.trim(),
+        templateName: template.name,
+        languageCode: template.language,
+      },
       { onSuccess: () => onClose() },
     );
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-[var(--looply-color-bg-surface,#ffffff)] rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
-        <h3 className="text-base font-bold text-[var(--looply-color-text-primary,#18181b)] mb-1">
-          Enviar template
-        </h3>
-        <p className="text-sm text-[var(--looply-color-text-muted,#71717a)] mb-4">
-          <strong>{template.name}</strong> ({template.language})
-        </p>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Enviar template"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-[16px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[var(--looply-color-coral-100)] text-[var(--looply-color-action-primary)]">
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-[var(--looply-color-text-primary)]">
+                Enviar template
+              </h3>
+              <p className="text-xs text-[var(--looply-color-text-secondary)]">
+                Disparo ativo via WhatsApp Cloud API
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar modal"
+            className="cursor-pointer rounded-[8px] border-none bg-transparent p-1.5 text-[var(--looply-color-text-muted)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
+          >
+            ✕
+          </button>
+        </div>
 
-        <label className="block text-sm font-medium text-[var(--looply-color-text-primary,#18181b)] mb-1">
+        {/* Selected Template Pill */}
+        <div className="mb-4 flex items-center justify-between rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] px-3.5 py-2.5">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
+              Modelo selecionado
+            </div>
+            <div className="mt-0.5 font-mono text-xs font-bold text-[var(--looply-color-text-primary)]">
+              <strong>{template.name}</strong> ({template.language})
+            </div>
+          </div>
+          <span className="rounded-[8px] bg-[var(--looply-color-coral-100)] px-2 py-0.5 text-[10px] font-bold text-[var(--looply-color-text-primary)]">
+            {template.category}
+          </span>
+        </div>
+
+        <label className="mb-1.5 block text-xs font-bold text-[var(--looply-color-text-primary)]">
           Número de destino (com código do país)
         </label>
         <input
           type="text"
           value={to}
           onChange={(e) => setTo(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && to.trim() && !sendMutation.isPending) {
+              handleSend();
+            }
+          }}
           placeholder="5511999998888"
-          className="w-full rounded-lg border border-[var(--looply-color-border-default,#e4e4e7)] bg-[var(--looply-color-bg-canvas,#f8fafc)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--looply-color-text-brand,#2563eb)] mb-4"
+          autoFocus
+          className="mb-2 w-full rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] px-3.5 py-2.5 font-mono text-sm text-[var(--looply-color-text-primary)] placeholder:text-[var(--looply-color-text-muted)] focus:border-[var(--looply-color-action-primary)] focus:bg-[var(--looply-color-bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--looply-color-focus)]"
         />
+        <p className="mb-4 text-[11px] text-[var(--looply-color-text-muted)]">
+          Informe apenas dígitos no padrão E.164 (ex.: 5511999998888).
+        </p>
 
         {sendMutation.isError && (
-          <p className="text-xs text-red-500 mb-3">Falha ao enviar template. Verifique o número e tente novamente.</p>
+          <div className="mb-4 rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-coral-100)] px-3 py-2 text-xs font-medium text-[var(--looply-color-status-danger)]">
+            Falha ao enviar template. Verifique o número e tente novamente.
+          </div>
         )}
         {sendMutation.isSuccess && (
-          <p className="text-xs text-emerald-600 mb-3">Template enviado com sucesso!</p>
+          <div className="mb-4 rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] px-3 py-2 text-xs font-semibold text-[var(--looply-color-status-success)]">
+            Template enviado com sucesso!
+          </div>
         )}
 
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2.5 border-t border-[var(--looply-color-border-default)] pt-4">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-[var(--looply-color-border-default,#e4e4e7)] px-4 py-2 text-sm font-medium text-[var(--looply-color-text-primary,#18181b)] hover:bg-[var(--looply-color-bg-subtle,#f4f4f5)] transition-colors"
+            className="cursor-pointer rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--looply-color-text-primary)] transition-colors hover:bg-[var(--looply-color-bg-subtle)]"
           >
             Cancelar
           </button>
@@ -78,7 +177,7 @@ function SendTemplateDialog({
             type="button"
             onClick={handleSend}
             disabled={!to.trim() || sendMutation.isPending}
-            className="rounded-lg bg-[var(--looply-color-text-brand,#2563eb)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+            className="cursor-pointer rounded-[10px] bg-[var(--looply-color-action-primary)] px-4 py-2 text-xs font-semibold text-[var(--looply-color-text-on-brand)] transition-colors hover:bg-[var(--looply-color-action-primary-hover)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             {sendMutation.isPending ? "Enviando..." : "Enviar"}
           </button>
@@ -89,55 +188,188 @@ function SendTemplateDialog({
 }
 
 export default function WhatsAppManagement() {
-  const { data: phoneData, isLoading: loadingPhones, isError: phoneError } = useWhatsAppPhoneNumbers();
-  const { data: templateData, isLoading: loadingTemplates, isError: templateError } = useWhatsAppTemplates();
-  const [sendingTemplate, setSendingTemplate] = useState<WhatsAppMessageTemplate | null>(null);
+  const {
+    data: phoneData,
+    isLoading: loadingPhones,
+    isError: phoneError,
+  } = useWhatsAppPhoneNumbers();
+  const {
+    data: templateData,
+    isLoading: loadingTemplates,
+    isError: templateError,
+  } = useWhatsAppTemplates();
+  const [sendingTemplate, setSendingTemplate] =
+    useState<WhatsAppMessageTemplate | null>(null);
 
   const phoneNumbers = phoneData?.phoneNumbers ?? [];
   const templates = templateData?.templates ?? [];
+  const approvedCount = templates.filter((t) => t.status === "APPROVED").length;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-xl font-bold text-[var(--looply-color-text-primary,#18181b)]">
-          WhatsApp Business
-        </h1>
-        <p className="text-sm text-[var(--looply-color-text-muted,#71717a)] mt-1">
-          Números de telefone e modelos de mensagem da conta WhatsApp Business.
-        </p>
+    <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 md:py-8">
+      {/* Page Header (Figma 12.2 — Integrations & WhatsApp) */}
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <div className="typo-eyebrow mb-1 text-[10.5px] tracking-[0.08em] text-[var(--looply-color-text-muted)]">
+            INTEGRAÇÃO META CLOUD API
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-[var(--looply-color-text-primary)] sm:text-2xl">
+            WhatsApp Business
+          </h1>
+          <p className="mt-1 text-xs text-[var(--looply-color-text-secondary)] sm:text-sm">
+            Números de telefone e modelos de mensagem da conta WhatsApp Business.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="inline-flex items-center gap-2 rounded-full border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-3.5 py-1.5 text-xs font-semibold text-[var(--looply-color-text-primary)]">
+            <span className="h-2 w-2 rounded-full bg-[var(--looply-color-status-success)]" />
+            Cloud API · Conectado
+          </span>
+          <Link
+            to="/inbox"
+            className="inline-flex items-center gap-1.5 rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-3.5 py-1.5 text-xs font-semibold text-[var(--looply-color-text-primary)] transition-colors hover:bg-[var(--looply-color-bg-subtle)]"
+          >
+            Abrir Conversas →
+          </Link>
+        </div>
       </div>
 
-      {/* Phone Numbers */}
-      <section>
-        <h2 className="text-base font-semibold text-[var(--looply-color-text-primary,#18181b)] mb-3">
-          Números de telefone
-        </h2>
+      {/* Overview Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-[12px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] p-4">
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
+            Números conectados
+          </div>
+          <div className="mt-1.5 flex items-baseline justify-between">
+            <span className="text-2xl font-bold text-[var(--looply-color-text-primary)]">
+              {loadingPhones ? "—" : phoneNumbers.length}
+            </span>
+            <span className="rounded-full bg-[var(--looply-color-coral-100)] px-2 py-0.5 text-[10.5px] font-bold text-[var(--looply-color-text-primary)]">
+              WABA Ativa
+            </span>
+          </div>
+          <p className="mt-1 text-[11px] text-[var(--looply-color-text-secondary)]">
+            Números registrados na Graph API
+          </p>
+        </div>
+
+        <div className="rounded-[12px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] p-4">
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
+            Modelos aprovados
+          </div>
+          <div className="mt-1.5 flex items-baseline justify-between">
+            <span className="text-2xl font-bold text-[var(--looply-color-text-primary)]">
+              {loadingTemplates ? "—" : approvedCount}
+            </span>
+            <span className="rounded-full bg-[var(--looply-color-bg-subtle)] px-2 py-0.5 text-[10.5px] font-semibold text-[var(--looply-color-text-secondary)]">
+              {templates.length} total
+            </span>
+          </div>
+          <p className="mt-1 text-[11px] text-[var(--looply-color-text-secondary)]">
+            Prontos para envio ativo de mensagens
+          </p>
+        </div>
+
+        <div className="rounded-[12px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] p-4">
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
+            Webhook & Inbox IA
+          </div>
+          <div className="mt-1.5 flex items-baseline justify-between">
+            <span className="text-base font-bold text-[var(--looply-color-text-primary)]">
+              Tempo real
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--looply-color-bg-subtle)] px-2 py-0.5 text-[10.5px] font-semibold text-[var(--looply-color-status-success)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--looply-color-status-success)]" />
+              Ativo
+            </span>
+          </div>
+          <p className="mt-1 text-[11px] text-[var(--looply-color-text-secondary)]">
+            Recebimento e resposta automática via Looply AI
+          </p>
+        </div>
+      </div>
+
+      {/* Phone Numbers Section (Figma 03.12 — Table & Data Row) */}
+      <section className="overflow-hidden rounded-[14px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)]">
+        <div className="flex flex-col justify-between gap-2 border-b border-[var(--looply-color-border-default)] px-5 py-4 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-sm font-bold text-[var(--looply-color-text-primary)] sm:text-base">
+              Números de telefone
+            </h2>
+            <p className="mt-0.5 text-xs text-[var(--looply-color-text-secondary)]">
+              Números vinculados à conta WhatsApp Business (WABA) na Meta.
+            </p>
+          </div>
+          <span className="self-start rounded-[8px] bg-[var(--looply-color-bg-subtle)] px-2.5 py-1 font-mono text-[11px] font-semibold text-[var(--looply-color-text-secondary)] sm:self-center">
+            whatsapp_business_management
+          </span>
+        </div>
+
         {loadingPhones ? (
-          <p className="text-sm text-[var(--looply-color-text-muted,#71717a)]">Carregando...</p>
+          <div className="flex items-center justify-center p-8 text-xs text-[var(--looply-color-text-muted)]">
+            <svg
+              className="mr-2 h-4 w-4 animate-spin text-[var(--looply-color-action-primary)]"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth={4}
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v8H4z"
+              />
+            </svg>
+            Carregando...
+          </div>
         ) : phoneError ? (
-          <p className="text-sm text-red-500">Erro ao carregar números. Verifique as credenciais da API.</p>
+          <div className="p-6 text-sm text-[var(--looply-color-status-danger)]">
+            Erro ao carregar números. Verifique as credenciais da API.
+          </div>
         ) : phoneNumbers.length === 0 ? (
-          <p className="text-sm text-[var(--looply-color-text-muted,#71717a)]">Nenhum número encontrado.</p>
+          <div className="p-8 text-center text-sm text-[var(--looply-color-text-muted)]">
+            Nenhum número encontrado.
+          </div>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-[var(--looply-color-border-default,#e4e4e7)]">
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-[var(--looply-color-bg-subtle,#f4f4f5)] text-[var(--looply-color-text-muted,#71717a)]">
+              <thead className="border-b border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
                 <tr>
-                  <th className="text-left px-4 py-2.5 font-medium">Número</th>
-                  <th className="text-left px-4 py-2.5 font-medium">Nome verificado</th>
-                  <th className="text-left px-4 py-2.5 font-medium">Qualidade</th>
-                  <th className="text-left px-4 py-2.5 font-medium">Status</th>
-                  <th className="text-left px-4 py-2.5 font-medium">ID</th>
+                  <th className="px-5 py-3 text-left">Número</th>
+                  <th className="px-5 py-3 text-left">Nome verificado</th>
+                  <th className="px-5 py-3 text-left">Qualidade</th>
+                  <th className="px-5 py-3 text-left">Status</th>
+                  <th className="px-5 py-3 text-left">ID</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--looply-color-border-default,#e4e4e7)]">
+              <tbody className="divide-y divide-[var(--looply-color-border-default)]">
                 {phoneNumbers.map((pn) => (
-                  <tr key={pn.id} className="text-[var(--looply-color-text-primary,#18181b)]">
-                    <td className="px-4 py-2.5 font-mono">{pn.display_phone_number}</td>
-                    <td className="px-4 py-2.5">{pn.verified_name}</td>
-                    <td className="px-4 py-2.5">{pn.quality_rating}</td>
-                    <td className="px-4 py-2.5"><StatusBadge status={pn.status} /></td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-[var(--looply-color-text-muted,#71717a)]">{pn.id}</td>
+                  <tr
+                    key={pn.id}
+                    className="text-[var(--looply-color-text-primary)] transition-colors hover:bg-[var(--looply-color-bg-subtle)]/60"
+                  >
+                    <td className="whitespace-nowrap px-5 py-3.5 font-mono text-xs font-bold">
+                      {pn.display_phone_number}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs font-semibold">
+                      {pn.verified_name}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <QualityBadge quality={pn.quality_rating} />
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <StatusBadge status={pn.status} />
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-3.5 font-mono text-xs text-[var(--looply-color-text-muted)]">
+                      {pn.id}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -146,42 +378,91 @@ export default function WhatsAppManagement() {
         )}
       </section>
 
-      {/* Message Templates */}
-      <section>
-        <h2 className="text-base font-semibold text-[var(--looply-color-text-primary,#18181b)] mb-3">
-          Modelos de mensagem
-        </h2>
+      {/* Message Templates Section (Figma 03.12 — Table & Data Row) */}
+      <section className="overflow-hidden rounded-[14px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)]">
+        <div className="flex flex-col justify-between gap-2 border-b border-[var(--looply-color-border-default)] px-5 py-4 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-sm font-bold text-[var(--looply-color-text-primary)] sm:text-base">
+              Modelos de mensagem
+            </h2>
+            <p className="mt-0.5 text-xs text-[var(--looply-color-text-secondary)]">
+              Templates HSM aprovados na conta Meta para início de conversa e notificações.
+            </p>
+          </div>
+          <span className="self-start rounded-[8px] bg-[var(--looply-color-bg-subtle)] px-2.5 py-1 font-mono text-[11px] font-semibold text-[var(--looply-color-text-secondary)] sm:self-center">
+            whatsapp_business_messaging
+          </span>
+        </div>
+
         {loadingTemplates ? (
-          <p className="text-sm text-[var(--looply-color-text-muted,#71717a)]">Carregando...</p>
+          <div className="flex items-center justify-center p-8 text-xs text-[var(--looply-color-text-muted)]">
+            <svg
+              className="mr-2 h-4 w-4 animate-spin text-[var(--looply-color-action-primary)]"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth={4}
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v8H4z"
+              />
+            </svg>
+            Carregando...
+          </div>
         ) : templateError ? (
-          <p className="text-sm text-red-500">Erro ao carregar templates. Verifique as credenciais da API.</p>
+          <div className="p-6 text-sm text-[var(--looply-color-status-danger)]">
+            Erro ao carregar templates. Verifique as credenciais da API.
+          </div>
         ) : templates.length === 0 ? (
-          <p className="text-sm text-[var(--looply-color-text-muted,#71717a)]">Nenhum template encontrado.</p>
+          <div className="p-8 text-center text-sm text-[var(--looply-color-text-muted)]">
+            Nenhum template encontrado.
+          </div>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-[var(--looply-color-border-default,#e4e4e7)]">
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-[var(--looply-color-bg-subtle,#f4f4f5)] text-[var(--looply-color-text-muted,#71717a)]">
+              <thead className="border-b border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
                 <tr>
-                  <th className="text-left px-4 py-2.5 font-medium">Nome</th>
-                  <th className="text-left px-4 py-2.5 font-medium">Idioma</th>
-                  <th className="text-left px-4 py-2.5 font-medium">Categoria</th>
-                  <th className="text-left px-4 py-2.5 font-medium">Status</th>
-                  <th className="text-left px-4 py-2.5 font-medium">Ação</th>
+                  <th className="px-5 py-3 text-left">Nome</th>
+                  <th className="px-5 py-3 text-left">Idioma</th>
+                  <th className="px-5 py-3 text-left">Categoria</th>
+                  <th className="px-5 py-3 text-left">Status</th>
+                  <th className="px-5 py-3 text-right">Ação</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--looply-color-border-default,#e4e4e7)]">
+              <tbody className="divide-y divide-[var(--looply-color-border-default)]">
                 {templates.map((t) => (
-                  <tr key={`${t.name}-${t.language}`} className="text-[var(--looply-color-text-primary,#18181b)]">
-                    <td className="px-4 py-2.5 font-mono">{t.name}</td>
-                    <td className="px-4 py-2.5">{t.language}</td>
-                    <td className="px-4 py-2.5">{t.category}</td>
-                    <td className="px-4 py-2.5"><StatusBadge status={t.status} /></td>
-                    <td className="px-4 py-2.5">
+                  <tr
+                    key={`${t.name}-${t.language}`}
+                    className="text-[var(--looply-color-text-primary)] transition-colors hover:bg-[var(--looply-color-bg-subtle)]/60"
+                  >
+                    <td className="whitespace-nowrap px-5 py-3.5 font-mono text-xs font-bold">
+                      {t.name}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-[var(--looply-color-text-secondary)]">
+                      {t.language}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="rounded-[8px] bg-[var(--looply-color-coral-100)] px-2 py-0.5 text-[10.5px] font-bold text-[var(--looply-color-text-primary)]">
+                        {t.category}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <StatusBadge status={t.status} />
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
                       {t.status === "APPROVED" && (
                         <button
                           type="button"
                           onClick={() => setSendingTemplate(t)}
-                          className="rounded-md bg-[var(--looply-color-text-brand,#2563eb)] px-3 py-1 text-xs font-medium text-white hover:opacity-90 transition-opacity"
+                          className="cursor-pointer rounded-[10px] bg-[var(--looply-color-action-primary)] px-3.5 py-1.5 text-xs font-semibold text-[var(--looply-color-text-on-brand)] transition-colors hover:bg-[var(--looply-color-action-primary-hover)]"
                         >
                           Enviar
                         </button>

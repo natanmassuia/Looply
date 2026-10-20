@@ -167,24 +167,17 @@ export default function AudioPlayer({
   };
 
   // Colors adapted for Looply theme (outbound vs inbound bubble)
-  const barActive = fromMe
-    ? "bg-white/90"
-    : "bg-[var(--looply-color-text-brand,#2563eb)]";
-  const barInactive = fromMe
-    ? "bg-white/30"
-    : "bg-zinc-300 dark:bg-zinc-700";
-  const timeColor = fromMe
-    ? "text-white/80"
-    : "text-[var(--looply-color-text-muted,#71717a)]";
-  const btnBg = fromMe
-    ? "bg-white/20 hover:bg-white/30 text-white"
-    : "bg-[var(--looply-color-text-brand,#2563eb)] hover:opacity-90 text-white";
+  const barActive = "bg-[var(--looply-color-action-primary)]";
+  const barInactive = "bg-[var(--looply-color-border-strong)]";
+  const timeColor = "text-[var(--looply-color-text-muted)]";
+  const btnBg =
+    "bg-[var(--looply-color-action-primary)] hover:bg-[var(--looply-color-action-primary-hover)] text-[var(--looply-color-text-on-brand)]";
   const speedBg = fromMe
-    ? "bg-white/15 hover:bg-white/25 text-white/90"
-    : "bg-[var(--looply-color-bg-subtle,#f4f4f5)] hover:bg-zinc-200 dark:hover:bg-zinc-700 text-[var(--looply-color-text-primary,#18181b)]";
+    ? "bg-[var(--looply-color-bg-surface)] hover:bg-[var(--looply-color-coral-100)] text-[var(--looply-color-text-primary)]"
+    : "bg-[var(--looply-color-bg-subtle)] hover:bg-[var(--looply-color-coral-100)] text-[var(--looply-color-text-primary)]";
   const iconBg = fromMe
-    ? "bg-white/15 hover:bg-white/25 text-white/90"
-    : "bg-[var(--looply-color-bg-subtle,#f4f4f5)] hover:bg-zinc-200 dark:hover:bg-zinc-700 text-[var(--looply-color-text-primary,#18181b)]";
+    ? "bg-[var(--looply-color-bg-surface)] hover:bg-[var(--looply-color-coral-100)] text-[var(--looply-color-text-primary)]"
+    : "bg-[var(--looply-color-bg-subtle)] hover:bg-[var(--looply-color-coral-100)] text-[var(--looply-color-text-primary)]";
 
   const activeBars = Math.round(progress * WAVE.length);
 

@@ -63,7 +63,7 @@ export function formatMessageText(
             href={safeHref(part) ?? undefined}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[var(--looply-color-text-brand,#2563eb)] hover:underline break-all"
+            className="text-[var(--looply-color-text-brand)] hover:underline break-all"
             onClick={(e) => e.stopPropagation()}
           >
             {part}
@@ -84,7 +84,7 @@ export function formatMessageText(
         return (
           <span
             key={i}
-            className="text-[var(--looply-color-text-brand,#2563eb)] font-semibold"
+            className="text-[var(--looply-color-text-brand)] font-semibold"
           >
             {displayPhone}
           </span>

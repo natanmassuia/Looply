@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import type { ConversationAiStatus } from "../../lib/types";
 import { useConversations, useMarkConversationRead } from "../../lib/api";
 import ConversationList from "./components/ConversationList";
@@ -135,49 +135,80 @@ export default function InboxPage() {
   return (
     <div
       data-testid="inbox-page"
-      className="flex w-full h-[calc(100vh-theme(spacing.16))] md:h-[calc(100vh-theme(spacing.6))] max-h-full overflow-hidden rounded-xl border border-[var(--looply-color-border-default,#e4e4e7)] bg-[var(--looply-color-bg-surface,#ffffff)] shadow-sm font-sans relative"
+      className="flex flex-col w-full h-[calc(100dvh-theme(spacing.28))] md:h-[calc(100dvh-theme(spacing.12))] max-h-full overflow-hidden font-sans relative"
     >
-      {/* Pillar 1: Conversation List (Master) */}
-      {(!isMobile || !activeConversationId) && (
-        <div
-          ref={listRef}
-          style={{ width: isMobile ? "100%" : `${listWidth}px` }}
-          className="shrink-0 flex flex-col min-h-0 h-full"
-        >
-          <ConversationList
-            conversations={conversations}
-            selectedId={activeConversationId}
-            onSelect={handleSelectConversation}
-            isLoading={isLoading}
-            selectedAiStatus={aiStatusFilter}
-            onSelectAiStatus={setAiStatusFilter}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-          />
+      {/* Figma 16 — Inbox / Heading (Desktop) */}
+      <div className="mb-4 hidden shrink-0 items-center justify-between gap-4 md:flex">
+        <div className="min-w-0">
+          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-[var(--looply-color-text-primary)]">
+            Conversas
+          </h1>
+          <p className="mt-0.5 text-[14px] text-[var(--looply-color-text-secondary)]">
+            Acompanhe o que a IA recebeu, entendeu e transformou em ação.
+          </p>
         </div>
-      )}
 
-      {/* Resize Handle (Desktop only) */}
-      {!isMobile && (
-        <div
-          onMouseDown={handleMouseDown}
-          onDoubleClick={handleDoubleClick}
-          role="separator"
-          aria-label="Redimensionar lista de conversas"
-          className="hidden md:flex w-1 hover:w-1.5 active:w-1.5 h-full cursor-col-resize bg-[var(--looply-color-border-default,#e4e4e7)] hover:bg-[var(--looply-color-text-brand,#2563eb)] active:bg-[var(--looply-color-text-brand,#2563eb)] transition-all shrink-0 z-30 relative select-none"
-        />
-      )}
-
-      {/* Pillar 2: Chat Window (Detail) */}
-      {(!isMobile || Boolean(activeConversationId)) && (
-        <div className="flex-1 min-w-0 min-h-0 h-full flex flex-col">
-          <ChatWindow
-            conversation={selectedConversation}
-            isMobile={isMobile}
-            onBack={handleBackToConversations}
-          />
+        <div className="flex shrink-0 items-center gap-3">
+          <div className="inline-flex items-center gap-2 rounded-[10px] bg-[var(--looply-color-bg-subtle)] px-3.5 py-2.5 text-[13px] font-semibold text-[var(--looply-color-text-primary)]">
+            <span
+              aria-hidden="true"
+              className="h-2 w-2 rounded-full bg-[var(--looply-color-action-primary)]"
+            />
+            <span>WhatsApp · conectado</span>
+          </div>
+          <Link
+            to="/whatsapp"
+            className="btn-primary rounded-[10px] px-4 py-2.5 text-[13px] font-semibold"
+          >
+            Configurar canal
+          </Link>
         </div>
-      )}
+      </div>
+
+      {/* Figma 16 — Inbox / Multi-Panel Cards over Canvas */}
+      <div className="flex min-h-0 flex-1 w-full overflow-hidden gap-0 md:gap-2">
+        {/* Pillar 1: Conversation List Card (Master) */}
+        {(!isMobile || !activeConversationId) && (
+          <div
+            ref={listRef}
+            style={{ width: isMobile ? "100%" : `${listWidth}px` }}
+            className="shrink-0 flex flex-col min-h-0 h-full overflow-hidden rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)]"
+          >
+            <ConversationList
+              conversations={conversations}
+              selectedId={activeConversationId}
+              onSelect={handleSelectConversation}
+              isLoading={isLoading}
+              selectedAiStatus={aiStatusFilter}
+              onSelectAiStatus={setAiStatusFilter}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+            />
+          </div>
+        )}
+
+        {/* Resize Handle (Desktop only) */}
+        {!isMobile && (
+          <div
+            onMouseDown={handleMouseDown}
+            onDoubleClick={handleDoubleClick}
+            role="separator"
+            aria-label="Redimensionar lista de conversas"
+            className="hidden md:flex w-1.5 h-full cursor-col-resize items-center justify-center rounded-full bg-transparent hover:bg-[var(--looply-color-action-primary)]/30 active:bg-[var(--looply-color-action-primary)] transition-all shrink-0 z-30 relative select-none"
+          />
+        )}
+
+        {/* Pillar 2 & 3: Chat Window + Context Panel Cards */}
+        {(!isMobile || Boolean(activeConversationId)) && (
+          <div className="flex-1 min-w-0 min-h-0 h-full flex flex-col">
+            <ChatWindow
+              conversation={selectedConversation}
+              isMobile={isMobile}
+              onBack={handleBackToConversations}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

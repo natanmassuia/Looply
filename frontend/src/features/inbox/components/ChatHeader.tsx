@@ -67,18 +67,18 @@ export default function ChatHeader({
   const aiStatus = conversation.aiStatus;
 
   return (
-    <header className="h-16 shrink-0 border-b border-[var(--looply-color-border-default,#e4e4e7)] bg-[var(--looply-color-bg-surface,#ffffff)] px-4 flex items-center justify-between gap-3 relative z-10">
+    <header className="relative z-10 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-4">
       {/* Left section: Mobile Back + Contact Info */}
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex min-w-0 items-center gap-3">
         {isMobile && onBack && (
           <button
             type="button"
             onClick={onBack}
             aria-label="Voltar para lista de conversas"
-            className="p-1.5 -ml-1 text-[var(--looply-color-text-muted,#71717a)] hover:text-[var(--looply-color-text-primary,#18181b)] rounded-lg hover:bg-[var(--looply-color-bg-subtle,#f4f4f5)] transition-colors cursor-pointer border-none bg-transparent"
+            className="-ml-1 cursor-pointer rounded-[10px] border-none bg-transparent p-1.5 text-[var(--looply-color-text-muted)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
           >
             <svg
-              className="w-5 h-5"
+              className="h-5 w-5"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -93,13 +93,13 @@ export default function ChatHeader({
           </button>
         )}
 
-        {/* Contact Avatar */}
-        <div className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center bg-[var(--looply-color-bg-subtle,#f4f4f5)] text-[var(--looply-color-text-brand,#2563eb)] font-bold text-sm border border-[var(--looply-color-border-default,#e4e4e7)] overflow-hidden">
+        {/* Contact Avatar (Figma 16 — 40×40 coral-100 circle) */}
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--looply-color-coral-100)] text-xs font-bold text-[var(--looply-color-text-primary)]">
           {conversation.contactAvatarUrl ? (
             <img
               src={conversation.contactAvatarUrl}
               alt=""
-              className="w-full h-full object-cover"
+              className="h-full w-full object-cover"
             />
           ) : (
             <span>{initials(displayName)}</span>
@@ -109,23 +109,25 @@ export default function ChatHeader({
         {/* Contact Name & Details */}
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold text-[var(--looply-color-text-primary,#18181b)] truncate">
+            <h2 className="truncate text-sm font-bold text-[var(--looply-color-text-primary)]">
               {displayName}
             </h2>
             {conversation.client && (
-              <span className="hidden sm:inline-flex items-center text-[10.5px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+              <span className="hidden items-center rounded-full bg-[var(--looply-color-coral-100)] px-2 py-0.5 text-[10.5px] font-semibold text-[var(--looply-color-text-primary)] sm:inline-flex">
                 {conversation.client.name}
               </span>
             )}
           </div>
-          <p className="text-[11.5px] text-[var(--looply-color-text-muted,#71717a)] tabular-nums truncate">
-            {phoneLabel}
+          <p className="flex items-center gap-1.5 truncate text-[11px] tabular-nums text-[var(--looply-color-text-muted)]">
+            <span>{phoneLabel}</span>
+            <span aria-hidden="true">·</span>
+            <span>WhatsApp Cloud API</span>
           </p>
         </div>
       </div>
 
       {/* Right section: AI Status Badge + Client Picker + Search Toggle */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex shrink-0 items-center gap-2">
         {/* AI Status Dropdown */}
         <div className="relative">
           <button
@@ -134,21 +136,15 @@ export default function ChatHeader({
             aria-haspopup="menu"
             aria-expanded={statusMenuOpen}
             aria-label="Alterar status da IA"
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-semibold border transition-all cursor-pointer ${
-              aiStatus === "ACTIVE"
-                ? "bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
-                : aiStatus === "PAUSED"
-                ? "bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800"
-                : "bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800"
-            }`}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] px-3 py-1.5 text-[11px] font-semibold text-[var(--looply-color-text-primary)] transition-colors hover:opacity-90"
           >
             <span
-              className={`w-2 h-2 rounded-full ${
+              className={`h-2 w-2 rounded-full ${
                 aiStatus === "ACTIVE"
-                  ? "bg-emerald-500 animate-pulse"
+                  ? "bg-[var(--looply-color-status-success)]"
                   : aiStatus === "PAUSED"
-                  ? "bg-amber-500"
-                  : "bg-rose-500"
+                  ? "bg-[var(--looply-color-status-warning)]"
+                  : "bg-[var(--looply-color-status-danger)]"
               }`}
             />
             <span>
@@ -159,7 +155,7 @@ export default function ChatHeader({
                 : "Atenção"}
             </span>
             <svg
-              className="w-3.5 h-3.5 opacity-60 ml-0.5"
+              className="ml-0.5 h-3.5 w-3.5 text-[var(--looply-color-text-muted)]"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -178,36 +174,36 @@ export default function ChatHeader({
               <div
                 role="menu"
                 aria-label="Opções de status da IA"
-                className="absolute right-0 mt-1.5 w-44 rounded-xl bg-[var(--looply-color-bg-surface,#ffffff)] border border-[var(--looply-color-border-default,#e4e4e7)] shadow-lg p-1 z-30 space-y-0.5"
+                className="absolute right-0 z-30 mt-1.5 w-44 space-y-0.5 rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] p-1 shadow-lg"
               >
                 <button
                   type="button"
                   onClick={() => handleSelectAiStatus("ACTIVE")}
-                  className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg flex items-center gap-2 hover:bg-[var(--looply-color-bg-subtle,#f4f4f5)] ${
-                    aiStatus === "ACTIVE" ? "text-emerald-600 font-bold" : ""
+                  className={`flex w-full items-center gap-2 rounded-[8px] px-2.5 py-1.5 text-left text-xs font-medium text-[var(--looply-color-text-primary)] hover:bg-[var(--looply-color-bg-subtle)] ${
+                    aiStatus === "ACTIVE" ? "bg-[var(--looply-color-bg-subtle)] font-bold" : ""
                   }`}
                 >
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="h-2 w-2 rounded-full bg-[var(--looply-color-status-success)]" />
                   Ativar IA
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSelectAiStatus("PAUSED")}
-                  className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg flex items-center gap-2 hover:bg-[var(--looply-color-bg-subtle,#f4f4f5)] ${
-                    aiStatus === "PAUSED" ? "text-amber-600 font-bold" : ""
+                  className={`flex w-full items-center gap-2 rounded-[8px] px-2.5 py-1.5 text-left text-xs font-medium text-[var(--looply-color-text-primary)] hover:bg-[var(--looply-color-bg-subtle)] ${
+                    aiStatus === "PAUSED" ? "bg-[var(--looply-color-bg-subtle)] font-bold" : ""
                   }`}
                 >
-                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  <span className="h-2 w-2 rounded-full bg-[var(--looply-color-status-warning)]" />
                   Pausar IA
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSelectAiStatus("NEEDS_ATTENTION")}
-                  className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg flex items-center gap-2 hover:bg-[var(--looply-color-bg-subtle,#f4f4f5)] ${
-                    aiStatus === "NEEDS_ATTENTION" ? "text-rose-600 font-bold" : ""
+                  className={`flex w-full items-center gap-2 rounded-[8px] px-2.5 py-1.5 text-left text-xs font-medium text-[var(--looply-color-text-primary)] hover:bg-[var(--looply-color-bg-subtle)] ${
+                    aiStatus === "NEEDS_ATTENTION" ? "bg-[var(--looply-color-bg-subtle)] font-bold" : ""
                   }`}
                 >
-                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                  <span className="h-2 w-2 rounded-full bg-[var(--looply-color-status-danger)]" />
                   Requer Atenção
                 </button>
               </div>
@@ -223,11 +219,11 @@ export default function ChatHeader({
             aria-haspopup="menu"
             aria-expanded={clientMenuOpen}
             aria-label="Vincular cliente"
-            className="p-1.5 text-[var(--looply-color-text-muted,#71717a)] hover:text-[var(--looply-color-text-primary,#18181b)] hover:bg-[var(--looply-color-bg-subtle,#f4f4f5)] rounded-lg transition-colors cursor-pointer border border-[var(--looply-color-border-default,#e4e4e7)] flex items-center gap-1.5 text-xs font-medium"
+            className="flex cursor-pointer items-center gap-1.5 rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-2.5 py-1.5 text-xs font-medium text-[var(--looply-color-text-secondary)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
             title="Vincular ou alterar cliente"
           >
             <svg
-              className="w-4 h-4"
+              className="h-3.5 w-3.5 text-[var(--looply-color-text-muted)]"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -259,16 +255,16 @@ export default function ChatHeader({
               <div
                 role="menu"
                 aria-label="Selecionar cliente"
-                className="absolute right-0 mt-1.5 w-56 rounded-xl bg-[var(--looply-color-bg-surface,#ffffff)] border border-[var(--looply-color-border-default,#e4e4e7)] shadow-lg p-1.5 z-30 max-h-60 overflow-y-auto"
+                className="absolute right-0 z-30 mt-1.5 max-h-60 w-56 overflow-y-auto rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] p-1.5 shadow-lg"
               >
-                <div className="px-2 py-1 text-[11px] font-bold text-[var(--looply-color-text-muted,#71717a)] uppercase tracking-wider">
+                <div className="px-2 py-1 text-[10.5px] font-bold uppercase tracking-wider text-[var(--looply-color-text-muted)]">
                   Vincular a um cliente
                 </div>
                 {conversation.client && (
                   <button
                     type="button"
                     onClick={() => handleSelectClient(null)}
-                    className="w-full text-left px-2.5 py-1.5 text-xs font-medium text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 mb-1"
+                    className="mb-1 w-full rounded-[8px] px-2.5 py-1.5 text-left text-xs font-medium text-[var(--looply-color-status-danger)] hover:bg-[var(--looply-color-bg-subtle)]"
                   >
                     Desvincular cliente
                   </button>
@@ -279,16 +275,16 @@ export default function ChatHeader({
                       key={c.id}
                       type="button"
                       onClick={() => handleSelectClient(c.id)}
-                      className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg hover:bg-[var(--looply-color-bg-subtle,#f4f4f5)] truncate flex items-center justify-between ${
+                      className={`flex w-full items-center justify-between truncate rounded-[8px] px-2.5 py-1.5 text-left text-xs font-medium text-[var(--looply-color-text-primary)] hover:bg-[var(--looply-color-bg-subtle)] ${
                         conversation.client?.id === c.id
-                          ? "bg-[var(--looply-color-bg-subtle,#f4f4f5)] font-bold text-[var(--looply-color-text-brand,#2563eb)]"
+                          ? "bg-[var(--looply-color-coral-100)] font-bold"
                           : ""
                       }`}
                     >
                       <span className="truncate">{c.name}</span>
                       {conversation.client?.id === c.id && (
                         <svg
-                          className="w-3.5 h-3.5 text-[var(--looply-color-text-brand,#2563eb)] shrink-0"
+                          className="h-3.5 w-3.5 shrink-0 text-[var(--looply-color-action-primary)]"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -304,7 +300,7 @@ export default function ChatHeader({
                     </button>
                   ))
                 ) : (
-                  <div className="px-2.5 py-2 text-xs text-[var(--looply-color-text-muted,#71717a)] italic">
+                  <div className="px-2.5 py-2 text-xs italic text-[var(--looply-color-text-muted)]">
                     Nenhum cliente cadastrado
                   </div>
                 )}
@@ -319,14 +315,14 @@ export default function ChatHeader({
           onClick={onToggleSearch}
           aria-label={isSearchOpen ? "Fechar busca" : "Buscar na conversa"}
           aria-pressed={isSearchOpen}
-          className={`p-2 rounded-lg transition-colors cursor-pointer border-none ${
+          className={`cursor-pointer rounded-[10px] border-none p-2 transition-colors ${
             isSearchOpen
-              ? "bg-[var(--looply-color-text-brand,#2563eb)] text-white"
-              : "text-[var(--looply-color-text-muted,#71717a)] hover:text-[var(--looply-color-text-primary,#18181b)] hover:bg-[var(--looply-color-bg-subtle,#f4f4f5)] bg-transparent"
+              ? "bg-[var(--looply-color-coral-100)] text-[var(--looply-color-text-primary)]"
+              : "bg-transparent text-[var(--looply-color-text-muted)] hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
           }`}
         >
           <svg
-            className="w-4 h-4"
+            className="h-4 w-4"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -344,15 +340,15 @@ export default function ChatHeader({
             onClick={onToggleInfo}
             aria-label={isInfoOpen ? "Ocultar detalhes" : "Ver detalhes do contato"}
             aria-pressed={isInfoOpen}
-            className={`p-2 rounded-lg transition-colors cursor-pointer border-none ${
+            className={`cursor-pointer rounded-[10px] border-none p-2 transition-colors ${
               isInfoOpen
-                ? "bg-[var(--looply-color-text-brand,#2563eb)] text-white"
-                : "text-[var(--looply-color-text-muted,#71717a)] hover:text-[var(--looply-color-text-primary,#18181b)] hover:bg-[var(--looply-color-bg-subtle,#f4f4f5)] bg-transparent"
+                ? "bg-[var(--looply-color-coral-100)] text-[var(--looply-color-text-primary)]"
+                : "bg-transparent text-[var(--looply-color-text-muted)] hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
             }`}
             title="Detalhes do contato e contexto da IA"
           >
             <svg
-              className="w-4 h-4"
+              className="h-4 w-4"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"

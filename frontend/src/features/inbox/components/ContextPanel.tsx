@@ -62,11 +62,11 @@ export default function ContextPanel({ conversation, messages, onClose }: Props)
     <aside
       data-testid="inbox-context-panel"
       aria-label="Painel de contexto da conversa"
-      className="w-80 h-full border-l border-[var(--looply-color-border-default,#e4e4e7)] bg-[var(--looply-color-bg-surface,#ffffff)] flex flex-col shrink-0 overflow-y-auto"
+      className="flex h-full w-72 shrink-0 flex-col overflow-y-auto rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)]"
     >
       {/* Header */}
-      <div className="p-4 border-b border-[var(--looply-color-border-default,#e4e4e7)] flex items-center justify-between shrink-0">
-        <h3 className="text-sm font-bold text-[var(--looply-color-text-primary,#18181b)]">
+      <div className="flex shrink-0 items-center justify-between border-b border-[var(--looply-color-border-default)] px-4 py-3.5">
+        <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
           Detalhes do Contato
         </h3>
         {onClose && (
@@ -74,60 +74,62 @@ export default function ContextPanel({ conversation, messages, onClose }: Props)
             type="button"
             onClick={onClose}
             aria-label="Fechar painel de detalhes"
-            className="p-1.5 text-[var(--looply-color-text-muted,#71717a)] hover:text-[var(--looply-color-text-primary,#18181b)] hover:bg-[var(--looply-color-bg-subtle,#f4f4f5)] rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+            className="cursor-pointer rounded-[8px] border-none bg-transparent p-1.5 text-[var(--looply-color-text-muted)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         )}
       </div>
 
-      <div className="p-4 space-y-6 flex-1">
-        {/* Contact Overview */}
+      <div className="flex-1 space-y-4 p-4">
+        {/* Contact Overview (Figma 16 — 490:7 Contact Context) */}
         <div className="flex flex-col items-center text-center">
-          <div className="w-16 h-16 rounded-full bg-[var(--looply-color-bg-subtle,#f4f4f5)] text-[var(--looply-color-text-brand,#2563eb)] font-bold text-lg flex items-center justify-center border border-[var(--looply-color-border-default,#e4e4e7)] overflow-hidden mb-3">
+          <div className="mb-2.5 flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[var(--looply-color-coral-100)] text-sm font-bold text-[var(--looply-color-text-primary)]">
             {conversation.contactAvatarUrl ? (
-              <img src={conversation.contactAvatarUrl} alt="" className="w-full h-full object-cover" />
+              <img src={conversation.contactAvatarUrl} alt="" className="h-full w-full object-cover" />
             ) : (
               <span>{initials(displayName)}</span>
             )}
           </div>
-          <h4 className="text-base font-bold text-[var(--looply-color-text-primary,#18181b)]">
+          <h4 className="text-[15px] font-bold text-[var(--looply-color-text-primary)]">
             {displayName}
           </h4>
-          <p className="text-xs text-[var(--looply-color-text-muted,#71717a)] tabular-nums mt-0.5">
+          <p className="mt-0.5 text-[11px] tabular-nums text-[var(--looply-color-text-secondary)]">
             {phoneLabel}
           </p>
-          <span className="mt-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            WhatsApp
+          <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--looply-color-bg-subtle)] px-2.5 py-0.5 text-[10.5px] font-semibold text-[var(--looply-color-text-primary)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--looply-color-status-success)]" />
+            WhatsApp Cloud API
           </span>
         </div>
 
+        <div className="h-px w-full bg-[var(--looply-color-border-default)]" />
+
         {/* Client Association */}
-        <div className="rounded-xl border border-[var(--looply-color-border-default,#e4e4e7)] p-3.5 bg-[var(--looply-color-bg-subtle,#f4f4f5)]/50">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11.5px] font-bold text-[var(--looply-color-text-muted,#71717a)] uppercase tracking-wider">
+        <div className="rounded-[10px] bg-[var(--looply-color-bg-subtle)] p-3">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
               Cliente Vinculado
             </span>
             <button
               type="button"
               onClick={() => setIsChangingClient((o) => !o)}
-              className="text-xs font-semibold text-[var(--looply-color-text-brand,#2563eb)] hover:underline cursor-pointer border-none bg-transparent p-0"
+              className="cursor-pointer border-none bg-transparent p-0 text-xs font-semibold text-[var(--looply-color-text-brand)] hover:underline"
             >
               {isChangingClient ? "Cancelar" : conversation.client ? "Alterar" : "Vincular"}
             </button>
           </div>
 
           {isChangingClient ? (
-            <div className="space-y-1.5 mt-2">
+            <div className="mt-2 space-y-1.5">
               {conversation.client && (
                 <button
                   type="button"
                   onClick={() => handleBind(null)}
                   disabled={bindClientMutation.isPending}
-                  className="w-full text-left px-2.5 py-1.5 text-xs text-rose-600 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 rounded-lg transition-colors font-semibold"
+                  className="w-full rounded-[8px] bg-[var(--looply-color-bg-surface)] px-2.5 py-1.5 text-left text-xs font-semibold text-[var(--looply-color-status-danger)] transition-colors hover:bg-[var(--looply-color-coral-100)]"
                 >
                   Desvincular cliente
                 </button>
@@ -138,10 +140,10 @@ export default function ContextPanel({ conversation, messages, onClose }: Props)
                   type="button"
                   onClick={() => handleBind(c.id)}
                   disabled={bindClientMutation.isPending}
-                  className={`w-full text-left px-2.5 py-1.5 text-xs rounded-lg truncate transition-colors flex items-center justify-between ${
+                  className={`flex w-full items-center justify-between truncate rounded-[8px] px-2.5 py-1.5 text-left text-xs transition-colors ${
                     conversation.client?.id === c.id
-                      ? "bg-[var(--looply-color-text-brand,#2563eb)] text-white font-bold"
-                      : "bg-white dark:bg-zinc-800 text-[var(--looply-color-text-primary,#18181b)] hover:bg-[var(--looply-color-bg-subtle,#f4f4f5)] border border-[var(--looply-color-border-default,#e4e4e7)]"
+                      ? "bg-[var(--looply-color-action-primary)] font-bold text-[var(--looply-color-text-on-brand)]"
+                      : "border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] text-[var(--looply-color-text-primary)] hover:bg-[var(--looply-color-coral-100)]"
                   }`}
                 >
                   <span className="truncate">{c.name}</span>
@@ -150,40 +152,40 @@ export default function ContextPanel({ conversation, messages, onClose }: Props)
               ))}
             </div>
           ) : conversation.client ? (
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-[var(--looply-color-text-primary,#18181b)] truncate">
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate text-xs font-bold text-[var(--looply-color-text-primary)]">
                 {conversation.client.name}
               </span>
               <Link
                 to={`/clients/${conversation.client.id}`}
-                className="text-xs font-semibold text-[var(--looply-color-text-brand,#2563eb)] hover:underline shrink-0"
+                className="shrink-0 text-xs font-semibold text-[var(--looply-color-text-brand)] hover:underline"
               >
                 Abrir perfil →
               </Link>
             </div>
           ) : (
-            <p className="text-xs text-[var(--looply-color-text-muted,#71717a)] italic">
+            <p className="text-[11px] italic text-[var(--looply-color-text-muted)]">
               Nenhum cliente vinculado a esta conversa.
             </p>
           )}
         </div>
 
         {/* AI Governance */}
-        <div className="rounded-xl border border-[var(--looply-color-border-default,#e4e4e7)] p-3.5 space-y-2.5">
-          <span className="text-[11.5px] font-bold text-[var(--looply-color-text-muted,#71717a)] uppercase tracking-wider block">
-            Status da IA
+        <div className="space-y-2 rounded-[10px] bg-[var(--looply-color-bg-subtle)] p-3">
+          <span className="block text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
+            Governança da IA
           </span>
           <div className="flex items-center gap-2">
             <span
-              className={`w-2.5 h-2.5 rounded-full ${
+              className={`h-2 w-2 rounded-full ${
                 aiStatus === "ACTIVE"
-                  ? "bg-emerald-500 animate-pulse"
+                  ? "bg-[var(--looply-color-status-success)]"
                   : aiStatus === "PAUSED"
-                  ? "bg-amber-500"
-                  : "bg-rose-500"
+                  ? "bg-[var(--looply-color-status-warning)]"
+                  : "bg-[var(--looply-color-status-danger)]"
               }`}
             />
-            <span className="text-xs font-bold">
+            <span className="text-xs font-bold text-[var(--looply-color-text-primary)]">
               {aiStatus === "ACTIVE"
                 ? "Assistente Ativo no WhatsApp"
                 : aiStatus === "PAUSED"
@@ -191,13 +193,13 @@ export default function ContextPanel({ conversation, messages, onClose }: Props)
                 : "Requer Atenção"}
             </span>
           </div>
-          <div className="flex items-center gap-1.5 pt-1">
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
             {aiStatus !== "ACTIVE" && (
               <button
                 type="button"
                 onClick={() => handleSetStatus("ACTIVE")}
                 disabled={setAiStatusMutation.isPending}
-                className="px-2.5 py-1 text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors cursor-pointer"
+                className="cursor-pointer rounded-[8px] bg-[var(--looply-color-action-primary)] px-2.5 py-1 text-[11px] font-semibold text-[var(--looply-color-text-on-brand)] transition-colors hover:bg-[var(--looply-color-action-primary-hover)]"
               >
                 Ativar
               </button>
@@ -207,7 +209,7 @@ export default function ContextPanel({ conversation, messages, onClose }: Props)
                 type="button"
                 onClick={() => handleSetStatus("PAUSED")}
                 disabled={setAiStatusMutation.isPending}
-                className="px-2.5 py-1 text-[11px] font-semibold bg-[var(--looply-color-bg-subtle,#f4f4f5)] text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+                className="cursor-pointer rounded-[8px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-2.5 py-1 text-[11px] font-semibold text-[var(--looply-color-text-primary)] transition-colors hover:bg-[var(--looply-color-coral-100)]"
               >
                 Pausar
               </button>
@@ -217,7 +219,7 @@ export default function ContextPanel({ conversation, messages, onClose }: Props)
                 type="button"
                 onClick={() => handleSetStatus("NEEDS_ATTENTION")}
                 disabled={setAiStatusMutation.isPending}
-                className="px-2.5 py-1 text-[11px] font-semibold bg-[var(--looply-color-bg-subtle,#f4f4f5)] text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                className="cursor-pointer rounded-[8px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-2.5 py-1 text-[11px] font-semibold text-[var(--looply-color-status-danger)] transition-colors hover:bg-[var(--looply-color-coral-100)]"
               >
                 Sinalizar Atenção
               </button>
@@ -226,13 +228,13 @@ export default function ContextPanel({ conversation, messages, onClose }: Props)
         </div>
 
         {/* Recent AI Structured Actions */}
-        <div className="space-y-3">
-          <span className="text-[11.5px] font-bold text-[var(--looply-color-text-muted,#71717a)] uppercase tracking-wider block">
+        <div className="space-y-2.5">
+          <span className="block text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
             Ações Recentes da IA
           </span>
 
           {recentActions.length === 0 ? (
-            <p className="text-xs text-[var(--looply-color-text-muted,#71717a)] italic">
+            <p className="text-[11px] italic text-[var(--looply-color-text-muted)]">
               Nenhuma ação estruturada executada nesta conversa ainda.
             </p>
           ) : (
@@ -242,10 +244,10 @@ export default function ContextPanel({ conversation, messages, onClose }: Props)
                 return (
                   <div
                     key={m.id}
-                    className="p-2.5 rounded-lg border border-[var(--looply-color-border-default,#e4e4e7)] bg-[var(--looply-color-bg-subtle,#f4f4f5)]/40 text-xs space-y-1"
+                    className="space-y-1 rounded-[10px] bg-[var(--looply-color-bg-subtle)] p-2.5 text-xs"
                   >
-                    <div className="flex items-center justify-between text-[10.5px] text-[var(--looply-color-text-muted,#71717a)]">
-                      <span className="font-semibold">
+                    <div className="flex items-center justify-between text-[10.5px] text-[var(--looply-color-text-secondary)]">
+                      <span className="font-bold text-[var(--looply-color-text-primary)]">
                         {action.type === "APPOINTMENT_CREATED"
                           ? "📅 Agendamento"
                           : action.type === "JOB_CREATED"
@@ -254,15 +256,17 @@ export default function ContextPanel({ conversation, messages, onClose }: Props)
                           ? "⏳ Confirmação"
                           : "⚠️ Ação IA"}
                       </span>
-                      <span>{formatMessageTime(m.createdAt)}</span>
+                      <span className="text-[var(--looply-color-text-muted)]">
+                        {formatMessageTime(m.createdAt)}
+                      </span>
                     </div>
                     {Boolean(action.metadata?.title) && (
-                      <p className="font-medium text-[var(--looply-color-text-primary,#18181b)] truncate">
+                      <p className="truncate font-semibold text-[var(--looply-color-text-primary)]">
                         {String(action.metadata?.title)}
                       </p>
                     )}
                     {Boolean(action.metadata?.startsAt) && (
-                      <p className="text-[11px] text-[var(--looply-color-text-muted,#71717a)]">
+                      <p className="text-[11px] text-[var(--looply-color-text-secondary)]">
                         {formatDateHeader(String(action.metadata?.startsAt))} às{" "}
                         {formatMessageTime(String(action.metadata?.startsAt))}
                       </p>

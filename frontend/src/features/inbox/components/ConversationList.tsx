@@ -33,26 +33,32 @@ export default function ConversationList({
   const totalUnread = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
 
   return (
-    <div className="flex flex-col h-full bg-[var(--looply-color-bg-surface,#ffffff)] border-r border-[var(--looply-color-border-default,#e4e4e7)] overflow-hidden">
-      {/* Header */}
-      <div className="p-4 border-b border-[var(--looply-color-border-default,#e4e4e7)] shrink-0">
-        <div className="flex items-center justify-between mb-3">
+    <div className="flex h-full flex-col overflow-hidden bg-[var(--looply-color-bg-surface)]">
+      {/* Header + Search + Filters (Figma 16 — 490:7 Conversation List) */}
+      <div className="shrink-0 space-y-2.5 border-b border-[var(--looply-color-border-default)] p-3.5">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h1 className="text-base font-bold text-[var(--looply-color-text-primary,#18181b)]">
+            <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
               Inbox IA
-            </h1>
+            </h2>
             {totalUnread > 0 && (
-              <span className="px-2 py-0.5 text-xs font-bold bg-[var(--looply-color-text-brand,#2563eb)] text-white rounded-full">
+              <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[var(--looply-color-action-primary)] px-1.5 text-[11px] font-bold text-[var(--looply-color-text-on-brand)]">
                 {totalUnread}
               </span>
             )}
           </div>
+          <span className="text-[11px] font-medium text-[var(--looply-color-text-muted)]">
+            {conversations.length} {conversations.length === 1 ? "conversa" : "conversas"}
+          </span>
         </div>
 
         {/* Search Input */}
-        <div className="relative mb-3">
+        <div className="relative">
           <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--looply-color-text-muted,#71717a)]"
+            className="
+              pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5
+              -translate-y-1/2 text-[var(--looply-color-text-muted)]
+            "
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -65,16 +71,29 @@ export default function ConversationList({
             type="text"
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Buscar por contato ou telefone..."
+            placeholder="Buscar contato ou mensagem…"
             aria-label="Buscar conversas"
-            className="w-full pl-9 pr-8 py-1.5 text-xs bg-[var(--looply-color-bg-subtle,#f4f4f5)] border border-[var(--looply-color-border-default,#e4e4e7)] focus:border-[var(--looply-color-text-brand,#2563eb)] rounded-lg outline-none text-[var(--looply-color-text-primary,#18181b)] placeholder:text-[var(--looply-color-text-muted,#71717a)] transition-all"
+            className="
+              w-full rounded-[10px] border border-transparent
+              bg-[var(--looply-color-bg-subtle)] py-2 pl-8 pr-7 text-xs
+              text-[var(--looply-color-text-primary)]
+              placeholder:text-[var(--looply-color-text-muted)]
+              focus:border-[var(--looply-color-action-primary)]
+              focus:bg-[var(--looply-color-bg-surface)] focus:outline-none
+              transition-all
+            "
           />
           {searchTerm && (
             <button
               type="button"
               onClick={() => onSearchChange("")}
               aria-label="Limpar busca"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[var(--looply-color-text-muted,#71717a)] hover:text-[var(--looply-color-text-primary,#18181b)] cursor-pointer border-none bg-transparent p-0"
+              className="
+                absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer
+                border-none bg-transparent p-0 text-xs
+                text-[var(--looply-color-text-muted)]
+                hover:text-[var(--looply-color-text-primary)]
+              "
             >
               ✕
             </button>
@@ -86,59 +105,59 @@ export default function ConversationList({
           <button
             type="button"
             onClick={() => onSelectAiStatus("ALL")}
-            className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors border cursor-pointer ${
+            className={`cursor-pointer whitespace-nowrap rounded-[10px] border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
               selectedAiStatus === "ALL"
-                ? "bg-[var(--looply-color-text-brand,#2563eb)] text-white border-[var(--looply-color-text-brand,#2563eb)] shadow-xs"
-                : "bg-[var(--looply-color-bg-subtle,#f4f4f5)] text-[var(--looply-color-text-muted,#71717a)] border-[var(--looply-color-border-default,#e4e4e7)] hover:text-[var(--looply-color-text-primary,#18181b)]"
+                ? "border-transparent bg-[var(--looply-color-bg-subtle)] font-bold text-[var(--looply-color-text-primary)]"
+                : "border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] text-[var(--looply-color-text-muted)] hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
             }`}
           >
-            Todas
+            Todas ({conversations.length})
           </button>
           <button
             type="button"
             onClick={() => onSelectAiStatus("ACTIVE")}
-            className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors border cursor-pointer flex items-center gap-1.5 ${
+            className={`flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-[10px] border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
               selectedAiStatus === "ACTIVE"
-                ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                : "bg-[var(--looply-color-bg-subtle,#f4f4f5)] text-[var(--looply-color-text-muted,#71717a)] border-[var(--looply-color-border-default,#e4e4e7)] hover:text-[var(--looply-color-text-primary,#18181b)]"
+                ? "bg-emerald-600 border-emerald-600 text-white shadow-xs"
+                : "border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] text-[var(--looply-color-text-muted)] hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
             }`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--looply-color-status-success)]" />
             Ativas
           </button>
           <button
             type="button"
             onClick={() => onSelectAiStatus("NEEDS_ATTENTION")}
-            className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors border cursor-pointer flex items-center gap-1.5 ${
+            className={`flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-[10px] border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
               selectedAiStatus === "NEEDS_ATTENTION"
-                ? "bg-rose-600 text-white border-rose-600 shadow-xs"
-                : "bg-[var(--looply-color-bg-subtle,#f4f4f5)] text-[var(--looply-color-text-muted,#71717a)] border-[var(--looply-color-border-default,#e4e4e7)] hover:text-[var(--looply-color-text-primary,#18181b)]"
+                ? "border-transparent bg-[var(--looply-color-coral-100)] font-bold text-[var(--looply-color-text-primary)]"
+                : "border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] text-[var(--looply-color-text-muted)] hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
             }`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--looply-color-status-danger)]" />
             Atenção
           </button>
           <button
             type="button"
             onClick={() => onSelectAiStatus("PAUSED")}
-            className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors border cursor-pointer flex items-center gap-1.5 ${
+            className={`flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-[10px] border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
               selectedAiStatus === "PAUSED"
-                ? "bg-amber-600 text-white border-amber-600 shadow-xs"
-                : "bg-[var(--looply-color-bg-subtle,#f4f4f5)] text-[var(--looply-color-text-muted,#71717a)] border-[var(--looply-color-border-default,#e4e4e7)] hover:text-[var(--looply-color-text-primary,#18181b)]"
+                ? "border-transparent bg-[var(--looply-color-bg-subtle)] font-bold text-[var(--looply-color-text-primary)]"
+                : "border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] text-[var(--looply-color-text-muted)] hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
             }`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--looply-color-status-warning)]" />
             Pausadas
           </button>
         </div>
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+      <div className="flex-1 space-y-1.5 overflow-y-auto p-3">
         {isLoading && conversations.length === 0 ? (
-          <div className="flex justify-center items-center h-48 text-xs text-[var(--looply-color-text-muted,#71717a)]">
+          <div className="flex h-48 items-center justify-center text-xs text-[var(--looply-color-text-muted)]">
             <svg
-              className="w-5 h-5 animate-spin mr-2 text-[var(--looply-color-text-brand,#2563eb)]"
+              className="mr-2 h-5 w-5 animate-spin text-[var(--looply-color-action-primary)]"
               fill="none"
               viewBox="0 0 24 24"
             >
@@ -159,9 +178,11 @@ export default function ConversationList({
             Carregando conversas...
           </div>
         ) : conversations.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-center p-4 text-[var(--looply-color-text-muted,#71717a)]">
-            <p className="text-xs font-medium">Nenhuma conversa encontrada</p>
-            <p className="text-[11px] opacity-75 mt-0.5">
+          <div className="flex h-48 flex-col items-center justify-center p-4 text-center text-[var(--looply-color-text-muted)]">
+            <p className="text-xs font-semibold text-[var(--looply-color-text-secondary)]">
+              Nenhuma conversa encontrada
+            </p>
+            <p className="mt-1 text-[11px]">
               {searchTerm
                 ? "Nenhum resultado para os termos pesquisados."
                 : "Novas mensagens recebidas via WhatsApp aparecerão aqui."}
