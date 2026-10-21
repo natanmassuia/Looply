@@ -4,16 +4,7 @@ import { useMe, useUpdateProfile, useUploadUserAvatar, useDeleteUserAvatar } fro
 import ModalOrSheet from "../components/ModalOrSheet";
 import ImageUpload from "../components/ImageUpload";
 import PhoneInput, { hydratePhone } from "../components/PhoneInput";
-import { initials } from "../lib/format";
-
-const ROLE_LABEL: Record<string, string> = {
-  OWNER: "Proprietário",
-  ADMIN: "Administrador",
-  CONTENT_MANAGER: "Gerente de Conteúdo",
-  EDITOR: "Editor",
-  SOCIAL_MEDIA: "Social Media",
-  DESIGNER: "Designer",
-};
+import { initials, DISPLAY_ROLE_LABEL } from "../lib/format";
 
 export interface MyAccountModalProps {
   isOpen: boolean;
@@ -118,7 +109,7 @@ export default function MyAccountModal({ isOpen, onClose }: MyAccountModalProps)
               {user?.email ?? "—"}
             </div>
             <div className="mt-1 inline-flex items-center rounded-md bg-[var(--looply-color-bg-surface)] px-2 py-0.5 text-[10.5px] font-semibold text-[var(--looply-color-text-brand)] ring-1 ring-inset ring-[var(--looply-color-border-default)]">
-              {activeRole ? (ROLE_LABEL[activeRole] ?? activeRole) : "Membro"}
+              {activeRole ? (DISPLAY_ROLE_LABEL[activeRole] ?? activeRole) : "Membro"}
             </div>
           </div>
           {!isEditing && (

@@ -12,7 +12,7 @@ import {
 } from "./Icons";
 import { Logo } from "./Logo";
 import { useUIStore } from "../lib/store";
-import { initials } from "../lib/format";
+import { initials, DISPLAY_ROLE_LABEL } from "../lib/format";
 
 export interface NavItem {
   to: string;
@@ -33,15 +33,6 @@ export const NAV: NavItem[] = [
   { to: "/team", label: "Equipe", short: "Equipe", Icon: IconTeam, end: true, mobilePlacement: "secondary" },
   { to: "/settings", label: "Configurações", short: "Configurações", Icon: IconSettings, end: true, mobilePlacement: "secondary" },
 ];
-
-const ROLE_LABEL: Record<string, string> = {
-  OWNER: "Proprietário",
-  ADMIN: "Administrador",
-  CONTENT_MANAGER: "Gerente de conteúdo",
-  EDITOR: "Editor",
-  SOCIAL_MEDIA: "Social media",
-  DESIGNER: "Designer",
-};
 
 export default function Sidebar({
   user,
@@ -335,7 +326,7 @@ export default function Sidebar({
                   {name ?? "·"}
                 </div>
                 <div className="truncate text-[11.5px] leading-4 text-[var(--looply-color-text-muted)]">
-                  {role ? (ROLE_LABEL[role] ?? "Equipe") : "·"}
+                  {role ? (DISPLAY_ROLE_LABEL[role] ?? "Equipe") : "·"}
                 </div>
               </div>
               <span

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ConversationSummaryDto, ConversationAiStatus } from "../../../lib/types";
 import { useClients, useBindConversationClient, useSetConversationAiStatus } from "../../../lib/api";
+import { formatPhone } from "../../../lib/format";
 
 interface Props {
   conversation: ConversationSummaryDto;
@@ -22,16 +23,6 @@ function initials(name: string): string {
       .join("")
       .toUpperCase() || "C"
   );
-}
-
-function formatPhone(phone: string): string {
-  if (phone.startsWith("+55") && phone.length === 14) {
-    return phone.replace(/(\+55)(\d{2})(\d{5})(\d{4})/, "$1 ($2) $3-$4");
-  }
-  if (phone.startsWith("+55") && phone.length === 13) {
-    return phone.replace(/(\+55)(\d{2})(\d{4})(\d{4})/, "$1 ($2) $3-$4");
-  }
-  return phone;
 }
 
 export default function ChatHeader({

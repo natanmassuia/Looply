@@ -14,16 +14,8 @@ import {
   IconUser,
   IconPlus,
 } from "../components/Icons";
-import type { ClientStatus, ContentFormat } from "../lib/types";
-
-const FORMAT_LABEL: Record<ContentFormat, string> = {
-  POST: "Post",
-  REELS: "Reels",
-  STORY: "Story",
-  CAROUSEL: "Carrossel",
-  VIDEO: "Vídeo",
-  IMAGE: "Imagem",
-};
+import type { ClientStatus } from "../lib/types";
+import { FORMAT_LABEL } from "../lib/format";
 
 const CLIENT_STATUS_LABEL: Record<ClientStatus, string> = {
   ACTIVE: "Ativo",

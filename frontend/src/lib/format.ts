@@ -50,6 +50,14 @@ export const MEMBER_ROLE_LABEL: Record<MemberRole, string> = {
   MEMBER: "Membro",
 };
 
+// Display label for a role value that can be EITHER a membership role
+// (OWNER/ADMIN/MEMBER) or a user role (ADMIN/CONTENT_MANAGER/…). Used where the
+// shown role can be either, e.g. the sidebar and account modal.
+export const DISPLAY_ROLE_LABEL: Record<string, string> = {
+  ...MEMBER_ROLE_LABEL,
+  ...ROLE_LABEL,
+};
+
 export function initials(name: string): string {
   return (
     name
@@ -161,4 +169,16 @@ export function formatBytes(bytes: number): string {
   const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+
+// Pretty-print a stored E.164 Brazilian number, e.g. "+5516999998888" →
+// "+55 (16) 99999-8888". Non-BR numbers (or unexpected lengths) pass through.
+export function formatPhone(phone: string): string {
+  if (phone.startsWith("+55") && phone.length === 14) {
+    return phone.replace(/(\+55)(\d{2})(\d{5})(\d{4})/, "$1 ($2) $3-$4");
+  }
+  if (phone.startsWith("+55") && phone.length === 13) {
+    return phone.replace(/(\+55)(\d{2})(\d{4})(\d{4})/, "$1 ($2) $3-$4");
+  }
+  return phone;
 }
