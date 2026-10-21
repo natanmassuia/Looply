@@ -133,4 +133,44 @@ describe("Internal Operator WhatsApp Flow Regression (F15.2)", () => {
     expect(deps.outboundSent[0].to).toBe(UNKNOWN_EXTERNAL_PHONE);
     expect(deps.outboundSent[0].text).toContain("não possui acesso ao Looply");
   });
+
+  it("unknown sender sending audio is rejected BEFORE downloading media or transcribing", async () => {
+    const deps = makeMockDependencies();
+    let downloadCalled = false;
+    let transcribeCalled = false;
+    (deps.provider as any).downloadMedia = async () => {
+      downloadCalled = true;
+      return { buffer: Buffer.from("audio"), contentType: "audio/ogg" };
+    };
+    const transcriptionService = {
+      transcribe: async () => {
+        transcribeCalled = true;
+        return { text: "audio text" };
+      },
+    };
+    const router = makeWhatsAppWebhookRouter({ ...deps, transcriptionService });
+    const app = express();
+    app.use("/webhook", router);
+
+    const res = await request(app)
+      .post("/webhook")
+      .send({
+        events: [
+          {
+            provider: "whatsapp",
+            providerMessageId: "wamid_unknown_audio",
+            senderPhone: UNKNOWN_EXTERNAL_PHONE,
+            type: "audio",
+            media: { id: "media_123", mimeType: "audio/ogg" },
+          },
+        ],
+      });
+
+    expect(res.status).toBe(200);
+    expect(downloadCalled).toBe(false);
+    expect(transcribeCalled).toBe(false);
+    expect(deps.outboundSent.length).toBe(1);
+    expect(deps.outboundSent[0].to).toBe(UNKNOWN_EXTERNAL_PHONE);
+    expect(deps.outboundSent[0].text).toContain("não possui acesso ao Looply");
+  });
 });

@@ -1,3 +1,4 @@
+import { withTransaction } from "../lib/withTransaction";
 import type { DB } from "../lib/db";
 import { badRequest, notFound } from "../lib/errors";
 import { normalizePhoneNumber } from "../lib/phone";
@@ -468,39 +469,44 @@ export async function appendInboundMessage(
   const now = input.receivedAt || new Date();
   const preview = input.body || (type !== "TEXT" ? `[${type}]` : null);
 
-  const message = await db.conversationMessage.create({
-    data: {
-      conversationId,
-      companyId: input.companyId,
-      provider,
-      direction: "INBOUND",
-      senderType: "CONTACT",
-      type,
-      body: input.body ?? null,
-      providerMessageId: input.providerMessageId ?? null,
-      mediaStorageKey: input.mediaStorageKey ?? null,
-      mediaMimeType: input.mediaMimeType ?? null,
-      mediaSizeBytes: input.mediaSizeBytes ?? null,
-      mediaFilename: input.mediaFilename ?? null,
-      transcription: input.transcription ?? null,
-      transcriptionStatus: input.transcriptionStatus ?? null,
-      deliveryStatus: input.deliveryStatus ?? "DELIVERED",
-      actionType: input.actionType ?? null,
-      actionMetadata: (input.actionMetadata as any) ?? undefined,
-      createdAt: now,
-    },
-    include: {
-      senderUser: { select: { id: true, name: true } },
-    },
-  });
+  // Message row and conversation summary commit together.
+  const message = await withTransaction(db, async (tx) => {
+    const created = await tx.conversationMessage.create({
+      data: {
+        conversationId,
+        companyId: input.companyId,
+        provider,
+        direction: "INBOUND",
+        senderType: "CONTACT",
+        type,
+        body: input.body ?? null,
+        providerMessageId: input.providerMessageId ?? null,
+        mediaStorageKey: input.mediaStorageKey ?? null,
+        mediaMimeType: input.mediaMimeType ?? null,
+        mediaSizeBytes: input.mediaSizeBytes ?? null,
+        mediaFilename: input.mediaFilename ?? null,
+        transcription: input.transcription ?? null,
+        transcriptionStatus: input.transcriptionStatus ?? null,
+        deliveryStatus: input.deliveryStatus ?? "DELIVERED",
+        actionType: input.actionType ?? null,
+        actionMetadata: (input.actionMetadata as any) ?? undefined,
+        createdAt: now,
+      },
+      include: {
+        senderUser: { select: { id: true, name: true } },
+      },
+    });
 
-  await db.conversation.update({
-    where: { id: conversationId },
-    data: {
-      lastMessagePreview: preview,
-      lastMessageAt: now,
-      unreadCount: { increment: 1 },
-    },
+    await tx.conversation.update({
+      where: { id: conversationId },
+      data: {
+        lastMessagePreview: preview,
+        lastMessageAt: now,
+        unreadCount: { increment: 1 },
+      },
+    });
+
+    return created;
   });
 
   return toConversationMessageDto(message);
@@ -541,37 +547,42 @@ export async function appendOutboundMessage(
   const now = input.sentAt || new Date();
   const preview = input.body || (type !== "TEXT" ? `[${type}]` : null);
 
-  const message = await db.conversationMessage.create({
-    data: {
-      conversationId: input.conversationId,
-      companyId: input.companyId,
-      provider,
-      direction: "OUTBOUND",
-      senderType: input.senderType,
-      senderUserId: input.senderUserId ?? null,
-      type,
-      body: input.body ?? null,
-      providerMessageId: input.providerMessageId ?? null,
-      mediaStorageKey: input.mediaStorageKey ?? null,
-      mediaMimeType: input.mediaMimeType ?? null,
-      mediaSizeBytes: input.mediaSizeBytes ?? null,
-      mediaFilename: input.mediaFilename ?? null,
-      deliveryStatus: input.deliveryStatus ?? "SENT",
-      actionType: input.actionType ?? null,
-      actionMetadata: (input.actionMetadata as any) ?? undefined,
-      createdAt: now,
-    },
-    include: {
-      senderUser: { select: { id: true, name: true } },
-    },
-  });
+  // Message row and conversation summary commit together.
+  const message = await withTransaction(db, async (tx) => {
+    const created = await tx.conversationMessage.create({
+      data: {
+        conversationId: input.conversationId,
+        companyId: input.companyId,
+        provider,
+        direction: "OUTBOUND",
+        senderType: input.senderType,
+        senderUserId: input.senderUserId ?? null,
+        type,
+        body: input.body ?? null,
+        providerMessageId: input.providerMessageId ?? null,
+        mediaStorageKey: input.mediaStorageKey ?? null,
+        mediaMimeType: input.mediaMimeType ?? null,
+        mediaSizeBytes: input.mediaSizeBytes ?? null,
+        mediaFilename: input.mediaFilename ?? null,
+        deliveryStatus: input.deliveryStatus ?? "SENT",
+        actionType: input.actionType ?? null,
+        actionMetadata: (input.actionMetadata as any) ?? undefined,
+        createdAt: now,
+      },
+      include: {
+        senderUser: { select: { id: true, name: true } },
+      },
+    });
 
-  await db.conversation.update({
-    where: { id: input.conversationId },
-    data: {
-      lastMessagePreview: preview,
-      lastMessageAt: now,
-    },
+    await tx.conversation.update({
+      where: { id: input.conversationId },
+      data: {
+        lastMessagePreview: preview,
+        lastMessageAt: now,
+      },
+    });
+
+    return created;
   });
 
   return toConversationMessageDto(message);

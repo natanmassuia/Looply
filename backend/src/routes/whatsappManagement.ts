@@ -4,6 +4,7 @@ import { prisma } from "../lib/db";
 import { asyncHandler } from "../lib/errors";
 import { logger } from "../lib/logger";
 import { parse } from "../lib/parse";
+import { requireRole } from "../middleware/requireAuth";
 import {
   listPhoneNumbers,
   listMessageTemplates,
@@ -70,7 +71,7 @@ router.get("/templates", asyncHandler(async (_req, res) => {
   res.json({ templates });
 }));
 
-router.post("/templates/send", asyncHandler(async (req, res) => {
+router.post("/templates/send", requireRole("OWNER", "ADMIN"), asyncHandler(async (req, res) => {
   const input = parse(sendTemplateSchema, req.body);
   const result = await sendTemplateMessage(
     input.to,

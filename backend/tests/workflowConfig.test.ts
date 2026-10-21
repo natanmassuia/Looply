@@ -28,14 +28,19 @@ function makeDb(stages: { id: string; name: string; position: number; terminal: 
         state.stages.push(stage);
         return stage;
       },
-      findFirst: async ({ where }: any) => {
-        const found = state.stages.find(
+      findFirst: async ({ where, orderBy }: any) => {
+        let list = state.stages.filter(
           (s) =>
-            s.id === where.id &&
-            s.workflowId === where.workflowId &&
-            (where.active === undefined || s.active === where.active),
+            (!where?.id || s.id === where.id) &&
+            (!where?.workflowId || s.workflowId === where.workflowId) &&
+            (where?.active === undefined || s.active === where.active),
         );
-        return found ?? null;
+        if (orderBy?.position === "asc") {
+          list = list.slice().sort((a, b) => a.position - b.position);
+        } else if (orderBy?.position === "desc") {
+          list = list.slice().sort((a, b) => b.position - a.position);
+        }
+        return list[0] ?? null;
       },
       findMany: async ({ where }: any) =>
         state.stages
@@ -144,5 +149,24 @@ describe("Workflow stage configuration (R1)", () => {
     const added = await addStage(db, "c1", "w1", { name: "Nova" });
     // The archived tombstone (position 10000) must NOT inflate the next position.
     expect(added.position).toBe(3);
+  });
+
+  it("allows removing multiple custom stages sequentially with distinct negative positions", async () => {
+    const withCustom = [
+      ...baseStages,
+      { id: "s4", workflowId: "w1", name: "Etapa 4", position: 3, terminal: false, active: true, _count: { jobs: 0 } },
+      { id: "s5", workflowId: "w1", name: "Etapa 5", position: 4, terminal: false, active: true, _count: { jobs: 0 } },
+    ];
+    const db = makeDb(withCustom);
+    await removeStage(db, "c1", "w1", "s4");
+    await removeStage(db, "c1", "w1", "s5");
+
+    const s4 = db.__state.stages.find((s: any) => s.id === "s4");
+    const s5 = db.__state.stages.find((s: any) => s.id === "s5");
+    expect(s4.active).toBe(false);
+    expect(s5.active).toBe(false);
+    expect(s4.position).toBeLessThan(0);
+    expect(s5.position).toBeLessThan(0);
+    expect(s4.position).not.toBe(s5.position);
   });
 });

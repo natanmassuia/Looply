@@ -40,6 +40,7 @@ export async function listClients(db: DB, companyId: string, opts?: { status?: s
       ...(opts?.search ? { name: { contains: opts.search, mode: "insensitive" as never } } : {}),
     },
     orderBy: { name: "asc" },
+    take: 1000,
     include: {
       _count: { select: { jobs: { where: { status: { in: ACTIVE_CONTENT_STATUSES as never } } } } },
     },
