@@ -9,6 +9,10 @@ export interface AuthContext {
   userId: string;
   companyId: string;
   role: string;
+  // Loaded once per request in resolveAuth so downstream guards need no
+  // extra Company lookups. Optional: hand-built contexts fall back to a query.
+  workspaceTemplate?: string | null;
+  onboardedAt?: Date | null;
 }
 
 export interface SessionUser {
@@ -134,7 +138,13 @@ export async function resolveAuth(
   if (!company || !company.isActive) return null;
 
   return {
-    auth: { userId: user.id, companyId: membership.companyId, role: membership.role },
+    auth: {
+      userId: user.id,
+      companyId: membership.companyId,
+      role: membership.role,
+      workspaceTemplate: company.workspaceTemplate,
+      onboardedAt: company.onboardedAt,
+    },
     mustChangePassword: user.mustChangePassword,
   };
 }

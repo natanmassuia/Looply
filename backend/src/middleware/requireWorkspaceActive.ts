@@ -10,6 +10,14 @@ export const requireWorkspaceActive: RequestHandler = (req, _res, next) => {
     next(forbidden());
     return;
   }
+  if (auth.workspaceTemplate !== undefined && auth.onboardedAt !== undefined) {
+    if (!auth.onboardedAt || !auth.workspaceTemplate) {
+      next(forbidden("Onboarding do workspace pendente"));
+      return;
+    }
+    next();
+    return;
+  }
   prisma.company
     .findUnique({ where: { id: auth.companyId }, select: { onboardedAt: true, workspaceTemplate: true } })
     .then((company) => {

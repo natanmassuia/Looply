@@ -15,6 +15,14 @@ export function makeRequireCapability(db: typeof prisma, capability: Capability)
       next(forbidden());
       return;
     }
+    if (auth.workspaceTemplate !== undefined) {
+      if (!hasCapability(auth.workspaceTemplate as never, capability)) {
+        next(forbidden("Recurso não disponível para este workspace"));
+        return;
+      }
+      next();
+      return;
+    }
     db.company
       .findUnique({
         where: { id: auth.companyId },

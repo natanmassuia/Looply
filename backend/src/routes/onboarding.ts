@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "../lib/db";
 import { asyncHandler, badRequest } from "../lib/errors";
 import { parse } from "../lib/parse";
-import { requireAuth } from "../middleware/requireAuth";
+import { requireAuth, requireRole } from "../middleware/requireAuth";
 import { updateAppearanceSchema } from "../lib/validation";
 import { updateAppearance } from "../services/workspaceAppearanceService";
 import {
@@ -36,6 +36,7 @@ const companySchema = z.object({
 
 router.patch(
   "/company",
+  requireRole("OWNER", "ADMIN"),
   asyncHandler(async (req, res) => {
     const auth = req.auth!;
     const existing = await prisma.company.findUnique({
@@ -59,6 +60,7 @@ router.patch(
 
 router.post(
   "/template",
+  requireRole("OWNER", "ADMIN"),
   asyncHandler(async (req, res) => {
     const { template } = parse(
       z.object({ template: z.enum(["LOCAL_BUSINESS", "HIGH_TICKET", "MARKETING_AGENCY"]) }),
@@ -74,6 +76,7 @@ router.post(
 // service here. Tenant always from the session.
 router.patch(
   "/appearance",
+  requireRole("OWNER", "ADMIN"),
   asyncHandler(async (req, res) => {
     const input = parse(updateAppearanceSchema, req.body);
     res.json({ appearance: await updateAppearance(prisma, req.auth!.companyId, input) });
@@ -82,6 +85,7 @@ router.patch(
 
 router.post(
   "/complete",
+  requireRole("OWNER", "ADMIN"),
   asyncHandler(async (req, res) => {
     res.json(await completeOnboarding(prisma, req.auth!));
   }),

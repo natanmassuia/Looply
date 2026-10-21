@@ -175,7 +175,7 @@ describe("resolveAuth", () => {
     const t = newSessionToken();
     state.sessions.push({ id: hashToken(t), userId: "uA", companyId: "cA", expiresAt: future(), revokedAt: null });
     const r = await resolveAuth(db as unknown as DB, t);
-    expect(r?.auth).toEqual({ userId: "uA", companyId: "cA", role: "OWNER" });
+    expect(r?.auth).toMatchObject({ userId: "uA", companyId: "cA", role: "OWNER" });
   });
 
   it("rejects: no token, unknown session, revoked, expired, inactive user, no membership", async () => {

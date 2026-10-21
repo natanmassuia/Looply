@@ -11,6 +11,10 @@ export function rateLimitKey(value: string): string {
 
 export function checkRateLimit(key: string, max: number, windowMs: number): { allowed: boolean; retryAfterSeconds: number } {
   const now = Date.now();
+  // Evict expired buckets so random-key scans cannot grow the map unbounded.
+  if (entries.size > 1000) {
+    for (const [k, v] of entries) if (v.resetAt <= now) entries.delete(k);
+  }
   const current = entries.get(key);
   if (!current || current.resetAt <= now) {
     entries.set(key, { count: 1, resetAt: now + windowMs });

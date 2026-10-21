@@ -264,21 +264,40 @@ export async function getOrCreateConversation(
     if (client) validClientId = client.id;
   }
 
-  return db.conversation.create({
-    data: {
-      companyId: input.companyId,
-      provider,
-      remotePhone: normalizedPhone,
-      contactName: input.contactName ?? null,
-      contactAvatarUrl: input.contactAvatarUrl ?? null,
-      clientId: validClientId,
-      aiStatus: "ACTIVE",
-      unreadCount: 0,
-    },
-    include: {
-      client: { select: { id: true, name: true } },
-    },
-  });
+  try {
+    return await db.conversation.create({
+      data: {
+        companyId: input.companyId,
+        provider,
+        remotePhone: normalizedPhone,
+        contactName: input.contactName ?? null,
+        contactAvatarUrl: input.contactAvatarUrl ?? null,
+        clientId: validClientId,
+        aiStatus: "ACTIVE",
+        unreadCount: 0,
+      },
+      include: {
+        client: { select: { id: true, name: true } },
+      },
+    });
+  } catch (err) {
+    // Parallel webhooks for the same contact race on the unique key: reuse
+    // the row the winner created instead of failing with P2002.
+    if ((err as { code?: string })?.code === "P2002") {
+      const raced = await db.conversation.findUnique({
+        where: {
+          companyId_provider_remotePhone: {
+            companyId: input.companyId,
+            provider,
+            remotePhone: normalizedPhone,
+          },
+        },
+        include: { client: { select: { id: true, name: true } } },
+      });
+      if (raced) return raced;
+    }
+    throw err;
+  }
 }
 
 export async function listConversations(

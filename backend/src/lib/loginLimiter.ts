@@ -7,6 +7,9 @@ const attempts = new Map<string, { count: number; resetAt: number }>();
 
 export function checkLoginRate(key: string): boolean {
   const now = Date.now();
+  if (attempts.size > 1000) {
+    for (const [k, v] of attempts) if (v.resetAt < now) attempts.delete(k);
+  }
   const entry = attempts.get(key);
   if (!entry || entry.resetAt < now) {
     attempts.set(key, { count: 1, resetAt: now + WINDOW_MS });
