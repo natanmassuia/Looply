@@ -76,10 +76,13 @@ export async function createContent(
   });
 }
 
+const MAX_LIST_ROWS = 1000;
+
 export async function listContents(db: DB, companyId: string, statusFilter?: ContentStatus) {
   return db.job.findMany({
     where: { companyId, ...(statusFilter ? { status: statusFilter } : {}) },
     orderBy: { updatedAt: "desc" },
+    take: MAX_LIST_ROWS, // safety cap against unbounded responses
     include: {
       client: { select: { id: true, name: true, brandColor: true } },
       responsible: { select: { id: true, name: true } },
@@ -203,6 +206,7 @@ export async function listPublications(db: DB, companyId: string) {
       ],
     },
     orderBy: { scheduledAt: "asc" },
+    take: MAX_LIST_ROWS,
     include: {
       client: { select: { id: true, name: true, brandColor: true } },
       versions: { orderBy: { versionNumber: "desc" }, take: 1 },

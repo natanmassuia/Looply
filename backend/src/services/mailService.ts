@@ -158,7 +158,7 @@ export class ResendMailService implements MailService {
 
     if (!this.apiKey || this.apiKey === "disabled" || process.env.NODE_ENV === "test") {
       logger.info("[MailService] Simulating password reset email", {
-        to: input.to,
+        to: input.to.replace(/^(.).*(@.*)$/, "$1***$2"),
         from: this.from,
         appUrl: this.appUrl,
       });

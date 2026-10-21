@@ -1,3 +1,4 @@
+import { withTransaction } from "../lib/withTransaction";
 import type { DB } from "../lib/db";
 import { badRequest, tooManyRequests } from "../lib/errors";
 import { hashPassword, hashToken } from "../lib/password";
@@ -94,19 +95,20 @@ export async function resetPasswordWithToken(
   const passwordHash = await hashPassword(newPassword);
 
   // Update password, consume reset token, and invalidate all active sessions
-  await db.user.update({
-    where: { id: resetRecord.userId },
-    data: { passwordHash, mustChangePassword: false },
-  });
-
-  await db.passwordResetToken.update({
-    where: { id: resetRecord.id },
-    data: { usedAt: new Date() },
-  });
-
-  await db.session.updateMany({
-    where: { userId: resetRecord.userId, revokedAt: null },
-    data: { revokedAt: new Date() },
+  // atomically: a failure must not leave a reusable token with a new password.
+  await withTransaction(db, async (tx) => {
+    await tx.user.update({
+      where: { id: resetRecord.userId },
+      data: { passwordHash, mustChangePassword: false },
+    });
+    await tx.passwordResetToken.update({
+      where: { id: resetRecord.id },
+      data: { usedAt: new Date() },
+    });
+    await tx.session.updateMany({
+      where: { userId: resetRecord.userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
   });
 
   return {

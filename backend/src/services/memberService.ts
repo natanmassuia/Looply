@@ -1,3 +1,4 @@
+import { withTransaction } from "../lib/withTransaction";
 import type { DB } from "../lib/db";
 import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
 import { hashPassword, hashToken } from "../lib/password";
@@ -161,40 +162,44 @@ export async function acceptInvitation(
     throw badRequest("Workspace não está ativo");
   }
 
-  const existing = await db.user.findUnique({ where: { email: invitation.email } });
+  // User + membership + invitation acceptance commit atomically.
+  const userId = await withTransaction(db, async (tx) => {
+    const existing = await tx.user.findUnique({ where: { email: invitation.email } });
 
-  let userId: string;
-  if (existing) {
-    if (!input.authUserId || input.authUserId !== existing.id) {
-      throw forbidden("Faça login com o e-mail do convite para aceitá-lo");
+    let userId: string;
+    if (existing) {
+      if (!input.authUserId || input.authUserId !== existing.id) {
+        throw forbidden("Faça login com o e-mail do convite para aceitá-lo");
+      }
+      userId = existing.id;
+    } else {
+      if (!input.name || !input.password) throw badRequest("Nome e senha são obrigatórios");
+      if (input.password.length < MIN_PASSWORD_LENGTH) {
+        throw badRequest(`Senha deve ter no mínimo ${MIN_PASSWORD_LENGTH} caracteres`);
+      }
+      const created = await tx.user.create({
+        data: {
+          name: input.name,
+          email: invitation.email,
+          active: true,
+          passwordHash: await hashPassword(input.password),
+          mustChangePassword: false, // they just chose their own password
+        },
+      });
+      userId = created.id;
     }
-    userId = existing.id;
-  } else {
-    if (!input.name || !input.password) throw badRequest("Nome e senha são obrigatórios");
-    if (input.password.length < MIN_PASSWORD_LENGTH) {
-      throw badRequest(`Senha deve ter no mínimo ${MIN_PASSWORD_LENGTH} caracteres`);
-    }
-    const created = await db.user.create({
-      data: {
-        name: input.name,
-        email: invitation.email,
-        active: true,
-        passwordHash: await hashPassword(input.password),
-        mustChangePassword: false, // they just chose their own password
-      },
+
+    const already = await tx.companyMember.findFirst({
+      where: { companyId: invitation.companyId, userId },
     });
-    userId = created.id;
-  }
+    if (already) throw conflict("Usuário já é membro");
 
-  const already = await db.companyMember.findFirst({
-    where: { companyId: invitation.companyId, userId },
+    await tx.companyMember.create({
+      data: { userId, companyId: invitation.companyId, role: invitation.role, isActive: true },
+    });
+    await tx.invitation.update({ where: { id: invitation.id }, data: { acceptedAt: new Date() } });
+    return userId;
   });
-  if (already) throw conflict("Usuário já é membro");
-
-  await db.companyMember.create({
-    data: { userId, companyId: invitation.companyId, role: invitation.role, isActive: true },
-  });
-  await db.invitation.update({ where: { id: invitation.id }, data: { acceptedAt: new Date() } });
 
   return { userId, companyId: invitation.companyId, role: invitation.role, email: invitation.email };
 }

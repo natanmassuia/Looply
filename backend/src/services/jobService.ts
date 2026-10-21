@@ -79,6 +79,7 @@ export async function getJobBoard(db: DB, companyId: string, workflowId?: string
   const jobs = await db.job.findMany({
     where: { companyId, workflowId: workflow.id },
     orderBy: { updatedAt: "desc" },
+    take: 2000, // safety cap against unbounded board payloads
     select: {
       id: true,
       title: true,

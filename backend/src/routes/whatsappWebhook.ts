@@ -17,7 +17,8 @@ import type { AssistantLanguageModel } from "../services/assistantLanguageModel"
 import type { AudioTranscriptionService } from "../services/audioTranscriptionService";
 import type { AssistantDomainServices } from "../services/assistantCommandService";
 import type { TransientStore } from "../lib/transientStore";
-import type { ObjectStorage } from "../lib/storage";
+import { getObjectStorage, type ObjectStorage } from "../lib/storage";
+import { env } from "../lib/env";
 import type { DB } from "../lib/db";
 
 // ── WhatsApp provider webhook (A3.1 + F15.4) ─────────────────────────────
@@ -100,7 +101,8 @@ export function makeWhatsAppWebhookRouter(deps?: {
             provider,
             languageModel: deps?.languageModel ?? getAssistantLanguageModel(),
             transcriptionService: deps?.transcriptionService ?? getAssistantAudioTranscriptionService(),
-            storage: deps?.storage,
+            // Production wiring: persist customer voice notes when a bucket is configured.
+            storage: deps?.storage ?? (env.STORAGE_BUCKET ? getObjectStorage() : undefined),
             services: deps?.services,
           }, event);
           logger.info("whatsapp_inbound", { outcome, sender: `******${event.senderPhone.slice(-4)}` });

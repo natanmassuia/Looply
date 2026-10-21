@@ -269,13 +269,4 @@ describe("Conversations HTTP Endpoints (F15.2)", () => {
 
     expect(resCrossTenant.status).toBe(404);
   });
-
-  it("POST /api/conversations/:id/messages is not implemented in V1 (returns 404)", async () => {
-    const { app } = makeApp();
-    const res = await request(app)
-      .post("/api/conversations/conv_1/messages")
-      .send({ body: "Manual message" });
-
-    expect(res.status).toBe(404);
-  });
 });

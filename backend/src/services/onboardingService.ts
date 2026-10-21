@@ -1,3 +1,4 @@
+import { withTransaction } from "../lib/withTransaction";
 import type { DB } from "../lib/db";
 import { conflict, badRequest } from "../lib/errors";
 import { hashPassword } from "../lib/password";
@@ -26,8 +27,8 @@ export async function provisionWorkspace(
   const temporaryPassword = randomBytes(12).toString("base64url"); // ~96 bits
   const passwordHash = await hashPassword(temporaryPassword);
 
-  const [user, company] = await Promise.all([
-    db.user.create({
+  const { user, company } = await withTransaction(db, async (tx) => {
+    const user = await tx.user.create({
       data: {
         name: input.ownerName,
         email,
@@ -35,14 +36,14 @@ export async function provisionWorkspace(
         passwordHash,
         mustChangePassword: true,
       },
-    }),
-    db.company.create({
+    });
+    const company = await tx.company.create({
       data: { name: input.companyName, isActive: true }, // template/onboarding pending
-    }),
-  ]);
-
-  await db.companyMember.create({
-    data: { userId: user.id, companyId: company.id, role: "OWNER", isActive: true },
+    });
+    await tx.companyMember.create({
+      data: { userId: user.id, companyId: company.id, role: "OWNER", isActive: true },
+    });
+    return { user, company };
   });
 
   return {
