@@ -63,18 +63,18 @@ app.use("/api/public/approvals", approvalsRouter);
 // Everything below requires: session → password changed → workspace ACTIVE.
 // Public token endpoints (/api/public/*) stay open by design.
 app.use("/api", requireAuth, requirePasswordChanged, requireWorkspaceActive);
+// Specific routers first. The broad "/api" routers (files, approvalsInternal,
+// media) are mounted LAST because they carry router-level requireCapability
+// guards: mounting them before a specific router would gate that router's
+// requests behind those capabilities (e.g. approvalsInternal's APPROVAL check
+// 403ing /api/contents, /api/team, /api/settings… for a workspace without
+// APPROVAL, such as LOCAL_BUSINESS).
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/clients", clientsRouter);
 app.use("/api/conversations", conversationsRouter);
-// Mounted before the broad "/api" routers (files, approvalsInternal, media),
-// which carry router-level requireCapability guards. A specific router placed
-// after them would have its requests gated by those capabilities (e.g. a FILES
-// check 403ing /api/whatsapp for roles without that capability).
 app.use("/api/whatsapp", whatsappManagementRouter);
 app.use("/api/jobs", jobsRouter);
 app.use("/api/workflows", workflowsRouter);
-app.use("/api", filesRouter);
-app.use("/api", approvalsInternalRouter);
 app.use("/api/calendar", calendarRouter);
 app.use("/api/appointments", appointmentsRouter);
 app.use("/api/assistant", assistantRouter);
@@ -84,6 +84,12 @@ app.use("/api/members", membersRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api/contents", contentsRouter);
 app.use("/api/publications", publicationsRouter);
+// Broad "/api" routers last. Their own paths (/files/*, /jobs/:id/files,
+// /approvals/*, /jobs/:id/approvals, /media/*) don't collide with the specific
+// routers above, so they still receive their own requests — but no longer gate
+// unrelated specific routes with their capability guards.
+app.use("/api", filesRouter);
+app.use("/api", approvalsInternalRouter);
 app.use("/api", mediaRouter);
 
 app.use(notFoundHandler);
