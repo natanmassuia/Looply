@@ -6,6 +6,7 @@ import {
   useSendWhatsAppTemplate,
   type WhatsAppMessageTemplate,
 } from "../lib/api";
+import ModalOrSheet from "../components/ModalOrSheet";
 
 function StatusBadge({ status }: { status: string }) {
   const normalized = status?.toUpperCase() || "";
@@ -72,53 +73,14 @@ function SendTemplateDialog({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Enviar template"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]"
-      onClick={onClose}
+    <ModalOrSheet
+      isOpen={true}
+      onClose={onClose}
+      title="Enviar template"
+      subtitle="Disparo ativo via WhatsApp Cloud API"
+      maxWidth="max-w-md"
     >
-      <div
-        className="w-full max-w-md rounded-[16px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[var(--looply-color-coral-100)] text-[var(--looply-color-action-primary)]">
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-[var(--looply-color-text-primary)]">
-                Enviar template
-              </h3>
-              <p className="text-xs text-[var(--looply-color-text-secondary)]">
-                Disparo ativo via WhatsApp Cloud API
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar modal"
-            className="cursor-pointer rounded-[8px] border-none bg-transparent p-1.5 text-[var(--looply-color-text-muted)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
-          >
-            ✕
-          </button>
-        </div>
-
+      <div>
         {/* Selected Template Pill */}
         <div className="mb-4 flex items-center justify-between rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] px-3.5 py-2.5">
           <div>
@@ -129,7 +91,7 @@ function SendTemplateDialog({
               <strong>{template.name}</strong> ({template.language})
             </div>
           </div>
-          <span className="rounded-[8px] bg-[var(--looply-color-coral-100)] px-2 py-0.5 text-[10px] font-bold text-[var(--looply-color-text-primary)]">
+          <span className="rounded-[8px] bg-[color-mix(in_srgb,var(--looply-color-action-primary)_14%,transparent)] px-2 py-0.5 text-[10px] font-bold text-[var(--looply-color-text-primary)]">
             {template.category}
           </span>
         </div>
@@ -155,12 +117,12 @@ function SendTemplateDialog({
         </p>
 
         {sendMutation.isError && (
-          <div className="mb-4 rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-coral-100)] px-3 py-2 text-xs font-medium text-[var(--looply-color-status-danger)]">
+          <div className="mb-4 rounded-[10px] border border-[color-mix(in_srgb,var(--looply-color-status-danger)_25%,transparent)] bg-[color-mix(in_srgb,var(--looply-color-status-danger)_10%,transparent)] px-3 py-2 text-xs font-medium text-[var(--looply-color-status-danger)]">
             Falha ao enviar template. Verifique o número e tente novamente.
           </div>
         )}
         {sendMutation.isSuccess && (
-          <div className="mb-4 rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] px-3 py-2 text-xs font-semibold text-[var(--looply-color-status-success)]">
+          <div className="mb-4 rounded-[10px] border border-[color-mix(in_srgb,var(--looply-color-status-success)_25%,transparent)] bg-[color-mix(in_srgb,var(--looply-color-status-success)_10%,transparent)] px-3 py-2 text-xs font-semibold text-[var(--looply-color-status-success)]">
             Template enviado com sucesso!
           </div>
         )}
@@ -183,7 +145,7 @@ function SendTemplateDialog({
           </button>
         </div>
       </div>
-    </div>
+    </ModalOrSheet>
   );
 }
 
@@ -245,7 +207,7 @@ export default function WhatsAppManagement() {
             <span className="text-2xl font-bold text-[var(--looply-color-text-primary)]">
               {loadingPhones ? "—" : phoneNumbers.length}
             </span>
-            <span className="rounded-full bg-[var(--looply-color-coral-100)] px-2 py-0.5 text-[10.5px] font-bold text-[var(--looply-color-text-primary)]">
+            <span className="rounded-full bg-[color-mix(in_srgb,var(--looply-color-action-primary)_14%,transparent)] px-2 py-0.5 text-[10.5px] font-bold text-[var(--looply-color-text-primary)]">
               WABA Ativa
             </span>
           </div>
@@ -353,7 +315,7 @@ export default function WhatsAppManagement() {
                 {phoneNumbers.map((pn) => (
                   <tr
                     key={pn.id}
-                    className="text-[var(--looply-color-text-primary)] transition-colors hover:bg-[var(--looply-color-bg-subtle)]/60"
+                    className="text-[var(--looply-color-text-primary)] transition-colors hover:bg-[color-mix(in_srgb,var(--looply-color-bg-subtle)_60%,transparent)]"
                   >
                     <td className="whitespace-nowrap px-5 py-3.5 font-mono text-xs font-bold">
                       {pn.display_phone_number}
@@ -441,7 +403,7 @@ export default function WhatsAppManagement() {
                 {templates.map((t) => (
                   <tr
                     key={`${t.name}-${t.language}`}
-                    className="text-[var(--looply-color-text-primary)] transition-colors hover:bg-[var(--looply-color-bg-subtle)]/60"
+                    className="text-[var(--looply-color-text-primary)] transition-colors hover:bg-[color-mix(in_srgb,var(--looply-color-bg-subtle)_60%,transparent)]"
                   >
                     <td className="whitespace-nowrap px-5 py-3.5 font-mono text-xs font-bold">
                       {t.name}
@@ -450,7 +412,7 @@ export default function WhatsAppManagement() {
                       {t.language}
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="rounded-[8px] bg-[var(--looply-color-coral-100)] px-2 py-0.5 text-[10.5px] font-bold text-[var(--looply-color-text-primary)]">
+                      <span className="rounded-[8px] bg-[color-mix(in_srgb,var(--looply-color-action-primary)_14%,transparent)] px-2 py-0.5 text-[10.5px] font-bold text-[var(--looply-color-text-primary)]">
                         {t.category}
                       </span>
                     </td>

@@ -1,18 +1,19 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { ConversationAiStatus } from "../../lib/types";
-import { useConversations, useMarkConversationRead } from "../../lib/api";
+import { useConversation, useConversations, useMarkConversationRead } from "../../lib/api";
 import ConversationList from "./components/ConversationList";
 import ChatWindow from "./components/ChatWindow";
 
 export default function InboxPage() {
+  const navigate = useNavigate();
   const params = useParams<{ id?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Selected conversation ID from route param or search query param
+  // Selected conversation ID from search query param (priority) or route param
   const routeId = params.id;
   const queryId = searchParams.get("id") || searchParams.get("conversationId");
-  const activeConversationId = routeId || queryId || null;
+  const activeConversationId = queryId || routeId || null;
 
   // Filter state
   const [aiStatusFilter, setAiStatusFilter] = useState<ConversationAiStatus | "ALL">("ALL");
@@ -31,25 +32,31 @@ export default function InboxPage() {
     aiStatus: aiStatusFilter === "ALL" ? undefined : aiStatusFilter,
   });
 
+  const { data: activeConversationDetail } = useConversation(activeConversationId);
+
   const conversations = useMemo(
     () => conversationsData?.items ?? [],
     [conversationsData],
   );
 
   const selectedConversation = useMemo(
-    () => conversations.find((c) => c.id === activeConversationId) || null,
-    [conversations, activeConversationId],
+    () => conversations.find((c) => c.id === activeConversationId) ?? activeConversationDetail ?? null,
+    [conversations, activeConversationId, activeConversationDetail],
   );
 
   // Mark conversation read mutation
   const markReadMutation = useMarkConversationRead();
 
   const handleSelectConversation = (id: string) => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.set("id", id);
-      return next;
-    });
+    if (routeId) {
+      navigate(`/conversations?id=${encodeURIComponent(id)}`, { replace: true });
+    } else {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("id", id);
+        return next;
+      });
+    }
 
     const target = conversations.find((c) => c.id === id);
     if (target && target.unreadCount > 0) {
@@ -58,6 +65,10 @@ export default function InboxPage() {
   };
 
   const handleBackToConversations = () => {
+    if (routeId) {
+      navigate("/conversations", { replace: true });
+      return;
+    }
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.delete("id");
@@ -66,17 +77,32 @@ export default function InboxPage() {
     });
   };
 
-  // Mobile detection
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== "undefined" ? window.innerWidth < 768 : false,
-  );
+  // Mobile detection via matchMedia + innerWidth fallback
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    if (window.innerWidth < 768) return true;
+    if (typeof window.matchMedia === "function") {
+      return window.matchMedia("(max-width: 767px)").matches;
+    }
+    return false;
+  });
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
+    if (typeof window === "undefined") return;
+    const mql = typeof window.matchMedia === "function" ? window.matchMedia("(max-width: 767px)") : null;
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsMobile(e.matches || window.innerWidth < 768);
     };
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768 || Boolean(mql?.matches));
+    };
+    handleResize();
+    mql?.addEventListener("change", handleChange);
     window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    return () => {
+      mql?.removeEventListener("change", handleChange);
+      window.removeEventListener("resize", handleResize);
+    };
   }, []);
 
   // Resizable sidebar on desktop (clamped between 320px and 460px)

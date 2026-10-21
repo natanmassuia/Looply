@@ -94,7 +94,7 @@ export default function ChatHeader({
         )}
 
         {/* Contact Avatar (Figma 16 — 40×40 coral-100 circle) */}
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--looply-color-coral-100)] text-xs font-bold text-[var(--looply-color-text-primary)]">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--looply-color-action-primary)_14%,transparent)] text-xs font-bold text-[var(--looply-color-text-primary)]">
           {conversation.contactAvatarUrl ? (
             <img
               src={conversation.contactAvatarUrl}
@@ -113,7 +113,7 @@ export default function ChatHeader({
               {displayName}
             </h2>
             {conversation.client && (
-              <span className="hidden items-center rounded-full bg-[var(--looply-color-coral-100)] px-2 py-0.5 text-[10.5px] font-semibold text-[var(--looply-color-text-primary)] sm:inline-flex">
+              <span className="hidden items-center rounded-full bg-[color-mix(in_srgb,var(--looply-color-action-primary)_14%,transparent)] px-2 py-0.5 text-[10.5px] font-semibold text-[var(--looply-color-text-primary)] sm:inline-flex">
                 {conversation.client.name}
               </span>
             )}

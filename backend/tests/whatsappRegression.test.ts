@@ -2,7 +2,6 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { makeWhatsAppWebhookRouter } from "../src/routes/whatsappWebhook";
-import { makeGupshupWebhookRouter } from "../src/routes/whatsappGupshupWebhook";
 import { WHATSAPP_IDENTITY_PROVIDER } from "../src/services/whatsappActorService";
 
 describe("Internal Operator WhatsApp Flow Regression (F15.2)", () => {
@@ -132,32 +131,6 @@ describe("Internal Operator WhatsApp Flow Regression (F15.2)", () => {
     expect(deps.commandsExecuted.length).toBe(0); // Zero commands executed
     expect(deps.outboundSent.length).toBe(1);
     expect(deps.outboundSent[0].to).toBe(UNKNOWN_EXTERNAL_PHONE);
-    expect(deps.outboundSent[0].text).toContain("não possui acesso ao Looply");
-  });
-
-  it("Gupshup webhook similarly rejects unknown external phone without internal identity", async () => {
-    const deps = makeMockDependencies();
-    const router = makeGupshupWebhookRouter(deps as any);
-    const app = express();
-    app.use("/gupshup-webhook", router);
-
-    const res = await request(app)
-      .post("/gupshup-webhook")
-      .send({
-        events: [
-          {
-            provider: "gupshup",
-            providerMessageId: "gs_msg_unknown_1",
-            senderPhone: UNKNOWN_EXTERNAL_PHONE,
-            type: "text",
-            text: "Agendar cliente",
-          },
-        ],
-      });
-
-    expect(res.status).toBe(200);
-    expect(deps.commandsExecuted.length).toBe(0);
-    expect(deps.outboundSent.length).toBe(1);
     expect(deps.outboundSent[0].text).toContain("não possui acesso ao Looply");
   });
 });

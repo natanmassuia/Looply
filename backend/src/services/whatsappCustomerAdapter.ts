@@ -658,46 +658,86 @@ export async function handleCustomerWhatsAppInbound(
     return "processed";
   }
 
-  // Client Binding Resolution for Job/Demand creation
-  if (command.operation === "ticket.create") {
-    const payload = command.payload as { clientId?: string; title?: string; notes?: string; format?: string };
-    let resolvedClientId = conversation.clientId;
-
-    if (!resolvedClientId) {
-      // Try deterministic phone match with Client table
-      const normalizedSender = normalizePhoneNumber(event.senderPhone);
-      if (normalizedSender) {
-        const match = await deps.db.client.findFirst({
-          where: {
-            companyId: channel.companyId,
-            primaryContactPhone: normalizedSender,
-            status: "ACTIVE",
-          },
-          select: { id: true },
-        });
-        if (match) {
-          resolvedClientId = match.id;
-        }
+  // LGPD: every customer command is bound to the sender's own client record.
+  // The LLM payload is never trusted for scoping (cross-client leak guard).
+  let resolvedClientId = conversation.clientId;
+  if (!resolvedClientId) {
+    // Try deterministic phone match with Client table
+    const normalizedSender = normalizePhoneNumber(event.senderPhone);
+    if (normalizedSender) {
+      const match = await deps.db.client.findFirst({
+        where: {
+          companyId: channel.companyId,
+          primaryContactPhone: normalizedSender,
+          status: "ACTIVE",
+        },
+        select: { id: true },
+      });
+      if (match) {
+        resolvedClientId = match.id;
       }
     }
+  }
 
-    if (!resolvedClientId) {
-      // Cannot create Job without client -> ask customer & flag NEEDS_ATTENTION
-      await setConversationAiStatus(deps.db, channel.companyId, conversation.id, "NEEDS_ATTENTION");
-      await sendCustomerReply(
-        deps,
-        channel.companyId,
-        conversation.id,
-        event.senderPhone,
-        CUSTOMER_WHATSAPP_COPY.clientRequiredForJob,
-        event.provider,
-        "AI_ERROR",
-        { error: "CLIENT_REQUIRED", operation: command.operation },
-      );
-      return "needs_attention";
+  if (!resolvedClientId) {
+    // Cannot act without a client -> ask customer & flag NEEDS_ATTENTION
+    await setConversationAiStatus(deps.db, channel.companyId, conversation.id, "NEEDS_ATTENTION");
+    await sendCustomerReply(
+      deps,
+      channel.companyId,
+      conversation.id,
+      event.senderPhone,
+      CUSTOMER_WHATSAPP_COPY.clientRequiredForJob,
+      event.provider,
+      "AI_ERROR",
+      { error: "CLIENT_REQUIRED", operation: command.operation },
+    );
+    return "needs_attention";
+  }
+
+  const scopedPayload = command.payload as Record<string, unknown>;
+  const mode = scopedPayload.mode;
+  const deny = async (error: string) => {
+    await sendCustomerReply(
+      deps,
+      channel.companyId,
+      conversation.id,
+      event.senderPhone,
+      CUSTOMER_WHATSAPP_COPY.unsupportedOperation,
+      event.provider,
+      "AI_ERROR",
+      { error, operation: command.operation },
+    );
+    return "processed" as const;
+  };
+
+  if (command.operation === "calendar.read" && mode === "range") {
+    // Company-wide calendar view is not available to customers.
+    return deny("FORBIDDEN_OPERATION");
+  }
+  if (
+    command.operation === "ticket.create" ||
+    command.operation === "calendar.create" ||
+    ((command.operation === "calendar.read" || command.operation === "ticket.read") && mode === "list")
+  ) {
+    scopedPayload.clientId = resolvedClientId;
+  } else {
+    // detail / delete: the target record must belong to this client.
+    const appointmentId = typeof scopedPayload.appointmentId === "string" ? scopedPayload.appointmentId : null;
+    const jobId = typeof scopedPayload.jobId === "string" ? scopedPayload.jobId : null;
+    let owned = false;
+    if (appointmentId) {
+      owned = !!(await deps.db.appointment.findFirst({
+        where: { id: appointmentId, companyId: channel.companyId, clientId: resolvedClientId },
+        select: { id: true },
+      }));
+    } else if (jobId) {
+      owned = !!(await deps.db.job.findFirst({
+        where: { id: jobId, companyId: channel.companyId, clientId: resolvedClientId },
+        select: { id: true },
+      }));
     }
-
-    payload.clientId = resolvedClientId;
+    if (!owned) return deny("TARGET_NOT_OWNED");
   }
 
   // Check if command requires confirmation

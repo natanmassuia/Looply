@@ -106,7 +106,7 @@ export default function MessageBubble({
         {isOutbound && (
           <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-[var(--looply-color-text-secondary)]">
             {isAi ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--looply-color-coral-100)] px-2 py-0.5 text-[10px] font-bold text-[var(--looply-color-text-primary)]">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--looply-color-action-primary)_14%,transparent)] px-2 py-0.5 text-[10px] font-bold text-[var(--looply-color-text-primary)]">
                 <svg
                   className="h-3 w-3 fill-current text-[var(--looply-color-action-primary)]"
                   viewBox="0 0 24 24"

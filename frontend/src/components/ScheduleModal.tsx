@@ -52,12 +52,8 @@ export default function ScheduleModal({
       setErr("Informe data e horário.");
       return;
     }
-    // Build the ISO datetime directly from the wall-clock inputs. The native
-    // date/time inputs always produce YYYY-MM-DD and HH:MM, so no locale/ICU
-    // formatting dance is needed (Intl en-CA output is not MM/DD/YYYY).
-    const [y, m, d] = date.split("-").map(Number);
-    const [hh, mm] = time.split(":").map(Number);
-    const startsAt = `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00.000Z`;
+    // Build the ISO datetime from the local wall-clock inputs.
+    const startsAt = new Date(`${date}T${time}:00`).toISOString();
 
     setPending(true);
     setErr(null);
@@ -75,6 +71,8 @@ export default function ScheduleModal({
       });
       // 3. Invalidate the affected queries so Kanban + Agenda + Dashboard update live.
       qc.invalidateQueries({ queryKey: ["contents"] });
+      qc.invalidateQueries({ queryKey: ["content", intent.id] });
+      qc.invalidateQueries({ queryKey: ["jobActivity", intent.id] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["appointments"] });
       qc.invalidateQueries({ queryKey: ["calendar"] });

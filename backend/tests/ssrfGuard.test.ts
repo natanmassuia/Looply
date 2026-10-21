@@ -36,18 +36,15 @@ describe("SSRF Guard - IP validation", () => {
 });
 
 describe("SSRF Guard - URL validation", () => {
-  it("allows valid HTTPS media URLs from trusted Meta & Gupshup domains", () => {
+  it("allows valid HTTPS media URLs from trusted Meta domains", () => {
     expect(validateMediaUrl("https://graph.facebook.com/v21.0/media/123").valid).toBe(true);
     expect(validateMediaUrl("https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=123").valid).toBe(true);
     expect(validateMediaUrl("https://scontent.xx.fbcdn.net/v/t39.1997-6/123.ogg").valid).toBe(true);
-    expect(validateMediaUrl("https://media.gupshup.io/media/audio/123.ogg").valid).toBe(true);
-    expect(validateMediaUrl("https://filex.gupshup.io/download/abc").valid).toBe(true);
-    expect(validateMediaUrl("https://api.gupshup.io/wa/media/123").valid).toBe(true);
     expect(validateMediaUrl("https://mmg.whatsapp.net/d/f/abc.enc").valid).toBe(true);
   });
 
   it("rejects non-HTTPS protocols (http, ftp, file, gopher)", () => {
-    expect(validateMediaUrl("http://media.gupshup.io/audio.ogg").valid).toBe(false);
+    expect(validateMediaUrl("http://lookaside.fbsbx.com/audio.ogg").valid).toBe(false);
     expect(validateMediaUrl("ftp://graph.facebook.com/audio.ogg").valid).toBe(false);
     expect(validateMediaUrl("file:///etc/passwd").valid).toBe(false);
     expect(validateMediaUrl("gopher://graph.facebook.com/").valid).toBe(false);
@@ -72,11 +69,12 @@ describe("SSRF Guard - URL validation", () => {
     expect(validateMediaUrl("https://evil-attacker.com/exploit.ogg").valid).toBe(false);
     expect(validateMediaUrl("https://google.com/audio.ogg").valid).toBe(false);
     expect(validateMediaUrl("https://facebook.com.attacker.com/audio.ogg").valid).toBe(false);
+    expect(validateMediaUrl("https://media.gupshup.io/media/audio/123.ogg").valid).toBe(false);
   });
 
   it("rejects non-standard ports", () => {
     expect(validateMediaUrl("https://graph.facebook.com:8443/audio.ogg").valid).toBe(false);
-    expect(validateMediaUrl("https://media.gupshup.io:9000/audio.ogg").valid).toBe(false);
+    expect(validateMediaUrl("https://lookaside.fbsbx.com:9000/audio.ogg").valid).toBe(false);
   });
 });
 
@@ -90,7 +88,7 @@ describe("SSRF Guard - Safe Download & Redirect Handling", () => {
     };
 
     const res = await safeMediaDownload(
-      "https://media.gupshup.io/audio.ogg",
+      "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=123",
       {},
       { fetchImpl },
     );
@@ -100,7 +98,7 @@ describe("SSRF Guard - Safe Download & Redirect Handling", () => {
 
   it("blocks requests when redirect attempts to navigate to a private/internal IP or untrusted host", async () => {
     const fetchImpl: typeof fetch = async (url) => {
-      if (String(url).includes("gupshup.io")) {
+      if (String(url).includes("fbsbx.com")) {
         return new Response(null, {
           status: 302,
           headers: { location: "http://169.254.169.254/latest/meta-data/" },
@@ -110,7 +108,7 @@ describe("SSRF Guard - Safe Download & Redirect Handling", () => {
     };
 
     await expect(
-      safeMediaDownload("https://media.gupshup.io/redirect.ogg", {}, { fetchImpl }),
+      safeMediaDownload("https://lookaside.fbsbx.com/redirect.ogg", {}, { fetchImpl }),
     ).rejects.toThrow("SSRF Guard blocked media URL");
   });
 
@@ -120,12 +118,25 @@ describe("SSRF Guard - Safe Download & Redirect Handling", () => {
       redirectCount++;
       return new Response(null, {
         status: 302,
-        headers: { location: `https://media.gupshup.io/redirect-${redirectCount}.ogg` },
+        headers: { location: `https://lookaside.fbsbx.com/redirect-${redirectCount}.ogg` },
       });
     };
 
     await expect(
-      safeMediaDownload("https://media.gupshup.io/loop.ogg", {}, { fetchImpl, maxRedirects: 2 }),
+      safeMediaDownload("https://lookaside.fbsbx.com/loop.ogg", {}, { fetchImpl, maxRedirects: 2 }),
     ).rejects.toThrow("Too many redirects");
+  });
+
+  it("aborts downloads that exceed maximum allowed byte size", async () => {
+    const fetchImpl: typeof fetch = async () => {
+      return new Response(Buffer.alloc(1024, "a"), {
+        status: 200,
+        headers: { "content-type": "audio/ogg" },
+      });
+    };
+
+    await expect(
+      safeMediaDownload("https://lookaside.fbsbx.com/large.ogg", {}, { fetchImpl, maxBytes: 512 }),
+    ).rejects.toThrow("Media download exceeded maximum allowed size");
   });
 });

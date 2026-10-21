@@ -47,6 +47,10 @@
     --looply-color-warning: var(--looply-color-status-warning);
     --looply-color-danger: var(--looply-color-status-danger);
     --looply-color-focus: var(--looply-color-focus-ring);
+    --looply-color-text-on-brand: var(--looply-color-text-inverse);
+    --looply-color-border-strong: var(--looply-color-border-default);
+    --looply-color-status-error: var(--looply-color-status-danger);
+    --looply-color-brand-primary: var(--looply-color-action-primary);
 
     /* ── Legacy aliases → semantic roles (F2+ migrates screens) ── */
     --looply-background: var(--looply-color-bg-canvas);

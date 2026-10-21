@@ -115,6 +115,9 @@ export default function Settings() {
   const [companyPhone, setCompanyPhone] = useState("");
   const [companyFeedback, setCompanyFeedback] = useState<string | null>(null);
   const [companyErr, setCompanyErr] = useState<string | null>(null);
+  const companyInitializedRef = useRef(false);
+  const currentAppearanceRef = useRef(currentAppearance);
+  currentAppearanceRef.current = currentAppearance;
 
   // Synchronize initial state when server session loads
   useEffect(() => {
@@ -128,12 +131,13 @@ export default function Settings() {
   }, [currentAppearance.preset, currentAppearance.mode, currentAppearance.customColors]);
 
   useEffect(() => {
-    if (companyData) {
+    if (companyData && !companyInitializedRef.current) {
+      companyInitializedRef.current = true;
       setCompanyName(companyData.name || "");
       setCompanyTimezone(companyData.timezone || "America/Sao_Paulo");
       setCompanyPhone(hydratePhone(companyData.phone));
-    } else if (session?.workspace?.name) {
-      setCompanyName(session.workspace.name);
+    } else if (!companyInitializedRef.current && session?.workspace?.name) {
+      setCompanyName((prev) => prev || session.workspace!.name!);
     }
   }, [companyData, session]);
 
@@ -153,17 +157,18 @@ export default function Settings() {
   useEffect(() => {
     return () => {
       if (!savedRef.current) {
+        const latest = currentAppearanceRef.current;
         applyTheme(
           document.documentElement,
           resolveTheme({
-            preset: currentAppearance.preset,
-            mode: currentAppearance.mode,
-            customColors: currentAppearance.customColors,
+            preset: latest.preset,
+            mode: latest.mode,
+            customColors: latest.customColors,
           }),
         );
       }
     };
-  }, [currentAppearance]);
+  }, []);
 
   const activeRole = session?.memberships?.find(
     (m) => m.companyId === session.activeCompanyId,

@@ -11,24 +11,18 @@ import {
   ApiError,
 } from "../lib/api";
 import type { MemberRole, UserRole } from "../lib/types";
-import { MEMBER_ROLE_LABEL, ROLE_LABEL, formatDate } from "../lib/format";
+import { MEMBER_ROLE_LABEL, ROLE_LABEL, formatDate, initials } from "../lib/format";
 import { Card, EmptyState, ErrorState, PageHeader, Spinner } from "../components/common";
 import { IconPlus, IconCheck, IconEdit, IconX } from "../components/Icons";
 import ModalOrSheet from "../components/ModalOrSheet";
 
-function initials(name: string): string {
-  return name
-    .split(" ")
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
 const MEMBER_ROLE_STYLE: Record<MemberRole, string> = {
-  OWNER: "bg-purple-50 text-purple-700 ring-purple-200",
-  ADMIN: "bg-brand-50 text-brand-700 ring-brand-200",
-  MEMBER: "bg-slate-50 text-slate-700 ring-slate-200",
+  OWNER:
+    "bg-[color-mix(in_srgb,var(--looply-color-status-info)_16%,transparent)] text-[var(--looply-color-status-info)] ring-[color-mix(in_srgb,var(--looply-color-status-info)_30%,transparent)]",
+  ADMIN:
+    "bg-[color-mix(in_srgb,var(--looply-color-action-primary)_14%,transparent)] text-[var(--looply-color-text-brand)] ring-[color-mix(in_srgb,var(--looply-color-action-primary)_28%,transparent)]",
+  MEMBER:
+    "bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-secondary)] ring-[var(--looply-color-border-default)]",
 };
 
 const MEMBER_AVATAR_COLORS: Record<MemberRole, string> = {
@@ -38,11 +32,16 @@ const MEMBER_AVATAR_COLORS: Record<MemberRole, string> = {
 };
 
 const ROLE_STYLE: Record<UserRole, string> = {
-  ADMIN: "bg-brand-50 text-brand-700 ring-brand-200",
-  CONTENT_MANAGER: "bg-violet-50 text-violet-700 ring-violet-200",
-  EDITOR: "bg-amber-50 text-amber-700 ring-amber-200",
-  SOCIAL_MEDIA: "bg-blue-50 text-blue-700 ring-blue-200",
-  DESIGNER: "bg-rose-50 text-rose-700 ring-rose-200",
+  ADMIN:
+    "bg-[color-mix(in_srgb,var(--looply-color-action-primary)_14%,transparent)] text-[var(--looply-color-text-brand)] ring-[color-mix(in_srgb,var(--looply-color-action-primary)_28%,transparent)]",
+  CONTENT_MANAGER:
+    "bg-[color-mix(in_srgb,var(--looply-color-status-info)_16%,transparent)] text-[var(--looply-color-status-info)] ring-[color-mix(in_srgb,var(--looply-color-status-info)_30%,transparent)]",
+  EDITOR:
+    "bg-[color-mix(in_srgb,var(--looply-color-status-warning)_14%,transparent)] text-[var(--looply-color-status-warning)] ring-[color-mix(in_srgb,var(--looply-color-status-warning)_28%,transparent)]",
+  SOCIAL_MEDIA:
+    "bg-[color-mix(in_srgb,var(--looply-color-status-success)_14%,transparent)] text-[var(--looply-color-status-success)] ring-[color-mix(in_srgb,var(--looply-color-status-success)_28%,transparent)]",
+  DESIGNER:
+    "bg-[color-mix(in_srgb,var(--looply-color-action-secondary)_18%,transparent)] text-[var(--looply-color-text-primary)] ring-[color-mix(in_srgb,var(--looply-color-action-secondary)_32%,transparent)]",
 };
 
 const AVATAR_COLORS: Record<UserRole, string> = {

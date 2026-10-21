@@ -103,6 +103,7 @@ export async function handleWhatsAppInboundText(
   // 2. Extract or transcribe text from the inbound event.
   let text = "";
 
+  let actor: Awaited<ReturnType<typeof resolveWhatsAppActor>> | undefined;
   if (event.type === "text") {
     if (typeof event.text !== "string") return "malformed";
     text = event.text.trim();
@@ -116,6 +117,14 @@ export async function handleWhatsAppInboundText(
       logger.warn("whatsapp_audio_download_unsupported", { sender: maskPhone(event.senderPhone) });
       await send(deps, event.senderPhone, WHATSAPP_COPY.audioDownloadFailure);
       return "transient_failure";
+    }
+
+    // Authenticate BEFORE downloading/transcribing so unknown senders cannot
+    // burn bandwidth or transcription credits.
+    actor = await resolveWhatsAppActor(deps.db, event.provider, event.senderPhone);
+    if (!actor) {
+      await send(deps, event.senderPhone, WHATSAPP_COPY.unauthorized);
+      return "unauthorized";
     }
 
     // Check MIME allowlist upfront if present in webhook metadata
@@ -177,7 +186,7 @@ export async function handleWhatsAppInboundText(
 
   // 3. Actor resolution — WhatsAppIdentity + active membership only. A Client
   //    phone never becomes an actor; the webhook payload carries no tenant.
-  const actor = await resolveWhatsAppActor(deps.db, event.provider, event.senderPhone);
+  actor ??= await resolveWhatsAppActor(deps.db, event.provider, event.senderPhone);
   if (!actor) {
     await send(deps, event.senderPhone, WHATSAPP_COPY.unauthorized);
     return "unauthorized";

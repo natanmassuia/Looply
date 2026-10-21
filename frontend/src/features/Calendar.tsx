@@ -25,8 +25,20 @@ const MONTHS = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
 function dateKey(d: Date): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function localDateInput(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function localTimeInput(d: Date): string {
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
 type CalendarEntry =
@@ -113,7 +125,7 @@ export default function Calendar() {
 
   const openCreateModal = (defaultDate?: Date) => {
     const d = defaultDate ?? new Date();
-    const dStr = d.toISOString().slice(0, 10);
+    const dStr = localDateInput(d);
     setForm({
       title: "",
       clientId: "",
@@ -131,15 +143,15 @@ export default function Calendar() {
 
   const openEditModal = (app: Appointment) => {
     const start = new Date(app.startsAt);
-    const startDate = start.toISOString().slice(0, 10);
-    const startTime = start.toISOString().slice(11, 16);
+    const startDate = localDateInput(start);
+    const startTime = localTimeInput(start);
 
     let endDate = "";
     let endTime = "";
     if (app.endsAt) {
       const end = new Date(app.endsAt);
-      endDate = end.toISOString().slice(0, 10);
-      endTime = end.toISOString().slice(11, 16);
+      endDate = localDateInput(end);
+      endTime = localTimeInput(end);
     }
 
     setForm({
@@ -175,11 +187,11 @@ export default function Calendar() {
       return;
     }
 
-    const startIso = new Date(`${form.startDate}T${form.startTime || "00:00"}:00Z`).toISOString();
+    const startIso = new Date(`${form.startDate}T${form.startTime || "00:00"}:00`).toISOString();
     let endIso: string | undefined = undefined;
 
     if (form.endDate) {
-      endIso = new Date(`${form.endDate}T${form.endTime || "00:00"}:00Z`).toISOString();
+      endIso = new Date(`${form.endDate}T${form.endTime || "00:00"}:00`).toISOString();
       if (new Date(endIso) <= new Date(startIso)) {
         setFormErr("A data/horário de término deve ser posterior ao início.");
         return;
@@ -310,8 +322,17 @@ export default function Calendar() {
               return (
                 <div
                   key={i}
+                  role={inMonth && cell ? "button" : undefined}
+                  tabIndex={inMonth && cell ? 0 : undefined}
+                  aria-label={inMonth && cell ? `Dia ${cell.getDate()}` : undefined}
                   onClick={() => {
                     if (inMonth && cell) openCreateModal(cell);
+                  }}
+                  onKeyDown={(e) => {
+                    if (inMonth && cell && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      openCreateModal(cell);
+                    }
                   }}
                   className={`min-h-[100px] border-b border-r border-[var(--looply-color-border-default)] p-1.5 transition-colors ${
                     inMonth

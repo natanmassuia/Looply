@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useClients, useTeam, useCreateContent, type CreateContentPayload } from "../lib/api";
 import { FORMAT_LABEL } from "../lib/format";
 import type { ContentFormat } from "../lib/types";
@@ -20,17 +20,20 @@ const empty = {
 
 export default function NewContent() {
   const navigate = useNavigate();
+  const locationState = (useLocation().state as { clientId?: string } | null);
   const { data: clients, isLoading: cLoading } = useClients();
   const { data: team, isLoading: tLoading } = useTeam();
   const create = useCreateContent();
-  const [form, setForm] = useState(empty);
+  const [form, setForm] = useState(() => ({
+    ...empty,
+    clientId: locationState?.clientId ?? "",
+  }));
   const [formError, setFormError] = useState<string | null>(null);
 
   const set = <K extends keyof typeof empty>(k: K, v: (typeof empty)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const submit = async () => {
     setFormError(null);
     if (!form.title.trim() || !form.clientId || !form.caption.trim()) {
       setFormError("Preencha título, cliente e legenda.");
@@ -57,6 +60,11 @@ export default function NewContent() {
     }
   };
 
+  const onSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    void submit();
+  };
+
   if (cLoading || tLoading) return <Spinner label="Carregando…" />;
 
   return (
@@ -73,7 +81,7 @@ export default function NewContent() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+      <form onSubmit={onSubmit} className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         {/* Main column: content info */}
         <div className="space-y-5 lg:col-span-3">
           <Card>
@@ -200,9 +208,8 @@ export default function NewContent() {
             )}
             <div className="flex flex-col gap-2">
               <button
-                type="button"
+                type="submit"
                 className="btn-primary btn-lg w-full"
-                onClick={onSubmit}
                 disabled={create.isPending}
               >
                 <IconPlus className="h-4 w-4" />
@@ -218,7 +225,7 @@ export default function NewContent() {
             </div>
           </Card>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

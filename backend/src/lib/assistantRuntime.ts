@@ -1,13 +1,11 @@
 import { env } from "./env";
 import { transientStoreFromEnv, type TransientStore } from "./transientStore";
 import {
-  GUPSHUP_PROVIDER_NAME,
   MetaWhatsAppProvider,
   WHATSAPP_PROVIDER_NAME,
   type WhatsAppProvider,
   type WhatsAppProviderName,
 } from "../services/whatsappProvider";
-import { GupshupWhatsAppProvider } from "../services/gupshupProvider";
 import { OpenAICompatibleLanguageModel } from "../services/assistantLanguageModel";
 import type { AssistantLanguageModel } from "../services/assistantLanguageModel";
 import {
@@ -21,7 +19,6 @@ import {
 
 let transientStore: TransientStore | null | undefined;
 let whatsappProvider: WhatsAppProvider | undefined;
-let gupshupProvider: GupshupWhatsAppProvider | undefined;
 let languageModel: AssistantLanguageModel | undefined;
 let transcriptionService: AudioTranscriptionService | undefined;
 
@@ -33,24 +30,9 @@ export function getRuntimeTransientStore(): TransientStore | null {
   return transientStore;
 }
 
-// Explicit provider selection: "whatsapp" (Meta) or "gupshup". Each provider
-// resolves its own config lazily; a provider whose env is absent reports
-// unconfigured and its routes fail closed.
-export function getWhatsAppProvider(provider: WhatsAppProviderName = WHATSAPP_PROVIDER_NAME): WhatsAppProvider {
-  if (provider === GUPSHUP_PROVIDER_NAME) {
-    if (!gupshupProvider) {
-      gupshupProvider = new GupshupWhatsAppProvider({
-        apiKey: env.GUPSHUP_API_KEY,
-        appName: env.GUPSHUP_APP_NAME,
-        sourceNumber: env.GUPSHUP_SOURCE_NUMBER,
-        inboundAllowlist: (env.GUPSHUP_WEBHOOK_IP_ALLOWLIST ?? "")
-          .split(",")
-          .map((entry) => entry.trim())
-          .filter(Boolean),
-      });
-    }
-    return gupshupProvider;
-  }
+// Meta WhatsApp Cloud API provider singleton. Resolves its config lazily; when
+// env is absent it reports unconfigured and its routes fail closed.
+export function getWhatsAppProvider(_provider: WhatsAppProviderName = WHATSAPP_PROVIDER_NAME): WhatsAppProvider {
   if (!whatsappProvider) {
     whatsappProvider = new MetaWhatsAppProvider({
       verifyToken: env.WHATSAPP_VERIFY_TOKEN,
@@ -121,7 +103,6 @@ export function getAssistantAudioTranscriptionService(): AudioTranscriptionServi
 export function _resetAssistantRuntimeForTests(): void {
   transientStore = undefined;
   whatsappProvider = undefined;
-  gupshupProvider = undefined;
   languageModel = undefined;
   transcriptionService = undefined;
 }

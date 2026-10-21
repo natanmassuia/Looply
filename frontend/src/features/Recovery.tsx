@@ -53,7 +53,7 @@ export default function Recovery() {
       ) : (
         <form onSubmit={submit} className="mt-8">
           {error && (
-            <div className="mb-4 rounded-xl border border-[var(--looply-color-status-error)]/20 bg-[var(--looply-color-status-error)]/10 p-3 text-[13px] text-[var(--looply-color-status-error)]">
+            <div className="mb-4 rounded-xl border border-[color-mix(in_srgb,var(--looply-color-status-danger)_25%,transparent)] bg-[color-mix(in_srgb,var(--looply-color-status-danger)_10%,transparent)] p-3 text-[13px] text-[var(--looply-color-status-danger)]">
               {error}
             </div>
           )}

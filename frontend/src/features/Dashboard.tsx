@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useDashboard, useMe } from "../lib/api";
 import { Card, EmptyState, ErrorState, Spinner } from "../components/common";
 import StatusPill from "../components/StatusPill";
-import { FORMAT_LABEL, relativeTime, formatAppointmentLine, formatClock, gmtOffsetLabel } from "../lib/format";
+import { FORMAT_LABEL, latestVersion, relativeTime, formatAppointmentLine, formatClock, gmtOffsetLabel } from "../lib/format";
 import { IconAlertCircle, IconCheck, IconClock, IconSend, IconEye, IconTrendingUp, IconChevronRight } from "../components/Icons";
 import type { ReactNode } from "react";
 import type { DashboardUpcomingEvent } from "../lib/types";
@@ -352,23 +352,20 @@ function ClientDot({ color }: { color?: string | null }) {
   );
 }
 
-function latestVersion(c: { versions?: { versionNumber: number }[] }): number {
-  if (!c.versions || c.versions.length === 0) return 1;
-  return Math.max(...c.versions.map((v) => v.versionNumber));
-}
-
 function FormatIcon({ format }: { format: string }) {
   switch (format) {
-    case "POST_FEED":
+    case "POST":
+    case "CAROUSEL":
+    case "IMAGE":
       return (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
           <rect x="3" y="3" width="18" height="18" rx="2" />
           <line x1="3" y1="9" x2="21" y2="9" />
         </svg>
       );
-    case "STORIES":
+    case "STORY":
     case "REELS":
-    case "TIKTOK":
+    case "VIDEO":
       return (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
           <rect x="6" y="2" width="12" height="20" rx="3" />

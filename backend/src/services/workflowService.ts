@@ -315,10 +315,17 @@ export async function removeStage(
   }
   // Soft archive — no destructive row deletion, so history stays intact.
   return db.$transaction(async (tx) => {
-    // Move the archived stage to a high position to free its unique slot.
+    // Park the archived stage on a unique negative position (one slot per
+    // archived stage) so repeated removals never collide on
+    // [workflowId, position] and never clash with the renumber ranges below.
+    const lowest = await tx.workflowStage.findFirst({
+      where: { workflowId },
+      orderBy: { position: "asc" },
+      select: { position: true },
+    });
     await tx.workflowStage.updateMany({
       where: { id: stageId, workflowId },
-      data: { active: false, position: 10_000 },
+      data: { active: false, position: Math.min(-1, (lowest?.position ?? 0) - 1) },
     });
     const remaining = await tx.workflowStage.findMany({
       where: { workflowId, active: true },

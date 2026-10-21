@@ -12,6 +12,7 @@ import {
 } from "./Icons";
 import { Logo } from "./Logo";
 import { useUIStore } from "../lib/store";
+import { initials } from "../lib/format";
 
 export interface NavItem {
   to: string;
@@ -41,18 +42,6 @@ const ROLE_LABEL: Record<string, string> = {
   SOCIAL_MEDIA: "Social media",
   DESIGNER: "Designer",
 };
-
-function initials(name: string): string {
-  return (
-    name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((w) => w[0] ?? "")
-      .join("")
-      .toUpperCase() || "·"
-  );
-}
 
 export default function Sidebar({
   user,

@@ -367,6 +367,7 @@ model Client {
 
   @@unique([companyId, name])
   @@index([companyId])
+  @@index([companyId, primaryContactPhone])
 }
 
 model Job {
@@ -404,6 +405,9 @@ model Job {
   attachments JobAttachment[]
 
   @@index([companyId])
+  @@index([companyId, updatedAt])
+  @@index([companyId, status, updatedAt])
+  @@index([companyId, lifecycleStatus])
   @@index([clientId])
   @@index([status])
   @@index([responsibleId])
@@ -532,6 +536,7 @@ model Approval {
   files     ApprovalAttachment[]
 
   @@index([companyId, contentId])
+  @@index([companyId, status])
   @@index([contentId])
   @@index([contentVersionId])
 }
@@ -584,14 +589,14 @@ model Appointment {
 }
 
 // Customer-facing WhatsApp channel binding for tenant routing.
-// Resolves inbound messages from external accounts (Meta phoneNumberId / Gupshup appId)
+// Resolves inbound messages from external accounts (Meta phoneNumberId)
 // to a specific Company.
 model WhatsAppChannel {
   id                String                 @id @default(cuid())
   companyId         String
   provider          String                 @default("whatsapp")
   purpose           WhatsAppChannelPurpose @default(CUSTOMER_AI)
-  externalAccountId String?  // Meta phone_number_id or Gupshup appName
+  externalAccountId String?  // Meta phone_number_id
   sourcePhoneNumber String?  // canonical E.164 business number (e.g. +551133334444)
   displayName       String?
   isActive          Boolean                @default(true)
@@ -602,6 +607,7 @@ model WhatsAppChannel {
 
   @@unique([provider, externalAccountId])
   @@index([companyId])
+  @@index([provider, sourcePhoneNumber])
 }
 
 model Conversation {
@@ -657,4 +663,5 @@ model ConversationMessage {
   @@unique([companyId, provider, providerMessageId])
   @@index([conversationId, createdAt])
   @@index([companyId])
+  @@index([provider, providerMessageId])
 }

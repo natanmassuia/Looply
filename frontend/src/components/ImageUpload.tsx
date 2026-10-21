@@ -5,7 +5,7 @@
  * Shows current image (or initials fallback) with action buttons.
  * Client-side validates MIME and 5 MB before touching the network.
  */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ApiError, validateImageFile } from "../lib/api";
 
 const ACCEPTED = "image/jpeg,image/png,image/webp";
@@ -55,6 +55,14 @@ export default function ImageUpload({
   const [status, setStatus] = useState<ImageUploadStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
+    };
+  }, [preview]);
 
   const effectiveUrl = preview ?? currentUrl ?? null;
   const hasImage = Boolean(effectiveUrl);

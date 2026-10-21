@@ -13,7 +13,12 @@ export function parseCookies(header: string | undefined): Record<string, string>
     if (eq < 1) continue;
     const key = part.slice(0, eq).trim();
     const val = part.slice(eq + 1).trim();
-    if (key) out[key] = decodeURIComponent(val);
+    if (!key) continue;
+    try {
+      out[key] = decodeURIComponent(val);
+    } catch {
+      out[key] = val;
+    }
   }
   return out;
 }

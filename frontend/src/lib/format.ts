@@ -11,13 +11,20 @@ export const STATUS_LABEL: Record<ContentStatus, string> = {
 };
 
 export const STATUS_STYLE: Record<ContentStatus, string> = {
-  DRAFT: "bg-slate-100 text-slate-600 ring-slate-200",
-  IN_REVIEW: "bg-amber-50 text-amber-700 ring-amber-200",
-  AWAITING_CLIENT: "bg-violet-50 text-violet-700 ring-violet-200",
-  CHANGES_REQUESTED: "bg-rose-50 text-rose-700 ring-rose-200",
-  APPROVED: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  SCHEDULED: "bg-blue-50 text-blue-700 ring-blue-200",
-  PUBLISHED: "bg-teal-50 text-teal-700 ring-teal-200",
+  DRAFT:
+    "bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-secondary)] ring-1 ring-inset ring-[var(--looply-color-border-default)]",
+  IN_REVIEW:
+    "bg-[color-mix(in_srgb,var(--looply-color-status-warning)_14%,transparent)] text-[var(--looply-color-status-warning)] ring-1 ring-inset ring-[color-mix(in_srgb,var(--looply-color-status-warning)_28%,transparent)]",
+  AWAITING_CLIENT:
+    "bg-[color-mix(in_srgb,var(--looply-color-status-info)_16%,transparent)] text-[var(--looply-color-status-info)] ring-1 ring-inset ring-[color-mix(in_srgb,var(--looply-color-status-info)_30%,transparent)]",
+  CHANGES_REQUESTED:
+    "bg-[color-mix(in_srgb,var(--looply-color-status-danger)_14%,transparent)] text-[var(--looply-color-status-danger)] ring-1 ring-inset ring-[color-mix(in_srgb,var(--looply-color-status-danger)_28%,transparent)]",
+  APPROVED:
+    "bg-[color-mix(in_srgb,var(--looply-color-status-success)_14%,transparent)] text-[var(--looply-color-status-success)] ring-1 ring-inset ring-[color-mix(in_srgb,var(--looply-color-status-success)_28%,transparent)]",
+  SCHEDULED:
+    "bg-[color-mix(in_srgb,var(--looply-color-action-primary)_14%,transparent)] text-[var(--looply-color-text-brand)] ring-1 ring-inset ring-[color-mix(in_srgb,var(--looply-color-action-primary)_28%,transparent)]",
+  PUBLISHED:
+    "bg-[color-mix(in_srgb,var(--looply-color-status-success)_18%,transparent)] text-[var(--looply-color-status-success)] ring-1 ring-inset ring-[color-mix(in_srgb,var(--looply-color-status-success)_32%,transparent)]",
 };
 
 export const FORMAT_LABEL: Record<ContentFormat, string> = {
@@ -43,15 +50,22 @@ export const MEMBER_ROLE_LABEL: Record<MemberRole, string> = {
   MEMBER: "Membro",
 };
 
-export const STATUS_FILTERS: ContentStatus[] = [
-  "DRAFT",
-  "IN_REVIEW",
-  "AWAITING_CLIENT",
-  "CHANGES_REQUESTED",
-  "APPROVED",
-  "SCHEDULED",
-  "PUBLISHED",
-];
+export function initials(name: string): string {
+  return (
+    name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((w) => w[0] ?? "")
+      .join("")
+      .toUpperCase() || "·"
+  );
+}
+
+export function latestVersion(c: { versions?: { versionNumber: number }[] }): number {
+  if (!c.versions || c.versions.length === 0) return 1;
+  return Math.max(...c.versions.map((v) => v.versionNumber));
+}
 
 export function formatDate(iso?: string | null): string {
   if (!iso) return "—";

@@ -1,7 +1,8 @@
 import { useMemo, useState, useCallback, useRef, useEffect, type DragEvent, type TouchEvent as ReactTouchEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useContents, useClients, useGroupContent, useUngroupContent, useWorkflow, apiFetch, ApiError } from "../lib/api";
-import { FORMAT_LABEL, relativeTime } from "../lib/format";
+import { FORMAT_LABEL, latestVersion, relativeTime } from "../lib/format";
 import type { ContentListItem, Client } from "../lib/types";
 import { EmptyState, ErrorState, PageHeader, Spinner } from "../components/common";
 import StatusPill from "../components/StatusPill";
@@ -47,6 +48,7 @@ export function autoScrollDelta(
 }
 
 export default function ContentsList() {
+  const qc = useQueryClient();
   const { data, isLoading, isError, error, refetch } = useContents();
   const { data: workflow } = useWorkflow();
   const { data: clients } = useClients();
@@ -225,11 +227,14 @@ export default function ContentsList() {
 
     try {
       await apiFetch(`/api/jobs/${id}/transition`, { method: "POST", body: { stageId } });
+      qc.invalidateQueries({ queryKey: ["content", id] });
+      qc.invalidateQueries({ queryKey: ["jobActivity", id] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
       refetch();
     } catch (e) {
       notifyError(e instanceof ApiError ? e.message : "Não foi possível mover a demanda.");
     }
-  }, [data, stageById, refetch, notifyError]);
+  }, [data, stageById, refetch, notifyError, qc]);
 
   const handleDropOnStage = useCallback(async (stageId: string, event?: DragEvent) => {
     // Prefer the id carried by the drag itself (dataTransfer), which survives
@@ -517,13 +522,9 @@ export default function ContentsList() {
                           onCardLeave={handleCardLeave}
                           onNavigate={(id) => navigate(`/contents/${id}`)}
                           onUngroupAll={async (childIds) => {
-                            for (const childId of childIds) {
-                              try {
-                                await ungroupMutation.mutateAsync(childId);
-                              } catch {
-                                // handled
-                              }
-                            }
+                            await Promise.allSettled(
+                              childIds.map((childId) => ungroupMutation.mutateAsync(childId)),
+                            );
                           }}
                           onSchedule={(c) =>
                             setScheduleIntent({ id: c.id, title: c.title, clientId: c.clientId })
@@ -607,6 +608,8 @@ function CardStack({
   return (
     <div
       data-job-id={parent.id}
+      role="button"
+      tabIndex={0}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", parent.id);
@@ -623,6 +626,12 @@ function CardStack({
       onClick={() => {
         if (suppressClickRef.current) { suppressClickRef.current = false; return; }
         onNavigate(parent.id);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onNavigate(parent.id);
+        }
       }}
       className={`group relative cursor-grab rounded-xl border bg-[var(--looply-color-bg-surface)] p-3 transition-all active:cursor-grabbing ${
         isFocused
@@ -746,9 +755,4 @@ function CardStack({
       )}
     </div>
   );
-}
-
-function latestVersion(c: ContentListItem): number {
-  if (!c.versions?.length) return 1;
-  return Math.max(...c.versions.map((v) => v.versionNumber));
 }

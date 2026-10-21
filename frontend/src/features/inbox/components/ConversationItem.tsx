@@ -111,7 +111,7 @@ export default function ConversationItem({
         {/* Client badge if linked */}
         {conversation.client && (
           <div className="mt-0.5">
-            <span className="inline-block max-w-[160px] truncate rounded-[6px] bg-[var(--looply-color-coral-100)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--looply-color-text-primary)]">
+            <span className="inline-block max-w-[160px] truncate rounded-[6px] bg-[color-mix(in_srgb,var(--looply-color-action-primary)_14%,transparent)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--looply-color-text-primary)]">
               {conversation.client.name}
             </span>
           </div>

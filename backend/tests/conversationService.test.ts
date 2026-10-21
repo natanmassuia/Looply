@@ -466,19 +466,19 @@ describe("Conversation Service (F15.2 Foundation)", () => {
     expect(audioMsg.transcription).toBe("Olá, quero fazer um orçamento.");
   });
 
-  it("resolves company by WhatsApp channel binding (Meta phoneNumberId / Gupshup appName)", async () => {
+  it("resolves company by WhatsApp channel binding (Meta phoneNumberId)", async () => {
     const { db } = makeInMemoryDb({
       channels: [
         { id: "ch_1", companyId: "comp_1", provider: "whatsapp", externalAccountId: "meta_phone_123", isActive: true },
-        { id: "ch_2", companyId: "comp_2", provider: "gupshup", externalAccountId: "gupshup_app_abc", isActive: true },
+        { id: "ch_2", companyId: "comp_2", provider: "whatsapp", externalAccountId: "meta_phone_456", isActive: true },
       ],
     });
 
-    const compMeta = await resolveCompanyForChannel(db, "whatsapp", "meta_phone_123");
-    expect(compMeta).toBe("comp_1");
+    const compMeta1 = await resolveCompanyForChannel(db, "whatsapp", "meta_phone_123");
+    expect(compMeta1).toBe("comp_1");
 
-    const compGupshup = await resolveCompanyForChannel(db, "gupshup", "gupshup_app_abc");
-    expect(compGupshup).toBe("comp_2");
+    const compMeta2 = await resolveCompanyForChannel(db, "whatsapp", "meta_phone_456");
+    expect(compMeta2).toBe("comp_2");
 
     const compUnknown = await resolveCompanyForChannel(db, "whatsapp", "nonexistent");
     expect(compUnknown).toBeNull();

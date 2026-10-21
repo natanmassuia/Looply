@@ -220,7 +220,7 @@ export default function ClientDetail() {
           <div className="flex items-center justify-between">
             <span className="text-xs text-[var(--looply-color-text-muted)]">Demandas ativas</span>
             <span className="text-sm font-bold text-[var(--looply-color-text-primary)]">
-              {clientDemands.filter((d) => d.status !== "PUBLISHED").length}
+              {clientDemands.filter((d) => d.status !== "PUBLISHED" && d.lifecycleStatus !== "CANCELLED").length}
             </span>
           </div>
           <div className="flex items-center justify-between">

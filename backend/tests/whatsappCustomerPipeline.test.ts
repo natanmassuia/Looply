@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import express from "express";
 import request from "supertest";
 import { makeWhatsAppWebhookRouter } from "../src/routes/whatsappWebhook";
-import { makeGupshupWebhookRouter } from "../src/routes/whatsappGupshupWebhook";
 import { makeConversationsRouter } from "../src/routes/conversations";
 import {
   handleCustomerWhatsAppInbound,
@@ -21,7 +20,6 @@ import {
   getPendingConfirmation,
 } from "../src/services/assistantConfirmationStore";
 import { MetaWhatsAppProvider } from "../src/services/whatsappProvider";
-import { GupshupWhatsAppProvider } from "../src/services/gupshupProvider";
 import type {
   WhatsAppInboundEvent,
   WhatsAppMediaPayload,
@@ -178,40 +176,6 @@ class FakeWhatsAppProvider extends MetaWhatsAppProvider {
   }
 }
 
-class FakeGupshupProvider extends GupshupWhatsAppProvider {
-  public outboundSent: Array<{ to: string; text: string }> = [];
-  public mediaToDownload: { buffer: Buffer; contentType: string } | null = null;
-  public failOutbound = false;
-  public failDownload = false;
-
-  constructor(opts: { allowlist?: string[] } = {}) {
-    super({
-      apiKey: "test_gupshup_key",
-      appName: "LooplyGupshupApp",
-      sourceNumber: "5511999999999",
-      inboundAllowlist: opts.allowlist ?? ["34.95.34.128"],
-    });
-  }
-
-  override async sendText(to: string, text: string): Promise<WhatsAppOutboundResult> {
-    if (this.failOutbound) throw new Error("Gupshup outbound failure");
-    this.outboundSent.push({ to, text });
-    return {
-      providerMessageId: `gs.out.${this.outboundSent.length}`,
-      provider: "gupshup" as const,
-      sentAt: new Date(),
-    };
-  }
-
-  override async downloadMedia(_media: WhatsAppMediaPayload) {
-    if (this.failDownload) throw new Error("Gupshup media download failure");
-    if (!this.mediaToDownload) {
-      return { buffer: Buffer.from("fake gupshup audio data"), contentType: "audio/ogg" };
-    }
-    return this.mediaToDownload;
-  }
-}
-
 // ── In-Memory Database Fixture ───────────────────────────────────────────
 
 function createInMemoryDb() {
@@ -231,19 +195,6 @@ function createInMemoryDb() {
         externalAccountId: "phone_number_id_meta_1",
         sourcePhoneNumber: "+5511988881111",
         displayName: "Alpha WhatsApp",
-        purpose: "CUSTOMER_AI",
-        isActive: true,
-      },
-    ],
-    [
-      "channel_a_gupshup",
-      {
-        id: "channel_a_gupshup",
-        companyId: "company_a",
-        provider: "gupshup",
-        externalAccountId: "LooplyGupshupApp",
-        sourcePhoneNumber: "+5511999999999",
-        displayName: "Alpha Gupshup",
         purpose: "CUSTOMER_AI",
         isActive: true,
       },
@@ -454,6 +405,9 @@ function createInMemoryDb() {
       },
     },
     appointment: {
+      // Ownership lookup used by the customer LGPD guard: apt_1 belongs to the
+      // sender's own client; any other id belongs to someone else.
+      findFirst: async ({ where }: any) => (where.id === "apt_1" ? { id: "apt_1" } : null),
       create: async ({ data }: any) => {
         const id = `apt_${idCounter++}`;
         const record = { id, ...data, createdAt: new Date() };
@@ -462,6 +416,7 @@ function createInMemoryDb() {
       },
     },
     job: {
+      findFirst: async ({ where }: any) => (where.id === "job_1" ? { id: "job_1" } : null),
       create: async ({ data }: any) => {
         const id = `job_${idCounter++}`;
         const record = { id, ...data, createdAt: new Date() };
@@ -599,45 +554,6 @@ describe("F15.4 Customer WhatsApp Runtime + Conversation Pipeline", () => {
     expect(outbound.actionType).toBe("APPOINTMENT_CREATED");
     expect(outbound.deliveryStatus).toBe("SENT");
     expect(outbound.providerMessageId).toBe("wamid.out.1");
-  });
-
-  it("Phase 2: Gupshup customer inbound text creates Conversation + INBOUND message + AI command + Outbound reply", async () => {
-    const { db, stores } = createInMemoryDb();
-    const store = new FakeStore();
-    const provider = new FakeGupshupProvider();
-    const model = new FakeLanguageModel({
-      kind: "command",
-        operation: "calendar.read",
-        payload: { mode: "list" },
-    });
-    const executed: string[] = [];
-    const services = makeMockDomainServices(executed);
-
-    const event: WhatsAppInboundEvent = {
-      provider: "gupshup",
-      providerMessageId: "gs.msg.in.1",
-      senderPhone: "+5511977772222",
-      contactName: "Maria Gupshup",
-      type: "text",
-      text: "Quais são meus agendamentos?",
-      externalAccountId: "LooplyGupshupApp",
-      timestamp: new Date(),
-    };
-
-    const channel = await resolveWhatsAppChannelDetails(db, "gupshup", "LooplyGupshupApp");
-    expect(channel).not.toBeNull();
-
-    const outcome = await handleCustomerWhatsAppInbound(
-      { db, store, provider, languageModel: model, services },
-      channel!,
-      event,
-    );
-
-    expect(outcome).toBe("processed");
-    expect(executed).toContain("appointment:list");
-    expect(provider.outboundSent.length).toBe(1);
-    expect(provider.outboundSent[0].to).toBe("+5511977772222");
-    expect(stores.conversationMessages.size).toBe(2);
   });
 
   it("Phase 3: Multi-tenant channel isolation: Channel A maps to Company A; Channel B maps to Company B", async () => {
@@ -1175,24 +1091,24 @@ describe("F15.4 Customer WhatsApp Runtime + Conversation Pipeline", () => {
     expect(s6?.deliveryStatus).toBe("READ");
   });
 
-  it("Phase 17: Gupshup & Meta Status Update Webhook callbacks process delivery transitions", async () => {
+  it("Phase 17: Meta Status Update Webhook callbacks process delivery transitions", async () => {
     const { db } = createInMemoryDb();
 
     await db.conversationMessage.create({
       data: {
         companyId: "company_a",
         conversationId: "conv_1",
-        provider: "gupshup",
+        provider: "whatsapp",
         direction: "OUTBOUND",
         senderType: "AI",
-        providerMessageId: "gs.msg.status.1",
+        providerMessageId: "wamid.msg.status.1",
         deliveryStatus: "SENT",
       },
     });
 
     const statusEvent: WhatsAppStatusUpdateEvent = {
-      provider: "gupshup",
-      providerMessageId: "gs.msg.status.1",
+      provider: "whatsapp",
+      providerMessageId: "wamid.msg.status.1",
       status: "delivered",
       timestamp: new Date(),
     };
@@ -1201,7 +1117,7 @@ describe("F15.4 Customer WhatsApp Runtime + Conversation Pipeline", () => {
     expect(handled).toBe(true);
 
     const updated = await db.conversationMessage.findFirst({
-      where: { providerMessageId: "gs.msg.status.1" },
+      where: { providerMessageId: "wamid.msg.status.1" },
     });
     expect(updated?.deliveryStatus).toBe("DELIVERED");
   });
@@ -1345,51 +1261,6 @@ describe("F15.4 Customer WhatsApp Runtime + Conversation Pipeline", () => {
     expect(stores.conversations.size).toBe(1);
   });
 
-  it("Phase 21: Gupshup Webhook Router HTTP endpoint end-to-end processing", async () => {
-    const { db, stores } = createInMemoryDb();
-    const store = new FakeStore();
-    const provider = new FakeGupshupProvider({ allowlist: ["34.95.34.128"] });
-    const model = new FakeLanguageModel({
-      kind: "command",
-      operation: "calendar.read", payload: { mode: "list" },
-    });
-
-    const app = express();
-    app.set("trust proxy", true);
-    app.use(
-      "/api/webhooks/whatsapp/gupshup",
-      makeGupshupWebhookRouter({
-        db,
-        store,
-        provider,
-        languageModel: model,
-        services: makeMockDomainServices([]),
-      }),
-    );
-
-    const payload = {
-      app: "LooplyGupshupApp",
-      timestamp: Date.now(),
-      version: 2,
-      type: "message",
-      payload: {
-        id: "gs.http.msg.1",
-        source: "5511977771111",
-        type: "text",
-        payload: { text: "Agenda Gupshup HTTP" },
-        sender: { name: "Cliente Gupshup HTTP" },
-      },
-    };
-
-    const res = await request(app)
-      .post("/api/webhooks/whatsapp/gupshup")
-      .set("X-Forwarded-For", "34.95.34.128")
-      .send(payload);
-
-    expect(res.status).toBe(200);
-    expect(stores.conversations.size).toBe(1);
-  });
-
   it("Phase 22: Outbound provider send failure persists OUTBOUND with deliveryStatus FAILED", async () => {
     const { db, stores } = createInMemoryDb();
     const store = new FakeStore();
@@ -1495,5 +1366,42 @@ describe("F15.4 Customer WhatsApp Runtime + Conversation Pipeline", () => {
     expect(executed).toContain("appointment:create:Reunião Operador");
     // The operator's message must NOT create a customer conversation
     expect(stores.conversations.size).toBe(0);
+  });
+});
+
+describe("LGPD: customer commands are scoped to the sender's own client", () => {
+  it("denies calendar.delete of an appointment owned by another client", async () => {
+    const { db, store: _s } = { db: createInMemoryDb().db, store: null };
+    const store = new FakeStore();
+    const provider = new FakeWhatsAppProvider();
+    const channel = (await resolveWhatsAppChannelDetails(db, "whatsapp", "phone_number_id_meta_1"))!;
+    const executed: string[] = [];
+    const services = makeMockDomainServices(executed);
+
+    await handleCustomerWhatsAppInbound(
+      {
+        db,
+        store,
+        provider,
+        languageModel: new FakeLanguageModel({
+          kind: "command",
+          operation: "calendar.delete",
+          payload: { appointmentId: "apt_of_someone_else" },
+        }),
+        services,
+      },
+      channel,
+      {
+        provider: "whatsapp",
+        providerMessageId: "wamid.lgpd.1",
+        senderPhone: "+5511977771111",
+        type: "text",
+        text: "cancela o agendamento apt_of_someone_else",
+      },
+    );
+
+    expect(executed.length).toBe(0);
+    expect(provider.outboundSent.length).toBe(1);
+    expect(provider.outboundSent[0].text.toLowerCase()).not.toContain("confirmar");
   });
 });

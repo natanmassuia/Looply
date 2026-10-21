@@ -18,12 +18,12 @@ export default function ClientDemandsModal({
   onClose,
 }: ClientDemandsModalProps) {
   const navigate = useNavigate();
-  const { data: allContents, isLoading } = useContents();
+  const { data: allContents, isLoading } = useContents(undefined, isOpen && Boolean(client));
 
   if (!client) return null;
 
   const clientContents = (allContents ?? []).filter(
-    (c) => c.clientId === client.id && c.status !== "PUBLISHED"
+    (c) => c.clientId === client.id && c.status !== "PUBLISHED" && c.lifecycleStatus !== "CANCELLED"
   );
 
   const count = clientContents.length;

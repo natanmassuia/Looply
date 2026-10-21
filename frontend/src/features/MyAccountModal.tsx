@@ -4,6 +4,7 @@ import { useMe, useUpdateProfile, useUploadUserAvatar, useDeleteUserAvatar } fro
 import ModalOrSheet from "../components/ModalOrSheet";
 import ImageUpload from "../components/ImageUpload";
 import PhoneInput, { hydratePhone } from "../components/PhoneInput";
+import { initials } from "../lib/format";
 
 const ROLE_LABEL: Record<string, string> = {
   OWNER: "Proprietário",
@@ -13,18 +14,6 @@ const ROLE_LABEL: Record<string, string> = {
   SOCIAL_MEDIA: "Social Media",
   DESIGNER: "Designer",
 };
-
-function initials(name: string): string {
-  return (
-    name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((w) => w[0] ?? "")
-      .join("")
-      .toUpperCase() || "·"
-  );
-}
 
 export interface MyAccountModalProps {
   isOpen: boolean;

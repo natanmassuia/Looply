@@ -2,19 +2,15 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { safeMediaDownload } from "../lib/ssrfGuard";
 
 // ── WhatsApp provider boundary (A3.1) ────────────────────────────────────
-// Transport only — no domain rules. Two providers share this boundary:
+// Transport only — no domain rules.
 //   "whatsapp" → Meta WhatsApp Cloud API (A3.1). Inbound authenticity:
 //     X-Hub-Signature-256 HMAC-SHA256 over the raw body with the App Secret.
 //     Outbound: Graph API messages with a bearer token.
-//   "gupshup"  → Gupshup official WhatsApp API (A3.G1, see gupshupProvider.ts).
-//     Inbound authenticity: documented IP allowlist (no cryptographic
-//     signature exists); outbound: form-urlencoded POST to api.gupshup.io.
 // Secrets come exclusively from env and are never logged.
 
 export const WHATSAPP_PROVIDER_NAME = "whatsapp";
-export const GUPSHUP_PROVIDER_NAME = "gupshup";
 
-export type WhatsAppProviderName = typeof WHATSAPP_PROVIDER_NAME | typeof GUPSHUP_PROVIDER_NAME;
+export type WhatsAppProviderName = typeof WHATSAPP_PROVIDER_NAME;
 
 export type WhatsAppInboundEventType = "text" | "audio" | "image" | "video" | "document" | "other";
 

@@ -470,13 +470,14 @@ export const useInvitations = (enabled = true) =>
     enabled,
   });
 
-export const useContents = (status?: ContentStatus) =>
+export const useContents = (status?: ContentStatus, enabled = true) =>
   useQuery({
     queryKey: ["contents", status ?? "all"],
     queryFn: () =>
       apiFetch<{ contents: ContentListItem[] }>(
         `/api/contents${status ? `?status=${status}` : ""}`,
       ).then((r) => r.contents),
+    enabled,
   });
 
 export const useContent = (id: string) =>
@@ -706,11 +707,6 @@ export function useUpdateMember() {
   });
 }
 
-/** @deprecated Use useCreateInvitation instead */
-export function useCreateTeamMember() {
-  return useCreateInvitation();
-}
-
 // ── Public approval actions ────────────────────────────────────────────────
 export function useApprovePublic(token: string) {
   const qc = useQueryClient();
@@ -729,18 +725,6 @@ export function useRequestChangesPublic(token: string) {
   return useMutation({
     mutationFn: (body: { feedback: string; reviewerName?: string }) =>
       apiFetch(`/api/public/approvals/${token}/request-changes`, {
-        method: "POST",
-        body,
-      }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["approval", token] }),
-  });
-}
-
-export function useRejectPublic(token: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (body: { feedback?: string; reviewerName?: string }) =>
-      apiFetch(`/api/public/approvals/${token}/reject`, {
         method: "POST",
         body,
       }),
@@ -1044,7 +1028,13 @@ export function useConversations(params: ListConversationsParams = {}) {
   const path = `/api/conversations${qs ? `?${qs}` : ""}`;
 
   return useQuery<ListConversationsResponse>({
-    queryKey: ["conversations", params],
+    queryKey: [
+      "conversations",
+      params.search?.trim() ?? "",
+      params.aiStatus ?? "",
+      params.cursor ?? "",
+      params.limit ?? null,
+    ],
     queryFn: () => apiFetch<ListConversationsResponse>(path),
     refetchInterval: 5000,
   });

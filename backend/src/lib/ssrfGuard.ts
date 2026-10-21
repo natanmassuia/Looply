@@ -2,16 +2,16 @@ import { isIP } from "node:net";
 import { logger } from "./logger";
 
 // ── SSRF Guard (Security Hardening for External Media Download) ───────────
-// Strict validation for external media URLs downloaded by WhatsApp/Gupshup
-// providers. Enforces HTTPS only, blocks loopback, RFC1918, link-local,
-// cloud metadata, and restricts hostnames to trusted provider domain patterns.
+// Strict validation for external media URLs downloaded by the WhatsApp Cloud
+// API provider. Enforces HTTPS only, blocks loopback, RFC1918, link-local,
+// cloud metadata, and restricts hostnames to trusted Meta domain patterns.
 
 export interface SsrfValidationResult {
   valid: boolean;
   reason?: string;
 }
 
-// Trusted domain patterns for WhatsApp (Meta) and Gupshup media delivery
+// Trusted domain patterns for WhatsApp (Meta) media delivery
 export const DEFAULT_ALLOWED_MEDIA_HOST_PATTERNS: RegExp[] = [
   // Meta / WhatsApp Graph API & CDN domains
   /^graph\.facebook\.com$/,
@@ -19,11 +19,6 @@ export const DEFAULT_ALLOWED_MEDIA_HOST_PATTERNS: RegExp[] = [
   /^[a-z0-9.-]+\.fbsbx\.com$/,
   /^[a-z0-9.-]+\.facebook\.com$/,
   /^[a-z0-9.-]+\.whatsapp\.net$/,
-  // Gupshup media domains
-  /^[a-z0-9.-]+\.gupshup\.io$/,
-  /^media\.gupshup\.io$/,
-  /^filex\.gupshup\.io$/,
-  /^api\.gupshup\.io$/,
 ];
 
 export function isPrivateOrReservedIp(ip: string): boolean {
@@ -133,11 +128,23 @@ export function validateMediaUrl(
   return { valid: true };
 }
 
+export const DEFAULT_MAX_MEDIA_BYTES = 16 * 1024 * 1024; // 16 MB
+
 export interface SafeFetchOptions {
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
   maxRedirects?: number;
+  maxBytes?: number;
   allowedPatterns?: RegExp[];
+}
+
+function sanitizeUrlForLog(rawUrl: string): string {
+  try {
+    const parsed = new URL(rawUrl);
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return "[invalid-url]";
+  }
 }
 
 export async function safeMediaDownload(
@@ -148,6 +155,7 @@ export async function safeMediaDownload(
   const doFetch = options.fetchImpl ?? fetch;
   const timeoutMs = options.timeoutMs ?? 10000;
   const maxRedirects = options.maxRedirects ?? 3;
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_MEDIA_BYTES;
   const allowedPatterns = options.allowedPatterns ?? DEFAULT_ALLOWED_MEDIA_HOST_PATTERNS;
 
   let currentUrl = url;
@@ -156,7 +164,10 @@ export async function safeMediaDownload(
   while (redirectsRemaining >= 0) {
     const validation = validateMediaUrl(currentUrl, allowedPatterns);
     if (!validation.valid) {
-      logger.warn("ssrf_guard_blocked_request", { url: currentUrl, reason: validation.reason });
+      logger.warn("ssrf_guard_blocked_request", {
+        url: sanitizeUrlForLog(currentUrl),
+        reason: validation.reason,
+      });
       throw new Error(`SSRF Guard blocked media URL: ${validation.reason}`);
     }
 
@@ -186,8 +197,40 @@ export async function safeMediaDownload(
       throw new Error(`Media download failed with HTTP status ${response.status}`);
     }
 
-    const arrayBuf = await response.arrayBuffer();
+    const contentLengthHeader = response.headers.get("content-length");
+    if (contentLengthHeader) {
+      const declaredBytes = Number.parseInt(contentLengthHeader, 10);
+      if (Number.isFinite(declaredBytes) && declaredBytes > maxBytes) {
+        throw new Error("Media download exceeded maximum allowed size");
+      }
+    }
+
     const contentType = response.headers.get("content-type") || "application/octet-stream";
+
+    if (response.body && typeof response.body.getReader === "function") {
+      const reader = response.body.getReader();
+      const chunks: Buffer[] = [];
+      let totalBytes = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          totalBytes += value.byteLength;
+          if (totalBytes > maxBytes) {
+            await reader.cancel().catch(() => {});
+            throw new Error("Media download exceeded maximum allowed size");
+          }
+          chunks.push(Buffer.from(value.buffer, value.byteOffset, value.byteLength));
+        }
+      }
+      return { buffer: Buffer.concat(chunks, totalBytes), contentType };
+    }
+
+    const arrayBuf = await response.arrayBuffer();
+    if (arrayBuf.byteLength > maxBytes) {
+      throw new Error("Media download exceeded maximum allowed size");
+    }
     return { buffer: Buffer.from(arrayBuf), contentType };
   }
 

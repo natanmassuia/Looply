@@ -1068,18 +1068,18 @@ function FullActivityHistory({
   jobId: string;
   responsibleName?: string;
 }) {
-  const [offset, setOffset] = useState(0);
-  const { data, isLoading, isError, refetch } = useJobActivityPage(open ? jobId : "", offset, ACTIVITY_PAGE_SIZE);
+  const [limit, setLimit] = useState(ACTIVITY_PAGE_SIZE);
+  const { data, isLoading, isError, refetch } = useJobActivityPage(open ? jobId : "", 0, limit);
 
-  // Reset to the first page when the modal opens.
+  // Reset to the first page when the modal opens or closes.
   useEffect(() => {
-    if (open) setOffset(0);
+    setLimit(ACTIVITY_PAGE_SIZE);
   }, [open]);
 
   const items = data?.activities ?? [];
   const total = data?.total ?? 0;
   const hasMore = items.length < total;
-  const loadingMore = isLoading && offset > 0;
+  const loadingMore = isLoading && limit > ACTIVITY_PAGE_SIZE;
 
   return (
     <ModalOrSheet
@@ -1117,7 +1117,7 @@ function FullActivityHistory({
           <div className="border-t border-[var(--looply-color-border-default)] pt-3">
             <button
               type="button"
-              onClick={() => setOffset((o) => o + ACTIVITY_PAGE_SIZE)}
+              onClick={() => setLimit((l) => l + ACTIVITY_PAGE_SIZE)}
               disabled={loadingMore}
               className="w-full rounded-lg border border-[var(--looply-color-border-default)] px-3 py-2 text-xs font-semibold text-[var(--looply-color-action-primary)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] disabled:opacity-50"
             >
