@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import AudioPlayer from "../components/AudioPlayer";
 
 describe("AudioPlayer component", () => {
@@ -108,7 +108,7 @@ describe("AudioPlayer component", () => {
       blob: () => Promise.resolve(new Blob(["audio data"], { type: "audio/ogg" })),
     } as any);
 
-    render(
+    const { rerender } = render(
       <AudioPlayer
         url="https://example.com/audio.ogg"
         downloadUrl="https://example.com/audio.ogg?download=1"
@@ -120,9 +120,27 @@ describe("AudioPlayer component", () => {
     expect(downloadBtn).toBeTruthy();
 
     fireEvent.click(downloadBtn);
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://example.com/audio.ogg?download=1",
-      expect.objectContaining({ credentials: "include" }),
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://example.com/audio.ogg?download=1",
+        expect.objectContaining({ credentials: "omit" }),
+      );
+    });
+
+    rerender(
+      <AudioPlayer
+        url="/api/media/123"
+        downloadUrl="/api/media/123?download=1"
+        downloadFilename="local-recording.ogg"
+      />,
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "Baixar áudio" }));
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/media/123?download=1",
+        expect.objectContaining({ credentials: "include" }),
+      );
+    });
   });
 });

@@ -52,4 +52,6 @@ coverage/
 # local agent / tooling artifacts (not part of the project)
 .ai-jail
 .serena/
+graphify-out/
+
 
