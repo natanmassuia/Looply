@@ -5,15 +5,12 @@ import { capabilitiesForTemplate } from "../domain/capabilities";
 import { assistantHttpStatus, executeAssistantCommand } from "../services/assistantCommandService";
 import type { AssistantDomainServices } from "../services/assistantCommandService";
 import { assistantMessageRequestSchema, interpretAssistantMessage } from "../services/assistantLanguageAdapter";
-import { OpenAICompatibleLanguageModel, type AssistantLanguageModel } from "../services/assistantLanguageModel";
-import { env } from "../lib/env";
+import type { AssistantLanguageModel } from "../services/assistantLanguageModel";
+import { buildAssistantLanguageModel } from "../lib/assistantRuntime";
 import type { DB } from "../lib/db";
 
-const defaultLanguageModel = new OpenAICompatibleLanguageModel({
-  baseUrl: env.ASSISTANT_LLM_BASE_URL,
-  apiKey: env.ASSISTANT_LLM_API_KEY,
-  model: env.ASSISTANT_LLM_MODEL,
-});
+// Primary ASSISTANT_LLM_* provider plus any ASSISTANT_LLM_FALLBACKS, in order.
+const defaultLanguageModel = buildAssistantLanguageModel();
 
 export function makeAssistantRouter(db: DB, services?: AssistantDomainServices, languageModel: AssistantLanguageModel = defaultLanguageModel) {
   const router = Router();

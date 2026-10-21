@@ -8,8 +8,8 @@ import {
   type WhatsAppProviderName,
 } from "../services/whatsappProvider";
 import { GupshupWhatsAppProvider } from "../services/gupshupProvider";
-import { OpenAICompatibleLanguageModel } from "../services/assistantLanguageModel";
-import type { AssistantLanguageModel } from "../services/assistantLanguageModel";
+import { OpenAICompatibleLanguageModel, FallbackLanguageModel } from "../services/assistantLanguageModel";
+import type { AssistantLanguageModel, OpenAICompatibleConfig } from "../services/assistantLanguageModel";
 import {
   OpenAIAudioTranscriptionService,
   type AudioTranscriptionService,
@@ -66,6 +66,9 @@ export interface AssistantLanguageModelEnvSource {
   ASSISTANT_LLM_BASE_URL?: string;
   ASSISTANT_LLM_API_KEY?: string;
   ASSISTANT_LLM_MODEL?: string;
+  // Optional JSON array of extra OpenAI-compatible providers, tried in order
+  // after the primary when it fails: [{ baseUrl, apiKey, model, timeoutMs? }].
+  ASSISTANT_LLM_FALLBACKS?: string;
 }
 
 export function resolveAssistantLanguageModelConfig(source: AssistantLanguageModelEnvSource = {
@@ -80,9 +83,60 @@ export function resolveAssistantLanguageModelConfig(source: AssistantLanguageMod
   };
 }
 
+// Parse ASSISTANT_LLM_FALLBACKS (optional JSON array) into provider configs.
+// Malformed JSON or a non-array value is ignored — an optional feature must
+// never crash startup — and only fully specified providers are kept.
+function parseFallbackConfigs(raw?: string): OpenAICompatibleConfig[] {
+  if (!raw || !raw.trim()) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === "object")
+    .map((entry) => ({
+      baseUrl: typeof entry.baseUrl === "string" ? entry.baseUrl : undefined,
+      apiKey: typeof entry.apiKey === "string" ? entry.apiKey : undefined,
+      model: typeof entry.model === "string" ? entry.model : undefined,
+      timeoutMs: typeof entry.timeoutMs === "number" ? entry.timeoutMs : undefined,
+    }))
+    .filter((config) => config.baseUrl && config.apiKey && config.model);
+}
+
+// The primary provider (ASSISTANT_LLM_*) followed by the ordered fallbacks.
+export function resolveAssistantLanguageModelConfigs(source: AssistantLanguageModelEnvSource = {
+  ASSISTANT_LLM_BASE_URL: env.ASSISTANT_LLM_BASE_URL,
+  ASSISTANT_LLM_API_KEY: env.ASSISTANT_LLM_API_KEY,
+  ASSISTANT_LLM_MODEL: env.ASSISTANT_LLM_MODEL,
+  ASSISTANT_LLM_FALLBACKS: env.ASSISTANT_LLM_FALLBACKS,
+}): OpenAICompatibleConfig[] {
+  const primary: OpenAICompatibleConfig = {
+    baseUrl: source.ASSISTANT_LLM_BASE_URL,
+    apiKey: source.ASSISTANT_LLM_API_KEY,
+    model: source.ASSISTANT_LLM_MODEL,
+  };
+  return [primary, ...parseFallbackConfigs(source.ASSISTANT_LLM_FALLBACKS)];
+}
+
+// Build the assistant model: a single OpenAICompatibleLanguageModel when only
+// one provider is configured (unchanged behavior), or a FallbackLanguageModel
+// over all fully-configured providers in order. Keeping the lone primary when
+// nothing is configured preserves the existing "not configured" error.
+export function buildAssistantLanguageModel(
+  configs: OpenAICompatibleConfig[] = resolveAssistantLanguageModelConfigs(),
+): AssistantLanguageModel {
+  const configured = configs.filter((config) => config.baseUrl && config.apiKey && config.model);
+  const effective = configured.length > 0 ? configured : configs.slice(0, 1);
+  const models = effective.map((config) => new OpenAICompatibleLanguageModel(config));
+  return models.length === 1 ? models[0] : new FallbackLanguageModel(models);
+}
+
 export function getAssistantLanguageModel(): AssistantLanguageModel {
   if (!languageModel) {
-    languageModel = new OpenAICompatibleLanguageModel(resolveAssistantLanguageModelConfig());
+    languageModel = buildAssistantLanguageModel();
   }
   return languageModel;
 }
