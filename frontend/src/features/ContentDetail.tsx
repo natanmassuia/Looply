@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { safeExternalUrl, safeHref } from "../lib/url";
 import {
   useContent,
@@ -177,7 +177,33 @@ export default function ContentDetail() {
   };
 
   if (isLoading) return <Spinner label="Carregando demanda…" />;
-  if (isError) return <ErrorState message={(error as Error)?.message} />;
+  if (isError) {
+    const notFound = error instanceof ApiError && error.status === 404;
+    if (!notFound) return <ErrorState message={(error as Error)?.message} />;
+    return (
+      <div>
+        <Link
+          to="/contents"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
+        >
+          Voltar para Demandas
+        </Link>
+        <Card className="text-center py-12">
+          <p className="text-sm font-semibold text-[var(--looply-color-text-primary)]">
+            Demanda não encontrada
+          </p>
+          <p className="mt-1 text-xs text-[var(--looply-color-text-muted)]">
+            A demanda solicitada não existe ou foi removida.
+          </p>
+          <div className="mt-4">
+            <Link to="/contents" className="btn-primary text-xs">
+              Ver todas as demandas
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
   if (!content || !currentVersion) return <ErrorState message="Demanda não encontrada." />;
 
   const onSendApproval = async () => {
