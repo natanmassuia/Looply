@@ -100,8 +100,12 @@ export default function Dashboard() {
       )}
       {isError && <ErrorState message={(error as Error)?.message} />}
       {data && (
-        <div className="space-y-6">
-          {/* Attention panel - primary */}
+        <div className="space-y-5">
+          {/* Band: "Atenção agora" + KPI tiles share one row on wide screens so
+              the work list sits higher, above the fold. */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {/* Primary attention panel (2/3) */}
+            <div className="lg:col-span-2">
           {data.needingAttention.length > 0 ? (
             <Card className="border-l-4 border-l-[var(--looply-color-status-warning)]">
               <div className="flex items-start gap-3">
@@ -113,12 +117,12 @@ export default function Dashboard() {
                   <p className="mt-0.5 text-xs text-[var(--looply-color-text-muted)]">
                     {data.needingAttention.length} {data.needingAttention.length === 1 ? "demanda pendente" : "demandas pendentes"}
                   </p>
-                  <ul className="mt-3 space-y-2">
+                  <ul className="mt-2.5 space-y-1.5">
                     {data.needingAttention.slice(0, PENDING_LIMIT).map((c) => (
                       <li key={c.id}>
                         <Link
                           to={`/contents/${c.id}`}
-                          className="flex items-center justify-between gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-[var(--looply-color-bg-subtle)]"
+                          className="flex items-center justify-between gap-3 rounded-lg px-2.5 py-1.5 transition-colors hover:bg-[var(--looply-color-bg-subtle)]"
                         >
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-sm font-medium text-[var(--looply-color-text-primary)]">
@@ -159,9 +163,10 @@ export default function Dashboard() {
               </div>
             </Card>
           )}
+            </div>
 
-          {/* Compact metrics row */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {/* KPI tiles (1/3), 2×2, top-aligned */}
+            <div className="grid grid-cols-2 gap-3 lg:col-span-1 lg:self-start">
             <CompactMetric
               label="Demandas ativas"
               value={activeDemandsCount}
@@ -190,10 +195,11 @@ export default function Dashboard() {
               color="amber"
               to="/calendar"
             />
+            </div>
           </div>
 
           {/* Main content: asymmetric 2-col */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
             {/* Left: In progress (~65%) */}
             <div className="lg:col-span-3">
               <Card className="p-0">
