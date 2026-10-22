@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import type { ConversationSummaryDto } from "../../../lib/types";
 import { useConversationMessages, useSendConversationMessage } from "../../../lib/api";
 import ChatHeader from "./ChatHeader";
@@ -13,13 +13,41 @@ interface Props {
   onBack?: () => void;
 }
 
+/** Tracks a CSS media query, SSR/jsdom-safe (returns false when unavailable). */
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return false;
+    }
+    return window.matchMedia(query).matches;
+  });
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+    const mql = window.matchMedia(query);
+    const handler = (e: MediaQueryListEvent) => setMatches(e.matches);
+    setMatches(mql.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, [query]);
+  return matches;
+}
+
 export default function ChatWindow({ conversation, isMobile = false, onBack }: Props) {
   const messageListRef = useRef<MessageListHandle>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSearchIndex, setActiveSearchIndex] = useState(0);
-  const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [draft, setDraft] = useState("");
+
+  // Context panel: a fixed 3rd column on wide screens, collapsible via the
+  // header ⓘ. Default follows screen width; once the user toggles, their
+  // choice sticks (override) even as the viewport changes.
+  const isWide = useMediaQuery("(min-width: 1280px)");
+  const [infoOverride, setInfoOverride] = useState<boolean | null>(null);
+  const isInfoOpen = infoOverride ?? isWide;
+  const toggleInfo = () => setInfoOverride((prev) => !(prev ?? isWide));
   const sendMutation = useSendConversationMessage();
 
   const handleSend = useCallback(() => {
@@ -118,7 +146,7 @@ export default function ChatWindow({ conversation, isMobile = false, onBack }: P
           onBack={onBack}
           onToggleSearch={handleToggleSearch}
           isSearchOpen={isSearchOpen}
-          onToggleInfo={() => setIsInfoOpen((o) => !o)}
+          onToggleInfo={toggleInfo}
           isInfoOpen={isInfoOpen}
         />
 
@@ -210,7 +238,7 @@ export default function ChatWindow({ conversation, isMobile = false, onBack }: P
         <ContextPanel
           conversation={conversation}
           messages={messages}
-          onClose={() => setIsInfoOpen(false)}
+          onClose={() => setInfoOverride(false)}
         />
       )}
     </div>

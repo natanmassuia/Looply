@@ -54,6 +54,77 @@ export function Spinner({ label }: { label?: string }) {
   );
 }
 
+/**
+ * Base skeleton block — a pulsing placeholder in the subtle surface tone.
+ * Compose these to mirror the real layout so loading states don't shift content.
+ */
+export function Skeleton({ className = "" }: { className?: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={`animate-pulse rounded-[6px] bg-[var(--looply-color-bg-subtle)] ${className}`}
+    />
+  );
+}
+
+/**
+ * Row skeletons for list views (avatar + two text lines), matching the dense
+ * conversation/list row rhythm. Wrapped in a status region for a11y.
+ */
+export function SkeletonRows({
+  count = 6,
+  className = "",
+}: {
+  count?: number;
+  className?: string;
+}) {
+  return (
+    <div
+      role="status"
+      aria-label="Carregando…"
+      className={`flex flex-col ${className}`}
+    >
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="flex items-center gap-2.5 px-3 py-2.5">
+          <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-3 w-1/2" />
+            <Skeleton className="h-2.5 w-3/4" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Card skeletons for grid/dashboard views, laid out on the same responsive grid
+ * as the real cards so the content doesn't jump when data arrives.
+ */
+export function SkeletonCards({
+  count = 6,
+  className = "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3",
+}: {
+  count?: number;
+  className?: string;
+}) {
+  return (
+    <div role="status" aria-label="Carregando…" className={className}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className="card space-y-3 p-5"
+        >
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-5/6" />
+          <Skeleton className="h-8 w-24 rounded-[8px]" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function EmptyState({
   title,
   description,

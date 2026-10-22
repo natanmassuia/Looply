@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useDashboard, useMe } from "../lib/api";
-import { Card, EmptyState, ErrorState, Spinner } from "../components/common";
+import { Card, EmptyState, ErrorState, SkeletonCards } from "../components/common";
 import StatusPill from "../components/StatusPill";
 import { FORMAT_LABEL, latestVersion, relativeTime, formatAppointmentLine, formatClock, gmtOffsetLabel } from "../lib/format";
 import { IconAlertCircle, IconCheck, IconClock, IconSend, IconEye, IconTrendingUp, IconChevronRight } from "../components/Icons";
@@ -92,7 +92,12 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {isLoading && <Spinner label="Carregando painel…" />}
+      {isLoading && (
+        <SkeletonCards
+          count={4}
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        />
+      )}
       {isError && <ErrorState message={(error as Error)?.message} />}
       {data && (
         <div className="space-y-6">

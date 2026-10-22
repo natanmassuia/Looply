@@ -49,10 +49,10 @@ export default function ConversationItem({
       role="button"
       aria-selected={isSelected}
       aria-label={`Conversa com ${displayName}`}
-      className={`flex w-full cursor-pointer select-none items-start gap-2.5 rounded-[10px] border p-2.5 text-left transition-all ${
+      className={`flex w-full cursor-pointer select-none items-start gap-2.5 border-l-2 px-3 py-2.5 text-left transition-colors ${
         isSelected
-          ? "border-transparent bg-[var(--looply-color-bg-subtle)]"
-          : "border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] hover:bg-[var(--looply-color-bg-subtle)]"
+          ? "border-[var(--looply-color-action-primary)] bg-[var(--looply-color-bg-subtle)]"
+          : "border-transparent bg-[var(--looply-color-bg-surface)] hover:bg-[var(--looply-color-bg-subtle)]"
       }`}
     >
       {/* Contact Avatar (Figma 16 — 40×40 coral-100 circle + text-primary initials) */}
@@ -99,18 +99,15 @@ export default function ConversationItem({
           </span>
         </div>
 
-        {/* Client badge if linked */}
-        {conversation.client && (
-          <div className="mt-0.5">
-            <span className="inline-block max-w-[160px] truncate rounded-[6px] bg-[color-mix(in_srgb,var(--looply-color-action-primary)_14%,transparent)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--looply-color-text-primary)]">
+        {/* Preview and Status / Unread badges — client chip folded inline to
+            keep rows dense (no dedicated badge line) */}
+        <div className="mt-0.5 flex items-center gap-2">
+          {conversation.client && (
+            <span className="max-w-[90px] shrink-0 truncate rounded-[6px] bg-[color-mix(in_srgb,var(--looply-color-action-primary)_14%,transparent)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--looply-color-text-primary)]">
               {conversation.client.name}
             </span>
-          </div>
-        )}
-
-        {/* Preview and Status / Unread badges */}
-        <div className="mt-1 flex items-center justify-between gap-2">
-          <p className="truncate text-[11px] leading-snug text-[var(--looply-color-text-secondary)]">
+          )}
+          <p className="min-w-0 flex-1 truncate text-[11px] leading-snug text-[var(--looply-color-text-secondary)]">
             {conversation.lastMessagePreview || "Nenhuma mensagem"}
           </p>
 

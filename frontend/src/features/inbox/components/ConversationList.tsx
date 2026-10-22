@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import type { ConversationSummaryDto, ConversationAiStatus } from "../../../lib/types";
+import { SkeletonRows } from "../../../components/common";
 import ConversationItem from "./ConversationItem";
 
 interface Props {
@@ -152,31 +153,13 @@ export default function ConversationList({
         </div>
       </div>
 
-      {/* List */}
-      <div className="flex-1 space-y-1.5 overflow-y-auto p-3">
+      {/* List — dense divided rows (Figma 16 — denser Inbox) */}
+      <div className="flex-1 overflow-y-auto">
         {isLoading && conversations.length === 0 ? (
-          <div className="flex h-48 items-center justify-center text-xs text-[var(--looply-color-text-muted)]">
-            <svg
-              className="mr-2 h-5 w-5 animate-spin text-[var(--looply-color-action-primary)]"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth={4}
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v8H4z"
-              />
-            </svg>
-            Carregando conversas...
-          </div>
+          <SkeletonRows
+            count={7}
+            className="divide-y divide-[var(--looply-color-border-default)]"
+          />
         ) : conversations.length === 0 ? (
           <div className="flex h-48 flex-col items-center justify-center p-4 text-center text-[var(--looply-color-text-muted)]">
             <p className="text-xs font-semibold text-[var(--looply-color-text-secondary)]">
@@ -189,15 +172,17 @@ export default function ConversationList({
             </p>
           </div>
         ) : (
-          conversations.map((conv) => (
-            <ConversationItem
-              key={conv.id}
-              conversation={conv}
-              isSelected={selectedId === conv.id}
-              onClick={() => onSelect(conv.id)}
-              now={now}
-            />
-          ))
+          <div className="divide-y divide-[var(--looply-color-border-default)]">
+            {conversations.map((conv) => (
+              <ConversationItem
+                key={conv.id}
+                conversation={conv}
+                isSelected={selectedId === conv.id}
+                onClick={() => onSelect(conv.id)}
+                now={now}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>

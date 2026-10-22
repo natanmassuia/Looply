@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useClients, useDeleteClient, ApiError } from "../lib/api";
 import type { Client, ClientStatus } from "../lib/types";
-import { Card, EmptyState, ErrorState, PageHeader, Spinner } from "../components/common";
+import { Card, EmptyState, ErrorState, PageHeader, SkeletonCards } from "../components/common";
 import { IconPlus, IconEdit, IconTrash, IconChevronDown, IconX } from "../components/Icons";
 import ModalOrSheet from "../components/ModalOrSheet";
 import ClientEditor from "../components/ClientEditor";
@@ -413,7 +413,7 @@ export default function Clients() {
         </>
       )}
 
-      {isLoading && <Spinner label="Carregando clientes…" />}
+      {isLoading && <SkeletonCards count={6} />}
       {isError && <ErrorState message={(error as Error)?.message} />}
 
       {clients && clients.length === 0 && (
