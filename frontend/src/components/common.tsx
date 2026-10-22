@@ -125,6 +125,29 @@ export function SkeletonCards({
   );
 }
 
+/**
+ * Full-page loading skeleton — a neutral title + content grid used as the
+ * single loading vocabulary for route transitions (Suspense fallback) and the
+ * session-check gate, replacing ad-hoc spinners and bare "Carregando…" text.
+ * Keeps a visually-hidden label for assistive tech.
+ */
+export function PageSkeleton() {
+  return (
+    <div
+      role="status"
+      aria-label="Carregando…"
+      className="mx-auto w-full max-w-5xl p-6"
+    >
+      <span className="sr-only">Carregando...</span>
+      <Skeleton className="h-7 w-48" />
+      <Skeleton className="mt-2 h-4 w-72" />
+      <div className="mt-6">
+        <SkeletonCards count={6} />
+      </div>
+    </div>
+  );
+}
+
 export function EmptyState({
   title,
   description,

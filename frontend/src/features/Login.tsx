@@ -3,6 +3,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useMe, useLogin, ApiError } from "../lib/api";
 import { getPostLoginDestination } from "../lib/workspace";
 import AuthShell, { Eyebrow } from "../components/AuthShell";
+import { PageSkeleton } from "../components/common";
 import type { ReactNode } from "react";
 
 export default function Login() {
@@ -90,11 +91,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isPending, isError } = useMe();
   const location = useLocation();
   if (isPending) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-[var(--looply-color-text-muted)]">
-        Carregando...
-      </div>
-    );
+    return <PageSkeleton />;
   }
   if (isError) {
     return <Navigate to="/login" replace state={{ from: location }} />;

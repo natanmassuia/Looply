@@ -1,7 +1,7 @@
 import { Suspense, lazy } from "react";
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import AppLayout from "./components/AppLayout";
-import { Spinner } from "./components/common";
+import { PageSkeleton } from "./components/common";
 import Login, { ProtectedRoute } from "./features/Login";
 import { useMe } from "./lib/api";
 import {
@@ -55,13 +55,7 @@ function AccessGate() {
 
 export default function App() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex justify-center p-8">
-          <Spinner />
-        </div>
-      }
-    >
+    <Suspense fallback={<PageSkeleton />}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<Recovery />} />
