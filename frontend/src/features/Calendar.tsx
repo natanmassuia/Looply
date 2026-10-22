@@ -45,6 +45,8 @@ type CalendarEntry =
   | { origin: "PUBLICATION"; data: ContentListItem; key: string }
   | { origin: "APPOINTMENT"; data: Appointment; key: string };
 
+type CalView = "month" | "week" | "day" | "list";
+
 export default function Calendar() {
   const { data: publications, isLoading: pubLoading, isError: pubIsError, error: pubError } =
     usePublications();
@@ -61,7 +63,10 @@ export default function Calendar() {
   const cancelAppointment = useCancelAppointment();
 
   const today = new Date();
-  const [cursor, setCursor] = useState({ y: today.getFullYear(), m: today.getMonth() });
+  const [view, setView] = useState<CalView>("month");
+  const [anchor, setAnchor] = useState<Date>(() => new Date());
+  const y = anchor.getFullYear();
+  const m = anchor.getMonth();
 
   // Appointment Modal state
   const [modalMode, setModalMode] = useState<"create" | "edit" | null>(null);
@@ -109,8 +114,50 @@ export default function Calendar() {
     return map;
   }, [publications, appointments]);
 
-  const cells = useMemo(() => buildMonthGrid(cursor.y, cursor.m), [cursor]);
-  const monthLabel = `${MONTHS[cursor.m]} ${cursor.y}`;
+  const cells = useMemo(() => buildMonthGrid(y, m), [y, m]);
+
+  const weekDays = useMemo(() => {
+    const start = startOfWeek(anchor);
+    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  }, [anchor]);
+
+  const dayEntries = useMemo(() => byDay.get(dateKey(anchor)) ?? [], [byDay, anchor]);
+
+  // All entries sorted ascending by datetime (for the list view).
+  const sortedEntries = useMemo(() => {
+    const all: { when: Date; item: CalendarEntry }[] = [];
+    for (const arr of byDay.values()) {
+      for (const item of arr) {
+        const iso =
+          item.origin === "PUBLICATION"
+            ? item.data.scheduledAt ?? item.data.publicationTarget
+            : item.data.startsAt;
+        if (iso) all.push({ when: new Date(iso), item });
+      }
+    }
+    all.sort((a, b) => a.when.getTime() - b.when.getTime());
+    return all;
+  }, [byDay]);
+
+  const periodLabel =
+    view === "month"
+      ? `${MONTHS[m]} ${y}`
+      : view === "week"
+        ? weekRangeLabel(weekDays[0], weekDays[6])
+        : view === "day"
+          ? dayLabel(anchor)
+          : "Todos os compromissos";
+
+  const goPrev = () => {
+    if (view === "month") setAnchor(new Date(y, m - 1, 1));
+    else if (view === "week") setAnchor(addDays(anchor, -7));
+    else if (view === "day") setAnchor(addDays(anchor, -1));
+  };
+  const goNext = () => {
+    if (view === "month") setAnchor(new Date(y, m + 1, 1));
+    else if (view === "week") setAnchor(addDays(anchor, 7));
+    else if (view === "day") setAnchor(addDays(anchor, 1));
+  };
 
   // Collect unique client colors for legend
   const clientColors = useMemo(() => {
@@ -279,146 +326,252 @@ export default function Calendar() {
 
       {!isError && (
         <Card className="p-0 overflow-hidden">
-          {/* Month navigation */}
-          <div className="flex items-center justify-between border-b border-[var(--looply-color-border-default)] px-5 py-3">
-            <button
-              className="btn-ghost btn-sm"
-              onClick={() => setCursor(prevMonth(cursor))}
-              aria-label="Mês anterior"
-            >
-              <IconChevronLeft className="h-4 w-4" />
-            </button>
-            <div className="text-[0.95rem] font-bold tracking-tight text-[var(--looply-color-text-primary)]">
-              {monthLabel}
-            </div>
-            <button
-              className="btn-ghost btn-sm"
-              onClick={() => setCursor(nextMonth(cursor))}
-              aria-label="Próximo mês"
-            >
-              <IconChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Weekday headers */}
-          <div className="grid grid-cols-7 border-b border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] text-center text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--looply-color-text-muted)]">
-            {WEEKDAYS.map((d) => (
-              <div key={d} className="px-2 py-2.5">
-                {d}
+          {/* Top bar: period navigation + view toggle */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--looply-color-border-default)] px-4 py-3">
+            <div className="flex items-center gap-1.5">
+              {view !== "list" && (
+                <button className="btn-ghost btn-sm" onClick={goPrev} aria-label="Período anterior">
+                  <IconChevronLeft className="h-4 w-4" />
+                </button>
+              )}
+              <div className="min-w-[140px] text-center text-[0.95rem] font-bold tracking-tight text-[var(--looply-color-text-primary)]">
+                {periodLabel}
               </div>
-            ))}
-          </div>
+              {view !== "list" && (
+                <button className="btn-ghost btn-sm" onClick={goNext} aria-label="Próximo período">
+                  <IconChevronRight className="h-4 w-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn-ghost btn-sm ml-1 text-xs font-semibold"
+                onClick={() => setAnchor(new Date())}
+              >
+                Hoje
+              </button>
+            </div>
 
-          {/* Grid */}
-          <div className="grid grid-cols-7">
-            {cells.map((cell, i) => {
-              const items = cell ? byDay.get(dateKey(cell)) ?? [] : [];
-              const isToday =
-                cell &&
-                cell.getFullYear() === today.getFullYear() &&
-                cell.getMonth() === today.getMonth() &&
-                cell.getDate() === today.getDate();
-              const inMonth = cell && cell.getMonth() === cursor.m;
-              return (
-                <div
-                  key={i}
-                  role={inMonth && cell ? "button" : undefined}
-                  tabIndex={inMonth && cell ? 0 : undefined}
-                  aria-label={inMonth && cell ? `Dia ${cell.getDate()}` : undefined}
-                  onClick={() => {
-                    if (inMonth && cell) openCreateModal(cell);
-                  }}
-                  onKeyDown={(e) => {
-                    if (inMonth && cell && (e.key === "Enter" || e.key === " ")) {
-                      e.preventDefault();
-                      openCreateModal(cell);
-                    }
-                  }}
-                  className={`min-h-[100px] border-b border-r border-[var(--looply-color-border-default)] p-1.5 transition-colors ${
-                    inMonth
-                      ? "bg-[var(--looply-color-bg-surface)] hover:bg-[var(--looply-color-bg-subtle)]/60 cursor-pointer"
-                      : "bg-[var(--looply-color-bg-subtle)]/40"
+            <div
+              role="group"
+              aria-label="Modo de visualização"
+              className="inline-flex items-center rounded-full border border-[var(--looply-color-border-default)] p-0.5"
+            >
+              {([
+                ["month", "Mês"],
+                ["week", "Semana"],
+                ["day", "Dia"],
+                ["list", "Lista"],
+              ] as const).map(([v, label]) => (
+                <button
+                  key={v}
+                  type="button"
+                  aria-pressed={view === v}
+                  onClick={() => setView(v)}
+                  className={`rounded-full px-2.5 py-1 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] ${
+                    view === v
+                      ? "bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-primary)]"
+                      : "text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
                   }`}
                 >
-                  {cell && (
-                    <>
-                      <div className="mb-1 flex items-center justify-between">
-                        <span
-                          className={`text-xs font-medium ${
-                            isToday
-                              ? "inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-white font-bold"
-                              : inMonth
-                                ? "text-[var(--looply-color-text-muted)]"
-                                : "text-[var(--looply-color-text-muted)]/50"
-                          }`}
-                        >
-                          {cell.getDate()}
-                        </span>
-                        {inMonth && (
-                          <button
-                            type="button"
-                            className="btn-ghost p-0.5 text-[10px] text-[var(--looply-color-text-muted)] opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity"
-                            title="Adicionar compromisso neste dia"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openCreateModal(cell);
-                            }}
-                          >
-                            <IconPlus className="h-3 w-3" />
-                          </button>
-                        )}
-                      </div>
-                      <div className="space-y-1">
-                        {items.slice(0, 3).map((item) => {
-                          if (item.origin === "PUBLICATION") {
-                            const p = item.data;
-                            return (
-                              <Link
-                                key={item.key}
-                                to={`/contents/${p.id}`}
-                                onClick={(e) => e.stopPropagation()}
-                                className="block truncate rounded px-1.5 py-0.5 text-[11px] font-medium text-white transition-opacity hover:opacity-90"
-                                style={{ backgroundColor: p.client?.brandColor ?? "#475569" }}
-                                title={`${p.client?.name ?? "Demanda"} — ${p.title}`}
-                              >
-                                {p.client?.name ?? "Demanda"} · {FORMAT_LABEL[p.format]}
-                              </Link>
-                            );
-                          } else {
-                            const app = item.data;
-                            const isCancelled = app.status === "CANCELLED";
-                            return (
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* MONTH */}
+          {view === "month" && (
+            <>
+              <div className="grid grid-cols-7 border-b border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] text-center text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--looply-color-text-muted)]">
+                {WEEKDAYS.map((d) => (
+                  <div key={d} className="px-2 py-2.5">
+                    {d}
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7">
+                {cells.map((cell, i) => {
+                  const items = cell ? byDay.get(dateKey(cell)) ?? [] : [];
+                  const isToday = Boolean(cell && isSameDay(cell, today));
+                  const inMonth = Boolean(cell && cell.getMonth() === m);
+                  return (
+                    <div
+                      key={i}
+                      role={inMonth && cell ? "button" : undefined}
+                      tabIndex={inMonth && cell ? 0 : undefined}
+                      aria-label={inMonth && cell ? `Dia ${cell.getDate()}` : undefined}
+                      onClick={() => {
+                        if (inMonth && cell) openCreateModal(cell);
+                      }}
+                      onKeyDown={(e) => {
+                        if (inMonth && cell && (e.key === "Enter" || e.key === " ")) {
+                          e.preventDefault();
+                          openCreateModal(cell);
+                        }
+                      }}
+                      className={`min-h-[100px] border-b border-r border-[var(--looply-color-border-default)] p-1.5 transition-colors ${
+                        inMonth
+                          ? "bg-[var(--looply-color-bg-surface)] hover:bg-[var(--looply-color-bg-subtle)]/60 cursor-pointer"
+                          : "bg-[var(--looply-color-bg-subtle)]/40"
+                      }`}
+                    >
+                      {cell && (
+                        <>
+                          <div className="mb-1 flex items-center justify-between">
+                            <span
+                              className={`text-xs font-medium ${
+                                isToday
+                                  ? "inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-white font-bold"
+                                  : inMonth
+                                    ? "text-[var(--looply-color-text-muted)]"
+                                    : "text-[var(--looply-color-text-muted)]/50"
+                              }`}
+                            >
+                              {cell.getDate()}
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            {items.slice(0, 3).map((item) => (
+                              <EntryChip key={item.key} item={item} onAppointment={openEditModal} />
+                            ))}
+                            {items.length > 3 && (
                               <button
-                                key={item.key}
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  openEditModal(app);
+                                  setAnchor(cell);
+                                  setView("day");
                                 }}
-                                className={`w-full text-left truncate rounded px-1.5 py-0.5 text-[11px] font-medium transition-colors border ${
-                                  isCancelled
-                                    ? "border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-muted)] line-through opacity-70"
-                                    : "border-brand-300 bg-brand-50/70 text-brand-800 hover:bg-brand-100"
-                                }`}
-                                title={`Compromisso: ${app.title}`}
+                                className="block w-full px-1.5 text-left text-[10px] font-medium text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
                               >
-                                📅 {app.title}
+                                +{items.length - 3} mais
                               </button>
-                            );
-                          }
-                        })}
-                        {items.length > 3 && (
-                          <div className="text-[10px] font-medium text-[var(--looply-color-text-muted)] px-1.5">
-                            +{items.length - 3} mais
+                            )}
                           </div>
-                        )}
-                      </div>
-                    </>
-                  )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* WEEK */}
+          {view === "week" && (
+            <div className="grid grid-cols-1 sm:grid-cols-7">
+              {weekDays.map((d) => {
+                const items = byDay.get(dateKey(d)) ?? [];
+                const isToday = isSameDay(d, today);
+                return (
+                  <div
+                    key={d.toISOString()}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Dia ${d.getDate()}`}
+                    onClick={() => openCreateModal(d)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openCreateModal(d);
+                      }
+                    }}
+                    className="min-h-[220px] cursor-pointer border-b border-r border-[var(--looply-color-border-default)] p-2 transition-colors hover:bg-[var(--looply-color-bg-subtle)]/60"
+                  >
+                    <div className="mb-2 flex items-center gap-1.5">
+                      <span className="text-[0.625rem] font-semibold uppercase text-[var(--looply-color-text-muted)]">
+                        {WEEKDAYS[d.getDay()]}
+                      </span>
+                      <span
+                        className={`text-xs font-bold ${
+                          isToday
+                            ? "inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-white"
+                            : "text-[var(--looply-color-text-primary)]"
+                        }`}
+                      >
+                        {d.getDate()}
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      {items.length === 0 ? (
+                        <span className="text-[10px] text-[var(--looply-color-text-muted)]/70">—</span>
+                      ) : (
+                        items.map((item) => (
+                          <EntryChip key={item.key} item={item} onAppointment={openEditModal} />
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* DAY */}
+          {view === "day" && (
+            <div className="p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-xs text-[var(--looply-color-text-muted)]">
+                  {dayEntries.length} {dayEntries.length === 1 ? "item" : "itens"}
+                </span>
+                <button type="button" className="btn-secondary btn-sm" onClick={() => openCreateModal(anchor)}>
+                  <IconPlus className="h-3.5 w-3.5" />
+                  Novo
+                </button>
+              </div>
+              {dayEntries.length === 0 ? (
+                <div className="rounded-xl border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)]/50 p-6 text-center text-xs text-[var(--looply-color-text-muted)]">
+                  Nada agendado para este dia.
                 </div>
-              );
-            })}
-          </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {dayEntries.map((item) => (
+                    <div key={item.key} className="flex items-center gap-3">
+                      <span className="w-12 shrink-0 text-right text-[11px] tabular-nums text-[var(--looply-color-text-muted)]">
+                        {entryTime(item)}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <EntryChip item={item} onAppointment={openEditModal} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* LIST */}
+          {view === "list" && (
+            <div className="p-4">
+              {sortedEntries.length === 0 ? (
+                <div className="rounded-xl border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)]/50 p-6 text-center text-xs text-[var(--looply-color-text-muted)]">
+                  Nenhum item na agenda.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {groupByDay(sortedEntries).map(([label, entries]) => (
+                    <div key={label}>
+                      <div className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.04em] text-[var(--looply-color-text-muted)]">
+                        {label}
+                      </div>
+                      <div className="space-y-1.5">
+                        {entries.map(({ item }) => (
+                          <div key={item.key} className="flex items-center gap-3">
+                            <span className="w-12 shrink-0 text-right text-[11px] tabular-nums text-[var(--looply-color-text-muted)]">
+                              {entryTime(item)}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <EntryChip item={item} onAppointment={openEditModal} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </Card>
       )}
 
@@ -632,10 +785,105 @@ function buildMonthGrid(year: number, month: number): (Date | null)[] {
   return cells;
 }
 
-function prevMonth(c: { y: number; m: number }) {
-  return c.m === 0 ? { y: c.y - 1, m: 11 } : { y: c.y, m: c.m - 1 };
+function addDays(d: Date, n: number): Date {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
 }
 
-function nextMonth(c: { y: number; m: number }) {
-  return c.m === 11 ? { y: c.y + 1, m: 0 } : { y: c.y, m: c.m + 1 };
+function startOfWeek(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  x.setDate(x.getDate() - x.getDay());
+  return x;
+}
+
+function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function monthAbbr(month: number): string {
+  return MONTHS[month].slice(0, 3);
+}
+
+function weekRangeLabel(a: Date, b: Date): string {
+  if (a.getMonth() === b.getMonth()) {
+    return `${a.getDate()}–${b.getDate()} ${monthAbbr(a.getMonth())} ${a.getFullYear()}`;
+  }
+  return `${a.getDate()} ${monthAbbr(a.getMonth())} – ${b.getDate()} ${monthAbbr(b.getMonth())} ${b.getFullYear()}`;
+}
+
+function dayLabel(d: Date): string {
+  return `${WEEKDAYS[d.getDay()]}, ${d.getDate()} ${monthAbbr(d.getMonth())} ${d.getFullYear()}`;
+}
+
+function entryTime(item: CalendarEntry): string {
+  const iso =
+    item.origin === "PUBLICATION"
+      ? item.data.scheduledAt ?? item.data.publicationTarget
+      : item.data.startsAt;
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+function groupByDay(
+  entries: { when: Date; item: CalendarEntry }[],
+): [string, { when: Date; item: CalendarEntry }[]][] {
+  const groups = new Map<string, { when: Date; item: CalendarEntry }[]>();
+  for (const e of entries) {
+    const k = dateKey(e.when);
+    const arr = groups.get(k) ?? [];
+    arr.push(e);
+    groups.set(k, arr);
+  }
+  return Array.from(groups.values()).map(
+    (arr): [string, { when: Date; item: CalendarEntry }[]] => [dayLabel(arr[0].when), arr],
+  );
+}
+
+function EntryChip({
+  item,
+  onAppointment,
+}: {
+  item: CalendarEntry;
+  onAppointment: (app: Appointment) => void;
+}) {
+  if (item.origin === "PUBLICATION") {
+    const p = item.data;
+    return (
+      <Link
+        to={`/contents/${p.id}`}
+        onClick={(e) => e.stopPropagation()}
+        className="block truncate rounded px-1.5 py-0.5 text-[11px] font-medium text-white transition-opacity hover:opacity-90"
+        style={{ backgroundColor: p.client?.brandColor ?? "#475569" }}
+        title={`${p.client?.name ?? "Demanda"} — ${p.title}`}
+      >
+        {p.client?.name ?? "Demanda"} · {FORMAT_LABEL[p.format]}
+      </Link>
+    );
+  }
+  const app = item.data;
+  const isCancelled = app.status === "CANCELLED";
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onAppointment(app);
+      }}
+      className={`w-full truncate rounded border px-1.5 py-0.5 text-left text-[11px] font-medium transition-colors ${
+        isCancelled
+          ? "border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-muted)] line-through opacity-70"
+          : "border-brand-300 bg-brand-50/70 text-brand-800 hover:bg-brand-100"
+      }`}
+      title={`Compromisso: ${app.title}`}
+    >
+      📅 {app.title}
+    </button>
+  );
 }
