@@ -50,6 +50,84 @@ function QualityBadge({ quality }: { quality: string }) {
   );
 }
 
+// ── Meta template helpers: narrow the opaque `components` into the parts we
+// render, turn the technical slug into a readable name, and extract the text so
+// operators see what they're about to send instead of a bare template id.
+type TemplateComponent = {
+  type?: string;
+  format?: string;
+  text?: string;
+  buttons?: { type?: string; text?: string }[];
+};
+
+function parseComponents(components: unknown[]): TemplateComponent[] {
+  return (components ?? []).filter(
+    (c): c is TemplateComponent => typeof c === "object" && c !== null,
+  );
+}
+
+function componentByType(components: unknown[], type: string): TemplateComponent | undefined {
+  return parseComponents(components).find((c) => (c.type ?? "").toUpperCase() === type);
+}
+
+function prettyTemplateName(name: string): string {
+  const base = name.replace(/_v\d+$/i, "").replace(/[_-]+/g, " ").trim();
+  return base.replace(/\b\w/g, (m) => m.toUpperCase()) || name;
+}
+
+function templateBodyText(components: unknown[]): string {
+  return componentByType(components, "BODY")?.text ?? "";
+}
+
+function TemplatePreview({ template }: { template: WhatsAppMessageTemplate }) {
+  const header = componentByType(template.components, "HEADER");
+  const body = componentByType(template.components, "BODY");
+  const footer = componentByType(template.components, "FOOTER");
+  const buttons = componentByType(template.components, "BUTTONS")?.buttons ?? [];
+  const headerText = header?.format && header.format !== "TEXT" ? null : header?.text;
+
+  return (
+    <div className="rounded-[12px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] p-3">
+      <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
+        Prévia da mensagem
+      </div>
+      <div className="rounded-[10px] rounded-tl-[2px] bg-[var(--looply-color-bg-surface)] p-2.5 text-[13px] leading-snug text-[var(--looply-color-text-primary)] shadow-sm">
+        {header?.format && header.format !== "TEXT" && (
+          <div className="mb-1.5 rounded-[6px] bg-[var(--looply-color-bg-subtle)] px-2 py-1 text-[11px] font-semibold text-[var(--looply-color-text-muted)]">
+            [{header.format}]
+          </div>
+        )}
+        {headerText && <div className="mb-1 font-bold">{headerText}</div>}
+        {body?.text ? (
+          <div className="whitespace-pre-wrap">{body.text}</div>
+        ) : (
+          <div className="italic text-[var(--looply-color-text-muted)]">Sem corpo de texto</div>
+        )}
+        {footer?.text && (
+          <div className="mt-1.5 text-[11px] text-[var(--looply-color-text-muted)]">{footer.text}</div>
+        )}
+      </div>
+      {buttons.length > 0 && (
+        <div className="mt-1.5 space-y-1">
+          {buttons.map((b, i) => (
+            <div
+              key={i}
+              className="rounded-[8px] bg-[var(--looply-color-bg-surface)] px-2 py-1.5 text-center text-xs font-semibold text-[var(--looply-color-text-brand)] shadow-sm"
+            >
+              {b.text || "Botão"}
+            </div>
+          ))}
+        </div>
+      )}
+      {(body?.text ?? "").includes("{{") && (
+        <p className="mt-1.5 text-[10.5px] text-[var(--looply-color-text-muted)]">
+          {"{{n}}"} são variáveis preenchidas no envio.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function SendTemplateDialog({
   template,
   onClose,
@@ -82,18 +160,26 @@ function SendTemplateDialog({
     >
       <div>
         {/* Selected Template Pill */}
-        <div className="mb-4 flex items-center justify-between rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] px-3.5 py-2.5">
-          <div>
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] px-3.5 py-2.5">
+          <div className="min-w-0">
             <div className="text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
               Modelo selecionado
             </div>
-            <div className="mt-0.5 font-mono text-xs font-bold text-[var(--looply-color-text-primary)]">
-              <strong>{template.name}</strong> ({template.language})
+            <div className="mt-0.5 truncate text-sm font-bold text-[var(--looply-color-text-primary)]">
+              {prettyTemplateName(template.name)}
+            </div>
+            <div className="truncate font-mono text-[10.5px] text-[var(--looply-color-text-muted)]">
+              {template.name} · {template.language}
             </div>
           </div>
-          <span className="rounded-[8px] bg-[color-mix(in_srgb,var(--looply-color-action-primary)_14%,transparent)] px-2 py-0.5 text-[10px] font-bold text-[var(--looply-color-text-primary)]">
+          <span className="shrink-0 rounded-[8px] bg-[color-mix(in_srgb,var(--looply-color-action-primary)_14%,transparent)] px-2 py-0.5 text-[10px] font-bold text-[var(--looply-color-text-primary)]">
             {template.category}
           </span>
+        </div>
+
+        {/* Message preview so the operator never sends blind */}
+        <div className="mb-4">
+          <TemplatePreview template={template} />
         </div>
 
         <label className="mb-1.5 block text-xs font-bold text-[var(--looply-color-text-primary)]">
@@ -393,6 +479,7 @@ export default function WhatsAppManagement() {
               <thead className="border-b border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
                 <tr>
                   <th className="px-5 py-3 text-left">Nome</th>
+                  <th className="px-5 py-3 text-left">Mensagem</th>
                   <th className="px-5 py-3 text-left">Idioma</th>
                   <th className="px-5 py-3 text-left">Categoria</th>
                   <th className="px-5 py-3 text-left">Status</th>
@@ -405,8 +492,18 @@ export default function WhatsAppManagement() {
                     key={`${t.name}-${t.language}`}
                     className="text-[var(--looply-color-text-primary)] transition-colors hover:bg-[color-mix(in_srgb,var(--looply-color-bg-subtle)_60%,transparent)]"
                   >
-                    <td className="whitespace-nowrap px-5 py-3.5 font-mono text-xs font-bold">
-                      {t.name}
+                    <td className="px-5 py-3.5">
+                      <div className="font-semibold text-[var(--looply-color-text-primary)]">
+                        {prettyTemplateName(t.name)}
+                      </div>
+                      <div className="font-mono text-[10.5px] text-[var(--looply-color-text-muted)]">
+                        {t.name}
+                      </div>
+                    </td>
+                    <td className="max-w-[280px] px-5 py-3.5">
+                      <span className="block truncate text-xs text-[var(--looply-color-text-secondary)]">
+                        {templateBodyText(t.components) || "—"}
+                      </span>
                     </td>
                     <td className="px-5 py-3.5 text-xs text-[var(--looply-color-text-secondary)]">
                       {t.language}
