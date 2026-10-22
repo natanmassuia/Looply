@@ -1,4 +1,5 @@
 import { env } from "../lib/env";
+import { AppError } from "../lib/errors";
 
 // ── WhatsApp Business Management API (whatsapp_business_management) ─────
 // Read-only queries (phone numbers, message templates) and template sending
@@ -52,7 +53,11 @@ export async function listPhoneNumbers(
   config: ManagementConfig = configFromEnv(),
 ): Promise<WhatsAppPhoneNumber[]> {
   if (!config.accessToken || !config.wabaId) {
-    throw new Error("WHATSAPP_ACCESS_TOKEN and WHATSAPP_WABA_ID are required");
+    throw new AppError(
+      424,
+      "WhatsApp não configurado. Defina WHATSAPP_ACCESS_TOKEN e WHATSAPP_WABA_ID.",
+      "whatsapp_unconfigured",
+    );
   }
   const version = config.graphApiVersion ?? "v21.0";
   const doFetch = config.fetchImpl ?? fetch;
@@ -66,7 +71,12 @@ export async function listPhoneNumbers(
   );
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Failed to list phone numbers: ${res.status} ${body}`);
+    throw new AppError(
+      502,
+      "Falha ao consultar a API do WhatsApp (números).",
+      "whatsapp_upstream_error",
+      { status: res.status, body },
+    );
   }
   const data = (await res.json()) as { data?: WhatsAppPhoneNumber[] };
   return data.data ?? [];
@@ -76,7 +86,11 @@ export async function listMessageTemplates(
   config: ManagementConfig = configFromEnv(),
 ): Promise<WhatsAppMessageTemplate[]> {
   if (!config.accessToken || !config.wabaId) {
-    throw new Error("WHATSAPP_ACCESS_TOKEN and WHATSAPP_WABA_ID are required");
+    throw new AppError(
+      424,
+      "WhatsApp não configurado. Defina WHATSAPP_ACCESS_TOKEN e WHATSAPP_WABA_ID.",
+      "whatsapp_unconfigured",
+    );
   }
   const version = config.graphApiVersion ?? "v21.0";
   const doFetch = config.fetchImpl ?? fetch;
@@ -90,7 +104,12 @@ export async function listMessageTemplates(
   );
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Failed to list message templates: ${res.status} ${body}`);
+    throw new AppError(
+      502,
+      "Falha ao consultar a API do WhatsApp (templates).",
+      "whatsapp_upstream_error",
+      { status: res.status, body },
+    );
   }
   const data = (await res.json()) as { data?: WhatsAppMessageTemplate[] };
   return data.data ?? [];
@@ -104,7 +123,11 @@ export async function sendTemplateMessage(
   config: ManagementConfig = configFromEnv(),
 ): Promise<SendTemplateResult> {
   if (!config.accessToken || !config.phoneNumberId) {
-    throw new Error("WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID are required");
+    throw new AppError(
+      424,
+      "WhatsApp não configurado. Defina WHATSAPP_ACCESS_TOKEN e WHATSAPP_PHONE_NUMBER_ID.",
+      "whatsapp_unconfigured",
+    );
   }
   const version = config.graphApiVersion ?? "v21.0";
   const doFetch = config.fetchImpl ?? fetch;
@@ -134,7 +157,12 @@ export async function sendTemplateMessage(
   );
   if (!res.ok) {
     const errBody = await res.text().catch(() => "");
-    throw new Error(`Failed to send template message: ${res.status} ${errBody}`);
+    throw new AppError(
+      502,
+      "Falha ao enviar mensagem de template pelo WhatsApp.",
+      "whatsapp_upstream_error",
+      { status: res.status, body: errBody },
+    );
   }
   return (await res.json()) as SendTemplateResult;
 }
