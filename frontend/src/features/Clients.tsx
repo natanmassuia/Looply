@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useClients, useDeleteClient, ApiError } from "../lib/api";
 import type { Client, ClientStatus } from "../lib/types";
@@ -42,6 +43,7 @@ export default function Clients() {
   const demandActivity = searchParams.get("demandActivity") ?? "";
   const channel = searchParams.get("channel") ?? "";
   const sort = parseSort(searchParams.get("sort"));
+  const view = searchParams.get("view") === "list" ? "list" : "grid";
 
   const [editor, setEditor] = useState<{ open: boolean; client: Client | null }>({ open: false, client: null });
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
@@ -86,6 +88,12 @@ export default function Clients() {
     const next = new URLSearchParams();
     setSearchParams(next, { replace: true });
     setSearch("");
+  };
+
+  // Table header sort: toggles the relevant sort key for the clicked column.
+  const toggleSort = (col: "name" | "demand") => {
+    if (col === "name") setParam("sort", sort === "name-asc" ? "name-desc" : "name-asc");
+    else setParam("sort", sort === "demand-desc" ? "demand-asc" : "demand-desc");
   };
 
   const appliedFilterCount =
@@ -312,6 +320,52 @@ export default function Clients() {
               </select>
             </div>
 
+            {/* View toggle: card grid ↔ sortable list */}
+            <div
+              role="group"
+              aria-label="Modo de visualização"
+              className="ml-auto inline-flex items-center rounded-full border border-[var(--looply-color-border-default)] p-0.5"
+            >
+              <button
+                type="button"
+                aria-pressed={view === "grid"}
+                onClick={() => setParam("view", "")}
+                className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] ${
+                  view === "grid"
+                    ? "bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-primary)]"
+                    : "text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
+                }`}
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                  <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                  <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                  <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                </svg>
+                Cards
+              </button>
+              <button
+                type="button"
+                aria-pressed={view === "list"}
+                onClick={() => setParam("view", "list")}
+                className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] ${
+                  view === "list"
+                    ? "bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-primary)]"
+                    : "text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
+                }`}
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3.5" y1="6" x2="3.5" y2="6" />
+                  <line x1="3.5" y1="12" x2="3.5" y2="12" />
+                  <line x1="3.5" y1="18" x2="3.5" y2="18" />
+                </svg>
+                Lista
+              </button>
+            </div>
+
             {(appliedFilterCount > 0 || search) && (
               <button
                 type="button"
@@ -438,6 +492,21 @@ export default function Clients() {
       )}
 
       {clients && clients.length > 0 && filteredClients.length > 0 && (
+        view === "list" ? (
+          <ClientsTable
+            clients={filteredClients}
+            sort={sort}
+            onToggleSort={toggleSort}
+            onEdit={openEdit}
+            onDelete={(c) => {
+              setDeleteErr(null);
+              setDeletingClient(c);
+            }}
+            onOpenDemands={setDemandsModalClient}
+            openMenuId={openMenuId}
+            setOpenMenuId={setOpenMenuId}
+          />
+        ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filteredClients.map((c) => {
             const st = CLIENT_STATUS[c.status] ?? CLIENT_STATUS.ACTIVE;
@@ -586,7 +655,216 @@ export default function Clients() {
             );
           })}
         </div>
+        )
       )}
+    </div>
+  );
+}
+
+function SortHeader({
+  label,
+  active,
+  dir,
+  onClick,
+  align = "left",
+}: {
+  label: string;
+  active: boolean;
+  dir: "asc" | "desc";
+  onClick: () => void;
+  align?: "left" | "right";
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.04em] transition-colors hover:text-[var(--looply-color-text-primary)] ${
+        active ? "text-[var(--looply-color-text-primary)]" : "text-[var(--looply-color-text-muted)]"
+      } ${align === "right" ? "ml-auto" : ""}`}
+    >
+      <span>{label}</span>
+      <span aria-hidden="true" className={active ? "opacity-100" : "opacity-30"}>
+        {active && dir === "asc" ? "↑" : "↓"}
+      </span>
+    </button>
+  );
+}
+
+function ClientsTable({
+  clients,
+  sort,
+  onToggleSort,
+  onEdit,
+  onDelete,
+  onOpenDemands,
+  openMenuId,
+  setOpenMenuId,
+}: {
+  clients: Client[];
+  sort: SortKey;
+  onToggleSort: (col: "name" | "demand") => void;
+  onEdit: (c: Client) => void;
+  onDelete: (c: Client) => void;
+  onOpenDemands: (c: Client) => void;
+  openMenuId: string | null;
+  setOpenMenuId: Dispatch<SetStateAction<string | null>>;
+}) {
+  return (
+    <div className="card overflow-hidden p-0">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] text-sm">
+          <thead>
+            <tr className="border-b border-[var(--looply-color-border-default)] text-left">
+              <th className="px-4 py-2.5">
+                <SortHeader
+                  label="Cliente"
+                  active={sort === "name-asc" || sort === "name-desc"}
+                  dir={sort === "name-asc" ? "asc" : "desc"}
+                  onClick={() => onToggleSort("name")}
+                />
+              </th>
+              <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.04em] text-[var(--looply-color-text-muted)]">
+                Status
+              </th>
+              <th className="px-4 py-2.5">
+                <SortHeader
+                  label="Demandas"
+                  active={sort === "demand-asc" || sort === "demand-desc"}
+                  dir={sort === "demand-asc" ? "asc" : "desc"}
+                  onClick={() => onToggleSort("demand")}
+                />
+              </th>
+              <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.04em] text-[var(--looply-color-text-muted)]">
+                Canais
+              </th>
+              <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.04em] text-[var(--looply-color-text-muted)]">
+                E-mail
+              </th>
+              <th className="w-10 px-4 py-2.5">
+                <span className="sr-only">Ações</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--looply-color-border-default)]">
+            {clients.map((c) => {
+              const st = CLIENT_STATUS[c.status] ?? CLIENT_STATUS.ACTIVE;
+              const demandCount = c.activeContents ?? 0;
+              const demandCountText = demandCount === 1 ? "1 demanda" : `${demandCount} demandas`;
+              return (
+                <tr key={c.id} className="transition-colors hover:bg-[var(--looply-color-bg-subtle)]">
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2.5">
+                      {c.logoUrl ? (
+                        <img
+                          src={c.logoUrl}
+                          alt=""
+                          className="h-8 w-8 shrink-0 rounded-lg object-cover border border-[var(--looply-color-border-default)]"
+                        />
+                      ) : (
+                        <span
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
+                          style={{ backgroundColor: c.brandColor ?? "#475569" }}
+                        >
+                          {c.name.slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
+                      <div className="min-w-0">
+                        <Link
+                          to={`/clients/${c.id}`}
+                          className="block truncate font-semibold text-[var(--looply-color-text-primary)] hover:text-[var(--looply-color-action-primary)] hover:underline"
+                        >
+                          {c.name}
+                        </Link>
+                        {c.primaryContactName && (
+                          <div className="truncate text-xs text-[var(--looply-color-text-muted)]">
+                            {c.primaryContactName}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${st.cls}`}>
+                      {st.label}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <button
+                      type="button"
+                      onClick={() => onOpenDemands(c)}
+                      className="inline-flex items-center gap-1 font-semibold text-[var(--looply-color-action-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] rounded px-1 -mx-1"
+                      aria-label={`${demandCountText} ativas de ${c.name}`}
+                    >
+                      <span className="tabular-nums">{demandCount}</span>
+                      <span aria-hidden="true">→</span>
+                    </button>
+                  </td>
+                  <td className="max-w-[200px] truncate px-4 py-2.5 text-[var(--looply-color-text-primary)]">
+                    {c.channels.join(", ") || "—"}
+                  </td>
+                  <td className="max-w-[220px] truncate px-4 py-2.5 text-[var(--looply-color-text-muted)]">
+                    {c.primaryContactEmail || "—"}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <div className="relative flex justify-end">
+                      <button
+                        type="button"
+                        className="btn-ghost btn-sm px-1.5"
+                        aria-label={`Mais ações para ${c.name}`}
+                        aria-haspopup="menu"
+                        aria-expanded={openMenuId === c.id}
+                        onClick={() => setOpenMenuId((prev) => (prev === c.id ? null : c.id))}
+                      >
+                        <IconMoreVertical className="h-4 w-4" />
+                      </button>
+                      {openMenuId === c.id && (
+                        <>
+                          <button
+                            type="button"
+                            aria-hidden="true"
+                            tabIndex={-1}
+                            className="fixed inset-0 z-10 cursor-default"
+                            onClick={() => setOpenMenuId(null)}
+                          />
+                          <div
+                            role="menu"
+                            className="absolute right-0 top-full z-20 mt-1 min-w-[160px] overflow-hidden rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] py-1 shadow-[var(--looply-shadow-lg)]"
+                          >
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[var(--looply-color-text-primary)] transition-colors hover:bg-[var(--looply-color-bg-subtle)]"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                onEdit(c);
+                              }}
+                            >
+                              <IconEdit className="h-3.5 w-3.5" />
+                              <span>Editar</span>
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[var(--looply-color-status-danger)] transition-colors hover:bg-[var(--looply-color-status-danger)]/10"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                onDelete(c);
+                              }}
+                            >
+                              <IconTrash className="h-3.5 w-3.5" />
+                              <span>Excluir</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

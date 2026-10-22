@@ -133,8 +133,15 @@ export default function ContentsList() {
 
   // F14.7 — contextual navigation: /contents?focus=<id> scrolls the target
   // demand into view and applies a temporary, non-animated highlight.
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const focusParam = searchParams.get("focus");
+  const view = searchParams.get("view") === "list" ? "list" : "board";
+  const setView = (v: "board" | "list") => {
+    const next = new URLSearchParams(searchParams);
+    if (v === "list") next.set("view", "list");
+    else next.delete("view");
+    setSearchParams(next, { replace: true });
+  };
   const [focusedId, setFocusedId] = useState<string | null>(null);
   useEffect(() => {
     if (!focusParam || !data || data.length === 0) return;
@@ -405,6 +412,51 @@ export default function ContentsList() {
                 Limpar filtros
               </button>
             )}
+
+            {/* View toggle: Kanban board ↔ list */}
+            <div
+              role="group"
+              aria-label="Modo de visualização"
+              className="ml-auto inline-flex items-center rounded-full border border-[var(--looply-color-border-default)] p-0.5"
+            >
+              <button
+                type="button"
+                aria-pressed={view === "board"}
+                onClick={() => setView("board")}
+                className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] ${
+                  view === "board"
+                    ? "bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-primary)]"
+                    : "text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
+                }`}
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="4" width="5" height="16" rx="1.5" />
+                  <rect x="10" y="4" width="5" height="11" rx="1.5" />
+                  <rect x="17" y="4" width="4" height="7" rx="1.5" />
+                </svg>
+                Kanban
+              </button>
+              <button
+                type="button"
+                aria-pressed={view === "list"}
+                onClick={() => setView("list")}
+                className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] ${
+                  view === "list"
+                    ? "bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-primary)]"
+                    : "text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
+                }`}
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3.5" y1="6" x2="3.5" y2="6" />
+                  <line x1="3.5" y1="12" x2="3.5" y2="12" />
+                  <line x1="3.5" y1="18" x2="3.5" y2="18" />
+                </svg>
+                Lista
+              </button>
+            </div>
           </div>
 
           {/* Rich client filter */}
@@ -473,6 +525,9 @@ export default function ContentsList() {
               Nenhuma demanda encontrada para o cliente selecionado.
             </div>
           )}
+          {view === "list" ? (
+            <DemandsTable items={topLevel} stageById={stageById} />
+          ) : (
           <div ref={scrollRef} className="overflow-x-auto min-w-0 pb-4">
             <div className="flex gap-3 min-w-max">
               {stages.map((stage, index) => {
@@ -547,6 +602,7 @@ export default function ContentsList() {
               })}
             </div>
           </div>
+          )}
         </>
       )}
 
@@ -753,6 +809,83 @@ function CardStack({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function DemandsTable({
+  items,
+  stageById,
+}: {
+  items: ContentListItem[];
+  stageById: Map<string, { name: string }>;
+}) {
+  if (items.length === 0) {
+    return (
+      <div className="rounded-xl border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)]/50 p-6 text-center text-xs text-[var(--looply-color-text-muted)]">
+        Nenhuma demanda para exibir.
+      </div>
+    );
+  }
+  return (
+    <div className="card overflow-hidden p-0">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] text-sm">
+          <thead>
+            <tr className="border-b border-[var(--looply-color-border-default)] text-left text-[11px] font-bold uppercase tracking-[0.04em] text-[var(--looply-color-text-muted)]">
+              <th className="px-4 py-2.5">Demanda</th>
+              <th className="px-4 py-2.5">Cliente</th>
+              <th className="px-4 py-2.5">Status</th>
+              <th className="px-4 py-2.5">Etapa</th>
+              <th className="px-4 py-2.5 text-right">Atualizado</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--looply-color-border-default)]">
+            {items.map((c) => {
+              const stageLabel = c.currentStageId ? stageById.get(c.currentStageId)?.name : null;
+              return (
+                <tr
+                  key={c.id}
+                  data-job-id={c.id}
+                  className="transition-colors hover:bg-[var(--looply-color-bg-subtle)]"
+                >
+                  <td className="px-4 py-2.5">
+                    <Link
+                      to={`/contents/${c.id}`}
+                      className="block min-w-0 font-semibold text-[var(--looply-color-text-primary)] hover:text-[var(--looply-color-action-primary)] hover:underline"
+                    >
+                      <span className="block truncate">{c.title}</span>
+                      <span className="text-xs font-normal text-[var(--looply-color-text-muted)]">
+                        {FORMAT_LABEL[c.format]} · v{latestVersion(c)}
+                      </span>
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="inline-block h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: c.client?.brandColor || "#94a3b8" }}
+                      />
+                      <span className="truncate text-[var(--looply-color-text-primary)]">
+                        {c.client?.name ?? "—"}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <StatusPill status={c.status} />
+                  </td>
+                  <td className="px-4 py-2.5 text-[var(--looply-color-text-primary)]">
+                    {stageLabel ?? "—"}
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-xs text-[var(--looply-color-text-muted)]">
+                    {relativeTime(c.updatedAt)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
