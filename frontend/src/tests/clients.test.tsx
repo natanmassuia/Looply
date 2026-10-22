@@ -62,9 +62,13 @@ describe("Clients Feature — B3 Functional Wiring", () => {
     expect(screen.getByText("Café Solar")).toBeInTheDocument();
 
     expect(screen.getByLabelText("Editar Restaurante Aurora")).toBeInTheDocument();
-    expect(screen.getByLabelText("Excluir Restaurante Aurora")).toBeInTheDocument();
     expect(screen.getByLabelText("Editar Café Solar")).toBeInTheDocument();
-    expect(screen.getByLabelText("Excluir Café Solar")).toBeInTheDocument();
+    expect(screen.getByLabelText("Mais ações para Restaurante Aurora")).toBeInTheDocument();
+    expect(screen.getByLabelText("Mais ações para Café Solar")).toBeInTheDocument();
+
+    // "Excluir" now lives inside the overflow menu, not on the card surface.
+    fireEvent.click(screen.getByLabelText("Mais ações para Café Solar"));
+    expect(screen.getByRole("menuitem", { name: "Excluir" })).toBeInTheDocument();
   });
 
   it("opens edit drawer pre-filled with client data and submits PATCH /api/clients/:id", async () => {
@@ -157,8 +161,9 @@ describe("Clients Feature — B3 Functional Wiring", () => {
 
     renderWithClient(<Clients />);
 
-    // Click Excluir on Café Solar
-    fireEvent.click(screen.getByLabelText("Excluir Café Solar"));
+    // Open the overflow menu, then click Excluir on Café Solar
+    fireEvent.click(screen.getByLabelText("Mais ações para Café Solar"));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Excluir" }));
 
     // Verify modal content
     expect(screen.getByText(/Confirma a exclusão de/i)).toBeInTheDocument();
@@ -186,7 +191,8 @@ describe("Clients Feature — B3 Functional Wiring", () => {
 
     renderWithClient(<Clients />);
 
-    fireEvent.click(screen.getByLabelText("Excluir Restaurante Aurora"));
+    fireEvent.click(screen.getByLabelText("Mais ações para Restaurante Aurora"));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Excluir" }));
     const confirmBtn = screen.getByRole("button", { name: "Confirmar exclusão" });
     fireEvent.click(confirmBtn);
 

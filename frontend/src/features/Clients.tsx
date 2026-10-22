@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useClients, useDeleteClient, ApiError } from "../lib/api";
 import type { Client, ClientStatus } from "../lib/types";
 import { Card, EmptyState, ErrorState, PageHeader, SkeletonCards } from "../components/common";
-import { IconPlus, IconEdit, IconTrash, IconChevronDown, IconX } from "../components/Icons";
+import { IconPlus, IconEdit, IconTrash, IconChevronDown, IconX, IconMoreVertical } from "../components/Icons";
 import ModalOrSheet from "../components/ModalOrSheet";
 import ClientEditor from "../components/ClientEditor";
 import ClientDemandsModal from "./ClientDemandsModal";
@@ -45,6 +45,7 @@ export default function Clients() {
 
   const [editor, setEditor] = useState<{ open: boolean; client: Client | null }>({ open: false, client: null });
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [demandsModalClient, setDemandsModalClient] = useState<Client | null>(null);
   const [search, setSearch] = useState("");
   const [deleteErr, setDeleteErr] = useState<string | null>(null);
@@ -532,18 +533,53 @@ export default function Clients() {
                       <IconEdit className="h-3.5 w-3.5" />
                       <span>Editar</span>
                     </button>
-                    <button
-                      type="button"
-                      className="btn-ghost btn-sm flex items-center gap-1 text-[var(--looply-color-status-danger)] hover:bg-[var(--looply-color-status-danger)]/10"
-                      aria-label={`Excluir ${c.name}`}
-                      onClick={() => {
-                        setDeleteErr(null);
-                        setDeletingClient(c);
-                      }}
-                    >
-                      <IconTrash className="h-3.5 w-3.5" />
-                      <span>Excluir</span>
-                    </button>
+
+                    {/* Overflow menu — keeps the destructive "Excluir" off the
+                        card surface (one click now opens the menu, not delete). */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        className="btn-ghost btn-sm px-1.5"
+                        aria-label={`Mais ações para ${c.name}`}
+                        aria-haspopup="menu"
+                        aria-expanded={openMenuId === c.id}
+                        onClick={() =>
+                          setOpenMenuId((prev) => (prev === c.id ? null : c.id))
+                        }
+                      >
+                        <IconMoreVertical className="h-4 w-4" />
+                      </button>
+
+                      {openMenuId === c.id && (
+                        <>
+                          <button
+                            type="button"
+                            aria-hidden="true"
+                            tabIndex={-1}
+                            className="fixed inset-0 z-10 cursor-default"
+                            onClick={() => setOpenMenuId(null)}
+                          />
+                          <div
+                            role="menu"
+                            className="absolute bottom-full right-0 z-20 mb-1 min-w-[160px] overflow-hidden rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] py-1 shadow-[var(--looply-shadow-lg)]"
+                          >
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[var(--looply-color-status-danger)] transition-colors hover:bg-[var(--looply-color-status-danger)]/10"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                setDeleteErr(null);
+                                setDeletingClient(c);
+                              }}
+                            >
+                              <IconTrash className="h-3.5 w-3.5" />
+                              <span>Excluir</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               </Card>
