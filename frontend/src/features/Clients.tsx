@@ -4,7 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useClients, useDeleteClient, ApiError } from "../lib/api";
 import type { Client, ClientStatus } from "../lib/types";
 import { Card, EmptyState, ErrorState, PageHeader, SkeletonCards } from "../components/common";
-import { IconPlus, IconEdit, IconTrash, IconChevronDown, IconX, IconMoreVertical } from "../components/Icons";
+import { IconPlus, IconEdit, IconTrash, IconChevronDown, IconX, IconMoreVertical, IconFileText, IconLink, IconMail } from "../components/Icons";
 import ModalOrSheet from "../components/ModalOrSheet";
 import ClientEditor from "../components/ClientEditor";
 import ClientDemandsModal from "./ClientDemandsModal";
@@ -551,7 +551,10 @@ export default function Clients() {
 
                 <dl className="mt-4 space-y-1.5 text-sm">
                   <div className="flex justify-between items-center">
-                    <dt className="text-[var(--looply-color-text-muted)]">Demandas ativas</dt>
+                    <dt className="flex items-center text-[var(--looply-color-text-muted)]" title="Demandas ativas">
+                      <IconFileText className="h-4 w-4" />
+                      <span className="sr-only">Demandas ativas</span>
+                    </dt>
                     <dd>
                       <button
                         type="button"
@@ -567,16 +570,22 @@ export default function Clients() {
                       </button>
                     </dd>
                   </div>
-                  <div className="flex justify-between">
-                    <dt className="text-[var(--looply-color-text-muted)]">Canais</dt>
-                    <dd className="text-[var(--looply-color-text-primary)]">
+                  <div className="flex justify-between gap-3">
+                    <dt className="flex shrink-0 items-center text-[var(--looply-color-text-muted)]" title="Canais">
+                      <IconLink className="h-4 w-4" />
+                      <span className="sr-only">Canais</span>
+                    </dt>
+                    <dd className="truncate text-right text-[var(--looply-color-text-primary)]">
                       {c.channels.join(", ") || "—"}
                     </dd>
                   </div>
                   {c.primaryContactEmail && (
-                    <div className="flex justify-between">
-                      <dt className="text-[var(--looply-color-text-muted)]">E-mail</dt>
-                      <dd className="truncate text-[var(--looply-color-text-primary)]">
+                    <div className="flex justify-between gap-3">
+                      <dt className="flex shrink-0 items-center text-[var(--looply-color-text-muted)]" title="E-mail">
+                        <IconMail className="h-4 w-4" />
+                        <span className="sr-only">E-mail</span>
+                      </dt>
+                      <dd className="truncate text-right text-[var(--looply-color-text-primary)]">
                         {c.primaryContactEmail}
                       </dd>
                     </div>

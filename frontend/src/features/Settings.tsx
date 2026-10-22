@@ -366,7 +366,7 @@ export default function Settings() {
               Informações do seu perfil de acesso ao Looply.
             </p>
 
-            <div className="space-y-4 max-w-lg">
+            <div className="space-y-4 max-w-md">
               <div>
                 <label className="label">Nome completo</label>
                 <div className="rounded-lg border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)]/30 px-3 py-2 text-sm text-[var(--looply-color-text-primary)]">
@@ -638,7 +638,7 @@ export default function Settings() {
             {companyLoading ? (
               <Spinner label="Carregando dados da empresa..." />
             ) : (
-              <div className="space-y-4 max-w-lg">
+              <div className="space-y-4 max-w-md">
                 <div>
                   <label htmlFor="company-name" className="label">
                     Nome da empresa *

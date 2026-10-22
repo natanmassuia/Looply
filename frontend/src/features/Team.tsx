@@ -591,6 +591,17 @@ export default function Team() {
                 </Card>
               );
             })}
+            {/* Fill idle grid space with an actionable invite tile */}
+            {isAdminOrOwner && (
+              <button
+                type="button"
+                onClick={() => setShowInviteModal(true)}
+                className="flex min-h-[88px] flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-[var(--looply-color-border-default)] p-5 text-[var(--looply-color-text-muted)] transition-colors hover:border-[var(--looply-color-action-primary)] hover:text-[var(--looply-color-action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
+              >
+                <IconPlus className="h-5 w-5" />
+                <span className="text-xs font-semibold">Convidar novo membro</span>
+              </button>
+            )}
           </div>
         )
       ) : visibleTeam && visibleTeam.length > 0 ? (
