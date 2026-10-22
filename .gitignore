@@ -1,5 +1,7 @@
 # dependencies
-node_modules/
+# No trailing slash: also ignores a `node_modules` symlink (mode 120000),
+# not just real directories — a symlink was accidentally committed before.
+node_modules
 .pnp
 .pnp.js
 /package-lock.json
