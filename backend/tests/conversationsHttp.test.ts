@@ -1,8 +1,16 @@
 import express from "express";
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { makeConversationsRouter } from "../src/routes/conversations";
 import { errorHandler } from "../src/lib/errors";
+
+// The human-reply endpoint dispatches via the WhatsApp provider; stub it so the
+// test never touches the network.
+vi.mock("../src/lib/assistantRuntime", () => ({
+  getWhatsAppProvider: () => ({
+    sendText: async () => ({ providerMessageId: "wamid_test" }),
+  }),
+}));
 
 function makeApp(auth = { userId: "usr_1", companyId: "comp_1", role: "ADMIN" }) {
   const app = express();
@@ -155,6 +163,21 @@ function makeApp(auth = { userId: "usr_1", companyId: "comp_1", role: "ADMIN" })
         });
         return list.map((item) => ({ ...item, senderUser: null }));
       },
+      create: async ({ data, include }: any) => {
+        const row: any = {
+          id: `msg_${state.messages.length + 1}`,
+          ...data,
+          senderUser:
+            include?.senderUser && data.senderUserId
+              ? { id: data.senderUserId, name: "Operador" }
+              : null,
+        };
+        state.messages.push(row);
+        return row;
+      },
+    },
+    companyMember: {
+      findUnique: async () => ({ id: "mem_1" }),
     },
   };
 
@@ -252,6 +275,30 @@ describe("Conversations HTTP Endpoints (F15.2)", () => {
       .send({ aiStatus: "HANDOFF" });
 
     expect(resInvalid.status).toBe(400);
+  });
+
+  it("POST /api/conversations/:id/messages auto-pauses the AI (human takeover)", async () => {
+    const { app, state } = makeApp();
+    // conv_1 starts ACTIVE
+    const res = await request(app)
+      .post("/api/conversations/conv_1/messages")
+      .send({ body: "Oi, aqui é o atendente humano" });
+
+    expect(res.status).toBe(201);
+    const conv = state.conversations.find((c) => c.id === "conv_1");
+    expect(conv?.aiStatus).toBe("PAUSED");
+  });
+
+  it("POST /api/conversations/:id/messages keeps an already-paused conversation paused", async () => {
+    const { app, state } = makeApp();
+    // conv_2 starts PAUSED
+    const res = await request(app)
+      .post("/api/conversations/conv_2/messages")
+      .send({ body: "Seguindo o atendimento" });
+
+    expect(res.status).toBe(201);
+    const conv = state.conversations.find((c) => c.id === "conv_2");
+    expect(conv?.aiStatus).toBe("PAUSED");
   });
 
   it("PATCH /api/conversations/:id/client binds client and rejects cross-tenant client", async () => {

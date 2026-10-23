@@ -326,7 +326,7 @@ describe("AI Inbox Feature (F15.3)", () => {
       renderWithClient(<AIStatusFooter conversation={mockConversations[1]} />);
       expect(screen.getByText("Assistente de IA Pausado")).toBeTruthy();
 
-      const resumeBtn = screen.getByRole("button", { name: "Retomar IA" });
+      const resumeBtn = screen.getByRole("button", { name: "Devolver à IA" });
       fireEvent.click(resumeBtn);
       expect(mockSetStatus).toHaveBeenCalledWith({
         id: "conv-2",

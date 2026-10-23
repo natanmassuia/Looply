@@ -1,17 +1,48 @@
-import type { ConversationSummaryDto, ConversationAiStatus } from "../../../lib/types";
+import type { ConversationSummaryDto, ConversationAiStatus, ConversationMessageDto } from "../../../lib/types";
 import { useSetConversationAiStatus } from "../../../lib/api";
+import { formatMessageTime } from "../utils/time";
 
 interface Props {
   conversation: ConversationSummaryDto;
+  messages?: ConversationMessageDto[];
 }
 
-export default function AIStatusFooter({ conversation }: Props) {
+export default function AIStatusFooter({ conversation, messages = [] }: Props) {
   const setAiStatusMutation = useSetConversationAiStatus();
   const status = conversation.aiStatus;
+
+  // Human takeover: the AI auto-pauses when an operator replies. We treat the
+  // pause as a takeover when the most recent message is from a human agent, and
+  // surface who/when so the pause isn't a mystery.
+  const lastMessage = messages[messages.length - 1];
+  const takeover =
+    status === "PAUSED" && lastMessage?.senderUser ? lastMessage : null;
+  const takeoverName = takeover?.senderUser?.name;
+  const takeoverTime = takeover ? formatMessageTime(takeover.createdAt) : null;
 
   const handleSetStatus = (newStatus: ConversationAiStatus) => {
     setAiStatusMutation.mutate({ id: conversation.id, aiStatus: newStatus });
   };
+
+  const title =
+    status === "ACTIVE"
+      ? "Assistente de IA em Operação"
+      : status === "PAUSED"
+      ? takeover
+        ? "Você está no comando"
+        : "Assistente de IA Pausado"
+      : "Conversa com Atenção Necessária";
+
+  const subtitle =
+    status === "ACTIVE"
+      ? "O Looply AI atende e responde autonomamente a este contato no WhatsApp."
+      : status === "PAUSED"
+      ? takeover
+        ? `${takeoverName ?? "Você"} assumiu esta conversa${
+            takeoverTime ? ` às ${takeoverTime}` : ""
+          }. A IA não responde até você devolvê-la.`
+        : "Respostas automáticas pausadas. A IA não responde até ser reativada."
+      : "Esta conversa foi sinalizada para acompanhamento humano prioritário.";
 
   return (
     <footer
@@ -62,18 +93,10 @@ export default function AIStatusFooter({ conversation }: Props) {
 
             <div>
               <h3 className="text-xs font-bold leading-tight text-[var(--looply-color-text-primary)]">
-                {status === "ACTIVE"
-                  ? "Assistente de IA em Operação"
-                  : status === "PAUSED"
-                  ? "Assistente de IA Pausado"
-                  : "Conversa com Atenção Necessária"}
+                {title}
               </h3>
               <p className="mt-0.5 text-[11px] leading-snug text-[var(--looply-color-text-secondary)]">
-                {status === "ACTIVE"
-                  ? "O Looply AI atende e responde autonomamente a este contato no WhatsApp."
-                  : status === "PAUSED"
-                  ? "As respostas automáticas estão temporariamente pausadas para este número."
-                  : "Esta conversa foi sinalizada para acompanhamento humano prioritário."}
+                {subtitle}
               </p>
             </div>
           </div>
@@ -109,7 +132,7 @@ export default function AIStatusFooter({ conversation }: Props) {
                   disabled={setAiStatusMutation.isPending}
                   className="cursor-pointer rounded-[10px] bg-[var(--looply-color-action-primary)] px-3 py-1.5 text-xs font-semibold text-[var(--looply-color-text-on-brand)] transition-colors hover:bg-[var(--looply-color-action-primary-hover)] disabled:opacity-50"
                 >
-                  Retomar IA
+                  Devolver à IA
                 </button>
                 <button
                   type="button"

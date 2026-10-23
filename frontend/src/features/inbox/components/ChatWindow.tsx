@@ -230,7 +230,7 @@ export default function ChatWindow({ conversation, isMobile = false, onBack }: P
         </div>
 
         {/* Autonomous AI Status Footer */}
-        <AIStatusFooter conversation={conversation} />
+        <AIStatusFooter conversation={conversation} messages={messages} />
       </div>
 
       {/* Right Desktop Context Panel (Figma 16 — 490:7 Contact Context) */}

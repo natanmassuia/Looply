@@ -94,7 +94,7 @@ export function makeConversationsRouter(db: DB, deps?: { storage?: ObjectStorage
     const input = parse(sendMessageSchema, req.body);
     const conversation = await db.conversation.findFirst({
       where: { id: req.params.id, companyId: req.auth!.companyId },
-      select: { id: true, remotePhone: true, provider: true },
+      select: { id: true, remotePhone: true, provider: true, aiStatus: true },
     });
     if (!conversation) {
       res.status(404).json({ error: { code: "not_found", message: "Conversa não encontrada" } });
@@ -124,6 +124,12 @@ export function makeConversationsRouter(db: DB, deps?: { storage?: ObjectStorage
       body: input.body,
       deliveryStatus,
     });
+
+    // Human took over: step the AI back so it doesn't answer over the operator.
+    // The operator returns control explicitly ("Devolver à IA" → ACTIVE).
+    if (conversation.aiStatus !== "PAUSED") {
+      await setConversationAiStatus(db, req.auth!.companyId, conversation.id, "PAUSED");
+    }
 
     res.status(201).json(message);
   }));
