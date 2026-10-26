@@ -319,6 +319,10 @@ export function useUpdateCompanySettings() {
       email?: string | null;
       phone?: string | null;
       website?: string | null;
+      businessContext?: string | null;
+      businessHoursStart?: string | null;
+      businessHoursEnd?: string | null;
+      businessDays?: number[];
     }) =>
       apiFetch<{ company: import("./types").CompanySettings }>("/api/settings/company", {
         method: "PATCH",

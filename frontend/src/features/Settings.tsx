@@ -13,6 +13,7 @@ import { useWorkspaceAppearance } from "../theme/react";
 import { applyTheme } from "../theme/applyTheme";
 import { resolveTheme } from "../theme/resolveTheme";
 import { isHexColor } from "../theme/color";
+import { MVP } from "../config/mvp";
 import { Card, PageHeader, Spinner } from "../components/common";
 import { IconCheck, IconAlertCircle, IconSun, IconMoon } from "../components/Icons";
 import MyAccountModal from "./MyAccountModal";
@@ -113,6 +114,10 @@ export default function Settings() {
   const [companyName, setCompanyName] = useState("");
   const [companyTimezone, setCompanyTimezone] = useState("America/Sao_Paulo");
   const [companyPhone, setCompanyPhone] = useState("");
+  const [companyBusinessContext, setCompanyBusinessContext] = useState("");
+  const [companyHoursStart, setCompanyHoursStart] = useState("");
+  const [companyHoursEnd, setCompanyHoursEnd] = useState("");
+  const [companyDays, setCompanyDays] = useState<number[]>([]);
   const [companyFeedback, setCompanyFeedback] = useState<string | null>(null);
   const [companyErr, setCompanyErr] = useState<string | null>(null);
   const companyInitializedRef = useRef(false);
@@ -136,6 +141,10 @@ export default function Settings() {
       setCompanyName(companyData.name || "");
       setCompanyTimezone(companyData.timezone || "America/Sao_Paulo");
       setCompanyPhone(hydratePhone(companyData.phone));
+      setCompanyBusinessContext(companyData.businessContext || "");
+      setCompanyHoursStart(companyData.businessHoursStart || "");
+      setCompanyHoursEnd(companyData.businessHoursEnd || "");
+      setCompanyDays(companyData.businessDays || []);
     } else if (!companyInitializedRef.current && session?.workspace?.name) {
       setCompanyName((prev) => prev || session.workspace!.name!);
     }
@@ -246,6 +255,10 @@ export default function Settings() {
         name: companyName.trim(),
         timezone: companyTimezone,
         phone: companyPhone.trim() || null,
+        businessContext: companyBusinessContext.trim() || null,
+        businessHoursStart: companyHoursStart || null,
+        businessHoursEnd: companyHoursEnd || null,
+        businessDays: companyDays,
       });
       setCompanyFeedback("Dados da empresa atualizados com sucesso.");
       setTimeout(() => setCompanyFeedback(null), 4000);
@@ -286,17 +299,19 @@ export default function Settings() {
           >
             Empresa
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("appearance")}
-            className={`pb-3 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
-              activeTab === "appearance"
-                ? "border-[var(--looply-color-action-primary)] text-[var(--looply-color-text-primary)] font-semibold"
-                : "border-transparent text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
-            }`}
-          >
-            Aparência
-          </button>
+          {!MVP.hideAppearanceTab && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("appearance")}
+              className={`pb-3 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
+                activeTab === "appearance"
+                  ? "border-[var(--looply-color-action-primary)] text-[var(--looply-color-text-primary)] font-semibold"
+                  : "border-transparent text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
+              }`}
+            >
+              Aparência
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setActiveTab("workflow")}
@@ -669,6 +684,85 @@ export default function Settings() {
                   />
                   <p className="mt-1 text-[11px] text-[var(--looply-color-text-muted)]">
                     Usado nos dados institucionais e documentos da empresa.
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="company-business-context" className="label">
+                    Sobre o seu negócio
+                  </label>
+                  <textarea
+                    id="company-business-context"
+                    disabled={!isOwnerOrAdmin}
+                    value={companyBusinessContext}
+                    onChange={(e) => setCompanyBusinessContext(e.target.value)}
+                    className="input min-h-32"
+                    rows={8}
+                    maxLength={5000}
+                    placeholder="Serviços, preços, horários de atendimento, endereço e políticas. A assistente de IA só responde dúvidas com base no que estiver aqui."
+                  />
+                  <p className="mt-1 text-[11px] text-[var(--looply-color-text-muted)]">
+                    A IA só responde dúvidas de clientes com estas informações. O que não estiver aqui vira atendimento humano.
+                  </p>
+                </div>
+
+                <div>
+                  <p className="label mb-2">Horário de funcionamento</p>
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <label htmlFor="company-hours-start" className="text-[11px] text-[var(--looply-color-text-muted)]">
+                        Abre
+                      </label>
+                      <input
+                        id="company-hours-start"
+                        type="time"
+                        disabled={!isOwnerOrAdmin}
+                        value={companyHoursStart}
+                        onChange={(e) => setCompanyHoursStart(e.target.value)}
+                        className="input"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label htmlFor="company-hours-end" className="text-[11px] text-[var(--looply-color-text-muted)]">
+                        Fecha
+                      </label>
+                      <input
+                        id="company-hours-end"
+                        type="time"
+                        disabled={!isOwnerOrAdmin}
+                        value={companyHoursEnd}
+                        onChange={(e) => setCompanyHoursEnd(e.target.value)}
+                        className="input"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((label, day) => {
+                      const active = companyDays.includes(day);
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          disabled={!isOwnerOrAdmin}
+                          aria-pressed={active}
+                          onClick={() =>
+                            setCompanyDays((prev) =>
+                              prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort((a, b) => a - b),
+                            )
+                          }
+                          className={`rounded-md px-3 py-1 text-xs ${
+                            active
+                              ? "bg-[var(--looply-color-primary)] text-white"
+                              : "bg-[var(--looply-color-surface-muted)] text-[var(--looply-color-text-muted)]"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1 text-[11px] text-[var(--looply-color-text-muted)]">
+                    A IA recusa agendamentos fora do horário e dias ativos. Deixe em branco para não restringir.
                   </p>
                 </div>
 

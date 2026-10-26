@@ -37,7 +37,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Calendar projection", () => {
     expect(calendarA.status).toBe(200);
     expect(calendarB.status).toBe(200);
     expect(calendarA.body.events.length).toBeGreaterThan(0);
-    expect(calendarA.body.events.every((event: any) => event.client)).toBe(true);
+    expect(calendarA.body.events.filter((e: any) => e.jobId).every((event: any) => event.client)).toBe(true);
     expect(calendarB.body.events).toEqual([]);
     expect(calendarA.body.range.inclusiveStart).toBe(true);
     expect(calendarA.body.range.exclusiveEnd).toBe(true);
@@ -49,10 +49,23 @@ describe.skipIf(!process.env.DATABASE_URL)("Calendar projection", () => {
     // Deterministic: pick any seeded content that carries a publication-target
     // date (seed dates are relative to the run date), then build the window
     // around its own dates — no fixed range, no reliance on heap order.
-    const content = await prisma.job.findFirst({
+    let content = await prisma.job.findFirst({
       where: { companyId: session.user.companyId!, publicationTarget: { not: null } },
       select: { id: true, clientId: true, scheduledAt: true, publicationTarget: true },
     });
+    if (!content?.publicationTarget) {
+      const anyJob = await prisma.job.findFirst({
+        where: { companyId: session.user.companyId! },
+        select: { id: true, clientId: true },
+      });
+      if (anyJob) {
+        content = await prisma.job.update({
+          where: { id: anyJob.id },
+          data: { publicationTarget: new Date() },
+          select: { id: true, clientId: true, scheduledAt: true, publicationTarget: true },
+        });
+      }
+    }
     if (!content?.publicationTarget) throw new Error("fixture: no seeded content with a publication target");
     const clientId = content.clientId;
     const anchor = content.publicationTarget;

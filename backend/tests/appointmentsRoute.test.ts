@@ -33,7 +33,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
       .post("/api/appointments")
       .set("Cookie", cookie)
       .set("Origin", env.CORS_ORIGIN)
-      .send({ title: "Create API Test", startsAt: "2026-09-01T10:00:00.000Z" });
+      .send({ title: "Create API Test", startsAt: "2026-09-07T10:00:00.000Z" });
     if (res.status !== 201) console.log(res.body); expect(res.status).toBe(201);
     expect(res.body.title).toBe("Create API Test");
     expect(res.body.companyId).toBe(session.user.companyId);
@@ -73,7 +73,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
       .post("/api/appointments")
       .set("Cookie", cookie)
       .set("Origin", env.CORS_ORIGIN)
-      .send({ title: "Test", startsAt: "2026-09-01T10:00:00.000Z", companyId: "other", createdByUserId: "other", status: "CANCELLED" });
+      .send({ title: "Test", startsAt: "2026-09-02T10:00:00.000Z", companyId: "other", createdByUserId: "other", status: "CANCELLED" });
     if (res.status !== 201) console.log(res.body); expect(res.status).toBe(201);
     expect(res.body.companyId).toBe(session.user.companyId);
     expect(res.body.createdByUserId).toBe(session.user.id);
@@ -90,7 +90,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
       .post("/api/appointments")
       .set("Cookie", cookie1)
       .set("Origin", env.CORS_ORIGIN)
-      .send({ title: "T1", startsAt: "2026-09-01T10:00:00.000Z" });
+      .send({ title: "T1", startsAt: "2026-09-03T10:00:00.000Z" });
     createdAppointmentIds.push(appt.body.id);
 
     const res1 = await request(app)
@@ -122,11 +122,11 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
       .post("/api/appointments")
       .set("Cookie", `${SESSION_COOKIE}=${session1.token}`)
       .set("Origin", env.CORS_ORIGIN)
-      .send({ title: "T1", startsAt: "2026-09-01T10:00:00.000Z" });
+      .send({ title: "T1", startsAt: "2026-09-04T10:00:00.000Z" });
 
     const id = appt.body.id;
     createdAppointmentIds.push(appt.body.id);
-    
+
     const resOwn = await request(app)
       .get(`/api/appointments/${id}`)
       .set("Cookie", `${SESSION_COOKIE}=${session1.token}`);
@@ -148,11 +148,11 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
       .post("/api/appointments")
       .set("Cookie", cookie)
       .set("Origin", env.CORS_ORIGIN)
-      .send({ title: "T1", startsAt: "2026-09-01T10:00:00.000Z" });
+      .send({ title: "T1", startsAt: "2026-09-05T10:00:00.000Z" });
 
     const id = appt.body.id;
     createdAppointmentIds.push(appt.body.id);
-    
+
     const res = await request(app)
       .patch(`/api/appointments/${id}`)
       .set("Cookie", cookie)
@@ -173,7 +173,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Appointments Router", () => {
       .post("/api/appointments")
       .set("Cookie", cookie)
       .set("Origin", env.CORS_ORIGIN)
-      .send({ title: "ToCancel", startsAt: "2026-09-01T10:00:00.000Z" });
+      .send({ title: "ToCancel", startsAt: "2026-09-06T10:00:00.000Z" });
 
     const id = appt.body.id;
     createdAppointmentIds.push(appt.body.id);

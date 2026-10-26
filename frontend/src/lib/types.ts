@@ -65,6 +65,10 @@ export interface CompanySettings {
   email: string | null;
   phone: string | null;
   website: string | null;
+  businessContext: string | null;
+  businessHoursStart: string | null;
+  businessHoursEnd: string | null;
+  businessDays: number[];
   onboardedAt: string | null;
   createdAt: string;
   updatedAt: string;

@@ -225,6 +225,14 @@ model Company {
   website           String?
   timezone          String           @default("America/Sao_Paulo")
   locale            String           @default("pt-BR")
+  // Free-text "Sobre o seu negócio" — the ONLY business facts the customer AI
+  // may answer from (services, prices, hours, address, policies).
+  businessContext   String?
+  // Single daily business-hours window (local "HH:MM") applied to businessDays
+  // (0=Sunday … 6=Saturday). Null/empty = hours not enforced for scheduling.
+  businessHoursStart String?
+  businessHoursEnd   String?
+  businessDays       Int[]           @default([])
   onboardedAt       DateTime?
   // Workspace appearance (BP1). Nullable so existing rows resolve to the
   // deterministic default (AURA/LIGHT, no custom colors) without backfill.

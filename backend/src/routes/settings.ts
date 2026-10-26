@@ -50,6 +50,10 @@ const updateCompanySchema = z.object({
   email: z.string().email().max(160).nullable().optional(),
   phone: z.string().max(40).nullable().optional(),
   website: z.string().max(200).nullable().optional(),
+  businessContext: z.string().max(5000).nullable().optional(),
+  businessHoursStart: z.string().regex(/^\d{2}:\d{2}$/, "Formato HH:MM").nullable().optional(),
+  businessHoursEnd: z.string().regex(/^\d{2}:\d{2}$/, "Formato HH:MM").nullable().optional(),
+  businessDays: z.array(z.number().int().min(0).max(6)).max(7).optional(),
 });
 
 router.get(
@@ -69,6 +73,10 @@ router.get(
         email: true,
         phone: true,
         website: true,
+        businessContext: true,
+        businessHoursStart: true,
+        businessHoursEnd: true,
+        businessDays: true,
         onboardedAt: true,
         createdAt: true,
         updatedAt: true,
@@ -104,6 +112,10 @@ router.patch(
       email?: string | null;
       phone?: string | null;
       website?: string | null;
+      businessContext?: string | null;
+      businessHoursStart?: string | null;
+      businessHoursEnd?: string | null;
+      businessDays?: number[];
     } = {};
 
     if (input.name !== undefined) data.name = input.name.trim();
@@ -114,6 +126,17 @@ router.patch(
     if (input.email !== undefined) data.email = input.email;
     if (input.phone !== undefined) data.phone = input.phone;
     if (input.website !== undefined) data.website = input.website;
+    if (input.businessContext !== undefined) data.businessContext = input.businessContext;
+    if (input.businessHoursStart !== undefined) data.businessHoursStart = input.businessHoursStart;
+    if (input.businessHoursEnd !== undefined) data.businessHoursEnd = input.businessHoursEnd;
+    if (input.businessDays !== undefined) data.businessDays = input.businessDays;
+
+    // Reject an inverted window so scheduling isn't silently blocked for all slots.
+    const finalStart = input.businessHoursStart !== undefined ? input.businessHoursStart : undefined;
+    const finalEnd = input.businessHoursEnd !== undefined ? input.businessHoursEnd : undefined;
+    if (finalStart && finalEnd && finalEnd <= finalStart) {
+      throw badRequest("Horário de fechamento deve ser maior que o de abertura");
+    }
 
     const company = await prisma.company.update({
       where: { id: req.auth!.companyId },
@@ -130,6 +153,10 @@ router.patch(
         email: true,
         phone: true,
         website: true,
+        businessContext: true,
+        businessHoursStart: true,
+        businessHoursEnd: true,
+        businessDays: true,
         onboardedAt: true,
         createdAt: true,
         updatedAt: true,

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
@@ -6,6 +6,7 @@ import Settings from "../features/Settings";
 import MyAccountModal from "../features/MyAccountModal";
 import * as apiModule from "../lib/api";
 import type { WorkspaceAppearance } from "../lib/types";
+import { MVP } from "../config/mvp";
 
 const mockSession = {
   user: {
@@ -48,6 +49,10 @@ const mockCompanySettings = {
   email: "contato@looply.com",
   phone: "+55 11 3000-0000",
   website: "https://looply.com",
+  businessContext: null,
+  businessHoursStart: null,
+  businessHoursEnd: null,
+  businessDays: [],
   onboardedAt: new Date().toISOString(),
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -160,70 +165,91 @@ describe("Settings Feature — F12.2 Profile and Company Data", () => {
       name: "Looply Agência",
       timezone: "America/Sao_Paulo",
       phone: "1633224455",
+      businessContext: null,
+      businessHoursStart: null,
+      businessHoursEnd: null,
+      businessDays: [],
     });
   });
 
-  // F14 — appearance save sends ALL three of preset/mode/colors ONLY when the
-  // preset is CUSTOM; a non-CUSTOM preset omits customColors so the strict
-  // backend validator does not reject the request with "Erro de validação".
-  it("appearance save: non-CUSTOM preset omits customColors (avoids 400)", async () => {
-    const updateAppearanceMutate = vi.fn().mockResolvedValue({
-      appearance: { preset: "FLUX", mode: "LIGHT", customColors: null },
-    });
-    vi.spyOn(apiModule, "useUpdateSettingsAppearance").mockReturnValue({
-      mutateAsync: updateAppearanceMutate,
-      isPending: false,
-    } as any);
-
+  it("hides the Aparência tab when MVP.hideAppearanceTab is true", () => {
     renderWithClient(<Settings />);
-    fireEvent.click(screen.getByRole("button", { name: "Aparência" }));
-    fireEvent.click(screen.getByRole("button", { name: /Flux/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Salvar aparência" }));
-
-    expect(updateAppearanceMutate).toHaveBeenCalledWith({
-      preset: "FLUX",
-      mode: "LIGHT",
-    });
-    const body = updateAppearanceMutate.mock.calls[0][0];
-    expect(body).not.toHaveProperty("customColors");
+    expect(screen.queryByRole("button", { name: "Aparência" })).toBeNull();
   });
 
-  it("appearance save: CUSTOM preset includes the six-color payload", async () => {
-    const updateAppearanceMutate = vi.fn().mockResolvedValue({
-      appearance: {
-        preset: "CUSTOM",
+  describe("Appearance settings (when enabled)", () => {
+    let prevHideAppearance: boolean;
+
+    beforeEach(() => {
+      prevHideAppearance = MVP.hideAppearanceTab;
+      MVP.hideAppearanceTab = false;
+    });
+
+    afterEach(() => {
+      MVP.hideAppearanceTab = prevHideAppearance;
+    });
+
+    // F14 — appearance save sends ALL three of preset/mode/colors ONLY when the
+    // preset is CUSTOM; a non-CUSTOM preset omits customColors so the strict
+    // backend validator does not reject the request with "Erro de validação".
+    it("appearance save: non-CUSTOM preset omits customColors (avoids 400)", async () => {
+      const updateAppearanceMutate = vi.fn().mockResolvedValue({
+        appearance: { preset: "FLUX", mode: "LIGHT", customColors: null },
+      });
+      vi.spyOn(apiModule, "useUpdateSettingsAppearance").mockReturnValue({
+        mutateAsync: updateAppearanceMutate,
+        isPending: false,
+      } as any);
+
+      renderWithClient(<Settings />);
+      fireEvent.click(screen.getByRole("button", { name: "Aparência" }));
+      fireEvent.click(screen.getByRole("button", { name: /Flux/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Salvar aparência" }));
+
+      expect(updateAppearanceMutate).toHaveBeenCalledWith({
+        preset: "FLUX",
         mode: "LIGHT",
-        customColors: {
-          primary: "#111111",
-          secondary: "#222222",
-          accent: "#333333",
-          surface: "#444444",
-          text: "#555555",
-          border: "#666666",
-        },
-      },
+      });
+      const body = updateAppearanceMutate.mock.calls[0][0];
+      expect(body).not.toHaveProperty("customColors");
     });
-    vi.spyOn(apiModule, "useUpdateSettingsAppearance").mockReturnValue({
-      mutateAsync: updateAppearanceMutate,
-      isPending: false,
-    } as any);
 
-    renderWithClient(<Settings />);
-    fireEvent.click(screen.getByRole("button", { name: "Aparência" }));
-    fireEvent.click(screen.getByRole("button", { name: /Customizado/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Salvar aparência" }));
+    it("appearance save: CUSTOM preset includes the six-color payload", async () => {
+      const updateAppearanceMutate = vi.fn().mockResolvedValue({
+        appearance: {
+          preset: "CUSTOM",
+          mode: "LIGHT",
+          customColors: {
+            primary: "#111111",
+            secondary: "#222222",
+            accent: "#333333",
+            surface: "#444444",
+            text: "#555555",
+            border: "#666666",
+          },
+        },
+      });
+      vi.spyOn(apiModule, "useUpdateSettingsAppearance").mockReturnValue({
+        mutateAsync: updateAppearanceMutate,
+        isPending: false,
+      } as any);
 
-    const body = updateAppearanceMutate.mock.calls[0][0];
-    expect(body.preset).toBe("CUSTOM");
-    expect(body.customColors).toBeTruthy();
-    expect(Object.keys(body.customColors).sort()).toEqual(
-      ["accent", "border", "primary", "secondary", "surface", "text"].sort(),
-    );
-  });
+      renderWithClient(<Settings />);
+      fireEvent.click(screen.getByRole("button", { name: "Aparência" }));
+      fireEvent.click(screen.getByRole("button", { name: /Customizado/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Salvar aparência" }));
 
-  // F14.8 — Customizado functional completeness: editor, validation, restore,
-  // and cancel with an already-persisted custom palette.
-  describe("Customizado editor (F14.8)", () => {
+      const body = updateAppearanceMutate.mock.calls[0][0];
+      expect(body.preset).toBe("CUSTOM");
+      expect(body.customColors).toBeTruthy();
+      expect(Object.keys(body.customColors).sort()).toEqual(
+        ["accent", "border", "primary", "secondary", "surface", "text"].sort(),
+      );
+    });
+
+    // F14.8 — Customizado functional completeness: editor, validation, restore,
+    // and cancel with an already-persisted custom palette.
+    describe("Customizado editor (F14.8)", () => {
     function renderWithCustomAppearance(customColors?: WorkspaceAppearance["customColors"]) {
       vi.spyOn(apiModule, "useMe").mockReturnValue({
         data: {
@@ -311,4 +337,5 @@ describe("Settings Feature — F12.2 Profile and Company Data", () => {
       expect((input as HTMLInputElement).value).toBe("#111111");
     });
   });
+});
 });
