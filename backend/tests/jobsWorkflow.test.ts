@@ -1,10 +1,10 @@
-import { describe, it, expect, afterAll } from "vitest";
+import { describe, it, expect, afterAll, beforeAll } from "vitest";
 import request from "supertest";
 import app from "../src/app";
 import { prisma } from "../src/lib/db";
 import { login, logout } from "../src/services/authService";
 import { seedCredentials } from "./seedCredentials";
-import { tenantBLogin } from "./fixtures";
+import { tenantBLogin, ensureSeedWorkspaceData } from "./fixtures";
 import { SESSION_COOKIE } from "../src/lib/session";
 import { DEFAULT_WORKFLOW_STAGES } from "../src/domain/jobWorkflow";
 
@@ -13,6 +13,10 @@ const cleanupJobs: string[] = [];
 const cleanupClients: string[] = [];
 
 describe.skipIf(!process.env.DATABASE_URL)("Jobs + Workflow + Activity", () => {
+  beforeAll(async () => {
+    await ensureSeedWorkspaceData();
+  });
+
   it("default workflows are deterministic and idempotent per company", async () => {
     const a = await login(prisma, emailA(), seedCredentials().password);
     const b = await tenantBLogin(prisma);

@@ -1,10 +1,10 @@
-import { describe, it, expect, afterAll } from "vitest";
+import { describe, it, expect, afterAll, beforeAll } from "vitest";
 import request from "supertest";
 import app from "../src/app";
 import { prisma } from "../src/lib/db";
 import { login, logout } from "../src/services/authService";
 import { seedCredentials } from "./seedCredentials";
-import { tenantBLogin } from "./fixtures";
+import { tenantBLogin, ensureSeedWorkspaceData } from "./fixtures";
 import { SESSION_COOKIE } from "../src/lib/session";
 import { publicFileDownload } from "../src/services/approvalService";
 import type { DB } from "../src/lib/db";
@@ -13,6 +13,10 @@ import type { ObjectStorage } from "../src/lib/storage";
 const createdApprovalIds: string[] = [];
 
 describe.skipIf(!process.env.DATABASE_URL)("Approval B9", () => {
+  beforeAll(async () => {
+    await ensureSeedWorkspaceData();
+  });
+
   it("internal create returns token once; public read is minimal and unauthenticated", async () => {
     const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const job = await prisma.job.findFirst({ where: { companyId: session.user.companyId! }, select: { id: true } });

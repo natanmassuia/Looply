@@ -1,10 +1,10 @@
-import { describe, it, expect, afterAll } from "vitest";
+import { describe, it, expect, afterAll, beforeAll } from "vitest";
 import request from "supertest";
 import app from "../src/app";
 import { SESSION_COOKIE } from "../src/lib/session";
 import { login, logout } from "../src/services/authService";
 import { seedCredentials } from "./seedCredentials";
-import { tenantBLogin } from "./fixtures";
+import { tenantBLogin, ensureSeedWorkspaceData } from "./fixtures";
 import { prisma } from "../src/lib/db";
 
 // Live-DB HTTP suite: proves tenant isolation end-to-end through the real
@@ -16,6 +16,10 @@ const emailA = (): string => seedCredentials().email; // OWNER of Looply Studio 
 const createdClientIds: string[] = [];
 
 describe.skipIf(!process.env.DATABASE_URL)("clients tenant isolation (HTTP)", () => {
+  beforeAll(async () => {
+    await ensureSeedWorkspaceData();
+  });
+
   it("lists only own-tenant clients", async () => {
     const a = await login(prisma, emailA(), seedCredentials().password);
     const b = await tenantBLogin(prisma);
