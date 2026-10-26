@@ -1,5 +1,10 @@
 # Looply — Agent Instructions
 
+WhatsApp-first customer operations: per-company WhatsApp inbox, an AI assistant
+that schedules appointments and answers only from each company's registered
+business context, an appointment calendar with overlap + business-hours guards,
+and a client content-approval workflow (`/approve/:token`).
+
 ## Commands
 
 Root convenience scripts (run from project root):
@@ -38,6 +43,14 @@ npm --prefix frontend run typecheck && npm --prefix frontend run test
 - Design system tokens live in `frontend/src/index.css` (`--looply-color-*`, warm coral `#f06d55` / canvas `#fff7f1` / ink `#2a171f`). Never introduce legacy `#2563eb` blue fallbacks.
 - Public approval token is random (crypto), never a numeric id.
 - Content status transitions are validated on the backend (`backend/src/domain/workflow.ts`).
+- WhatsApp outbound leaves via the conversation's company channel number
+  (`WhatsAppChannel.externalAccountId`), falling back to `env.WHATSAPP_PHONE_NUMBER_ID`;
+  inbound routing by `metadata.phone_number_id` is unchanged. Token stays single (`.env`).
+- The customer AI answers only from `Company.businessContext`; anything else is
+  handed off (`NEEDS_ATTENTION`). It never invents prices/hours/availability.
+- Appointments reject overlaps (race-safe: per-company `pg_advisory_xact_lock`
+  inside a transaction) and out-of-hours slots (`Company.businessHoursStart/End`
+  + `businessDays`); null `endsAt` is treated as 60 min (`backend/src/services/scheduling.ts`).
 - Broad `/api` routers with router-level `requireCapability` (`filesRouter`, `approvalsInternalRouter`, `mediaRouter`) must stay mounted after specific `/api/*` routers in `backend/src/app.ts`.
 
 ## Working Agreements & Toolkit Integration
@@ -52,7 +65,7 @@ npm --prefix frontend run typecheck && npm --prefix frontend run test
 
 ## Project Skills (`.agents/skills/` & `.claude/skills/`)
 
-- `vercel-react-best-practices` & `vercel-composition-patterns`: React 18 / Vite component architecture, state, and rendering.
+- `vercel-react-best-practices` & `vercel-composition-patterns`: React 19 / Vite 6 component architecture, state, and rendering.
 - `web-design-guidelines`: UI polish, accessibility, focus states, and layout review against Figma specs.
 - `writing-guidelines`: documentation and UI microcopy clarity.
 - `supabase-postgres-best-practices`: PostgreSQL schema, indexes, queries, and Prisma migration safety.
