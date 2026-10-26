@@ -68,7 +68,7 @@ export interface WhatsAppProvider {
   isValidVerification(mode: string | undefined, token: string | undefined): boolean;
   normalizeInbound(payload: unknown): WhatsAppInboundEvent[];
   normalizeStatusUpdates?(payload: unknown): WhatsAppStatusUpdateEvent[];
-  sendText(to: string, text: string): Promise<WhatsAppOutboundResult | void>;
+  sendText(to: string, text: string, phoneNumberId?: string): Promise<WhatsAppOutboundResult | void>;
   downloadMedia?(media: WhatsAppMediaPayload): Promise<{ buffer: Buffer; contentType: string }>;
 }
 
@@ -198,11 +198,13 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
     return updates;
   }
 
-  async sendText(to: string, text: string): Promise<WhatsAppOutboundResult> {
+  async sendText(to: string, text: string, phoneNumberId?: string): Promise<WhatsAppOutboundResult> {
     const doFetch = this.config.fetchImpl ?? fetch;
     const version = this.config.graphApiVersion ?? "v21.0";
+    // Outbound leaves via the conversation's company channel; .env is the fallback.
+    const senderId = phoneNumberId ?? this.config.phoneNumberId;
     const response = await doFetch(
-      `https://graph.facebook.com/${version}/${this.config.phoneNumberId}/messages`,
+      `https://graph.facebook.com/${version}/${senderId}/messages`,
       {
         method: "POST",
         headers: {

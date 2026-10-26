@@ -101,11 +101,22 @@ export function makeConversationsRouter(db: DB, deps?: { storage?: ObjectStorage
       return;
     }
 
+    // Reply leaves via this company's own WhatsApp number (falls back to .env).
+    const channel = await db.whatsAppChannel.findFirst({
+      where: {
+        companyId: req.auth!.companyId,
+        provider: conversation.provider,
+        purpose: "CUSTOMER_AI",
+        isActive: true,
+      },
+      select: { externalAccountId: true },
+    });
+
     let providerMessageId: string | null = null;
     let deliveryStatus: "SENT" | "FAILED" = "SENT";
     try {
       const provider = getWhatsAppProvider();
-      const result = await provider.sendText(conversation.remotePhone, input.body);
+      const result = await provider.sendText(conversation.remotePhone, input.body, channel?.externalAccountId ?? undefined);
       if (result && typeof result === "object" && "providerMessageId" in result) {
         providerMessageId = result.providerMessageId;
       }

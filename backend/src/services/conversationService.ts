@@ -670,6 +670,7 @@ export interface ResolvedWhatsAppChannel {
   companyId: string;
   purpose: WhatsAppChannelPurpose;
   displayName?: string | null;
+  externalAccountId?: string | null;
 }
 
 export async function resolveWhatsAppChannelDetails(
@@ -686,7 +687,7 @@ export async function resolveWhatsAppChannelDetails(
           externalAccountId,
         },
       },
-      select: { id: true, companyId: true, purpose: true, displayName: true, isActive: true },
+      select: { id: true, companyId: true, purpose: true, displayName: true, externalAccountId: true, isActive: true },
     });
     if (channel && channel.isActive) {
       return {
@@ -694,6 +695,7 @@ export async function resolveWhatsAppChannelDetails(
         companyId: channel.companyId,
         purpose: channel.purpose,
         displayName: channel.displayName,
+        externalAccountId: channel.externalAccountId,
       };
     }
   }
@@ -707,7 +709,7 @@ export async function resolveWhatsAppChannelDetails(
           sourcePhoneNumber: normalized,
           isActive: true,
         },
-        select: { id: true, companyId: true, purpose: true, displayName: true },
+        select: { id: true, companyId: true, purpose: true, displayName: true, externalAccountId: true },
       });
       if (channel) {
         return {
@@ -715,6 +717,7 @@ export async function resolveWhatsAppChannelDetails(
           companyId: channel.companyId,
           purpose: channel.purpose,
           displayName: channel.displayName,
+          externalAccountId: channel.externalAccountId,
         };
       }
     }
