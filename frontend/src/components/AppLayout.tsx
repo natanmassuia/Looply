@@ -1,14 +1,17 @@
 import { useState, useEffect } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import Sidebar, { NAV } from "./Sidebar";
 import { Logo } from "./Logo";
-import { IconDashboard, IconSettings } from "./Icons";
+import { IconDashboard, IconSettings, IconMenu } from "./Icons";
 import { useLogout, useMe } from "../lib/api";
 import MyAccountModal from "../features/MyAccountModal";
 
 // Derive mobile primary and secondary navigation from canonical NAV registry.
 const MOBILE_PRIMARY = NAV.filter((n) => n.mobilePlacement === "primary");
 const MOBILE_SECONDARY = NAV.filter((n) => n.mobilePlacement === "secondary");
+const ACCOUNT_NAV = NAV.filter((n) =>
+  ["/conversations", "/clients", "/whatsapp", "/team", "/settings"].includes(n.to),
+);
 
 // Compact account menu (mobile top bar): Minha conta + Equipe/Configurações + Sair.
 function AccountMenu({
@@ -80,7 +83,7 @@ function AccountMenu({
               >
                 Minha conta
               </button>
-              {MOBILE_SECONDARY.map(({ to, label }) => (
+              {ACCOUNT_NAV.map(({ to, label }) => (
                 <NavLink
                   key={to}
                   to={to}
@@ -109,13 +112,19 @@ function AccountMenu({
 export default function AppLayout() {
   const logout = useLogout();
   const navigate = useNavigate();
+  const location = useLocation();
   const { data } = useMe();
   const [myAccountOpen, setMyAccountOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const activeRole = data?.memberships?.find(
     (m) => m.companyId === data.activeCompanyId,
   )?.role;
   const firstName = data?.user?.name?.split(" ")[0];
   const workspaceName = data?.workspace?.name ?? data?.memberships?.[0]?.companyName;
+
+  const isSecondaryActive = MOBILE_SECONDARY.some(({ to, end }) =>
+    end ? location.pathname === to : location.pathname.startsWith(to),
+  );
 
   // Logout: server revokes the session, all private cache is cleared, then we
   // navigate to /login immediately — no F5, no second navigation.
@@ -128,7 +137,7 @@ export default function AppLayout() {
 
   return (
     <div className="flex h-dvh overflow-hidden">
-      {/* Desktop navigation (md+). Below md the mobile shell renders instead. */}
+      {/* Desktop navigation (md+) & Mobile Drawer overlay */}
       <Sidebar
         user={data?.user}
         role={activeRole}
@@ -137,21 +146,33 @@ export default function AppLayout() {
         onLogout={handleLogout}
         logoutPending={logout.isPending}
         onOpenMyAccount={() => setMyAccountOpen(true)}
+        mobileOpen={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Mobile top bar: brand + home affordance + account menu */}
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-4 md:hidden">
-          <NavLink
-            to="/dashboard"
-            aria-label="Ir para Visão geral"
-            title="Ir para Visão geral"
-            className="flex cursor-pointer items-center gap-1.5 rounded-[8px] px-1.5 py-1 transition-colors hover:bg-[var(--looply-color-bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
-          >
-            <Logo size={28} />
-            <IconDashboard className="h-4 w-4 text-[var(--looply-color-text-brand)]" aria-hidden="true" />
-            <span className="sr-only">Ir para Visão geral</span>
-          </NavLink>
+        {/* Mobile top bar: menu button + brand + home affordance + account menu */}
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-3 md:hidden">
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Abrir menu de navegação"
+              className="flex h-9 w-9 items-center justify-center rounded-[8px] text-[var(--looply-color-text-secondary)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
+            >
+              <IconMenu className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <NavLink
+              to="/dashboard"
+              aria-label="Ir para Visão geral"
+              title="Ir para Visão geral"
+              className="flex cursor-pointer items-center gap-1.5 rounded-[8px] px-1.5 py-1 transition-colors hover:bg-[var(--looply-color-bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
+            >
+              <Logo size={28} />
+              <IconDashboard className="h-4 w-4 text-[var(--looply-color-text-brand)]" aria-hidden="true" />
+              <span className="sr-only">Ir para Visão geral</span>
+            </NavLink>
+          </div>
           <div className="flex shrink-0 items-center gap-1.5">
             <NavLink
               to="/settings"
@@ -213,6 +234,20 @@ export default function AppLayout() {
               {short}
             </NavLink>
           ))}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Menu"
+            aria-expanded={mobileMenuOpen}
+            className={`flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[10px] py-1.5 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] ${
+              isSecondaryActive
+                ? "bg-[var(--looply-color-coral-100)] text-[var(--looply-color-text-brand)]"
+                : "text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
+            }`}
+          >
+            <IconMenu className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+            Menu
+          </button>
         </nav>
       </div>
     </div>

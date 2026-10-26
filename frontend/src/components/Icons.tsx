@@ -279,3 +279,10 @@ export const IconWhatsApp = (p: P) => (
     <path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1ZM14 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1Z" />
   </svg>
 );
+
+export const IconMenu = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M4 6h16M4 12h16M4 18h16" />
+  </svg>
+);
+

@@ -196,9 +196,9 @@ describe("mobile app shell", () => {
     const nav = screen.getByRole("navigation", { name: "Navegação principal" });
     const expected: [string, string][] = [
       ["Visão geral", "/dashboard"],
-      ["Clientes", "/clients"],
-      ["Demandas", "/contents"],
+      ["Conversas", "/conversations"],
       ["Agenda", "/calendar"],
+      ["Demandas", "/contents"],
     ];
     for (const [name, href] of expected) {
       expect(within(nav).getByRole("link", { name })).toHaveAttribute("href", href);
@@ -207,6 +207,8 @@ describe("mobile app shell", () => {
     expect(within(nav).queryByRole("link", { name: "Equipe" })).toBeNull();
     expect(within(nav).queryByRole("link", { name: /Aprovações|Aprovar/i })).toBeNull();
     expect(within(nav).queryByRole("link", { name: /Configurações|Ajustes/i })).toBeNull();
+    // Exposes Menu button to open mobile drawer
+    expect(within(nav).getByRole("button", { name: "Menu" })).toBeTruthy();
   });
 
   it("marks the active mobile route semantically", () => {
@@ -243,6 +245,23 @@ describe("mobile app shell", () => {
     await user.click(within(menu).getByRole("link", { name: "Equipe" }));
     expect(screen.queryByRole("menu")).toBeNull();
     expect(screen.getByText("equipe")).toBeTruthy();
+  });
+
+  it("opens mobile drawer when clicking Menu button and closes on Close button", async () => {
+    const user = userEvent.setup();
+    renderLayout("/dashboard");
+    const nav = screen.getByRole("navigation", { name: "Navegação principal" });
+    await user.click(within(nav).getByRole("button", { name: "Menu" }));
+
+    const aside = screen.getByRole("complementary", { name: "Menu principal" });
+    expect(aside).toBeTruthy();
+    expect(within(aside).getByRole("link", { name: "Clientes" })).toHaveAttribute("href", "/clients");
+    expect(within(aside).getByRole("link", { name: "Equipe" })).toHaveAttribute("href", "/team");
+    expect(within(aside).getByRole("link", { name: "Configurações" })).toHaveAttribute("href", "/settings");
+
+    const closeBtn = screen.getByRole("button", { name: "Fechar menu" });
+    await user.click(closeBtn);
+    expect(screen.queryByRole("button", { name: "Fechar menu" })).toBeNull();
   });
 });
 
