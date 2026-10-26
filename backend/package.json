@@ -24,7 +24,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1110.0",
     "@prisma/client": "^5.22.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
     "helmet": "^8.0.0",
     "ioredis": "^6.0.0",
