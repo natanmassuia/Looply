@@ -107,7 +107,7 @@ export interface WhatsAppCustomerAdapterDeps {
   db: DB;
   store: TransientStore;
   provider: {
-    sendText(to: string, text: string): Promise<WhatsAppOutboundResult | void>;
+    sendText(to: string, text: string, phoneNumberId?: string): Promise<WhatsAppOutboundResult | void>;
     downloadMedia?(media: WhatsAppMediaPayload): Promise<{ buffer: Buffer; contentType: string }>;
   };
   languageModel: AssistantLanguageModel;
@@ -119,7 +119,7 @@ export interface WhatsAppCustomerAdapterDeps {
 
 async function sendCustomerReply(
   deps: WhatsAppCustomerAdapterDeps,
-  companyId: string,
+  channel: ResolvedWhatsAppChannel,
   conversationId: string,
   to: string,
   text: string,
@@ -127,11 +127,12 @@ async function sendCustomerReply(
   actionType?: string | null,
   actionMetadata?: Record<string, unknown> | null,
 ): Promise<void> {
+  const companyId = channel.companyId;
   let providerMessageId: string | null = null;
   let deliveryStatus: "SENT" | "FAILED" = "SENT";
 
   try {
-    const result = await deps.provider.sendText(to, text);
+    const result = await deps.provider.sendText(to, text, channel.externalAccountId ?? undefined);
     if (result && typeof result === "object" && "providerMessageId" in result) {
       providerMessageId = result.providerMessageId;
     }
@@ -255,7 +256,7 @@ export async function handleCustomerWhatsAppInbound(
 
       await sendCustomerReply(
         deps,
-        channel.companyId,
+        channel,
         conversation.id,
         event.senderPhone,
         CUSTOMER_WHATSAPP_COPY.audioDownloadFailure,
@@ -282,7 +283,7 @@ export async function handleCustomerWhatsAppInbound(
 
       await sendCustomerReply(
         deps,
-        channel.companyId,
+        channel,
         conversation.id,
         event.senderPhone,
         CUSTOMER_WHATSAPP_COPY.unsupportedAudioMime,
@@ -316,7 +317,7 @@ export async function handleCustomerWhatsAppInbound(
 
       await sendCustomerReply(
         deps,
-        channel.companyId,
+        channel,
         conversation.id,
         event.senderPhone,
         CUSTOMER_WHATSAPP_COPY.audioDownloadFailure,
@@ -346,7 +347,7 @@ export async function handleCustomerWhatsAppInbound(
 
       await sendCustomerReply(
         deps,
-        channel.companyId,
+        channel,
         conversation.id,
         event.senderPhone,
         CUSTOMER_WHATSAPP_COPY.unsupportedAudioMime,
@@ -373,7 +374,7 @@ export async function handleCustomerWhatsAppInbound(
 
       await sendCustomerReply(
         deps,
-        channel.companyId,
+        channel,
         conversation.id,
         event.senderPhone,
         CUSTOMER_WHATSAPP_COPY.audioTooLarge,
@@ -440,7 +441,7 @@ export async function handleCustomerWhatsAppInbound(
 
     await sendCustomerReply(
       deps,
-      channel.companyId,
+      channel,
       conversation.id,
       event.senderPhone,
       CUSTOMER_WHATSAPP_COPY.nonAudioMedia,
@@ -476,7 +477,7 @@ export async function handleCustomerWhatsAppInbound(
 
     await sendCustomerReply(
       deps,
-      channel.companyId,
+      channel,
       conversation.id,
       event.senderPhone,
       fallbackCopy,
@@ -504,7 +505,7 @@ export async function handleCustomerWhatsAppInbound(
     if (!pending) {
       await sendCustomerReply(
         deps,
-        channel.companyId,
+        channel,
         conversation.id,
         event.senderPhone,
         CUSTOMER_WHATSAPP_COPY.noPendingConfirmation,
@@ -551,7 +552,7 @@ export async function handleCustomerWhatsAppInbound(
     const reply = formatAssistantResult(result);
     await sendCustomerReply(
       deps,
-      channel.companyId,
+      channel,
       conversation.id,
       event.senderPhone,
       reply,
@@ -567,7 +568,7 @@ export async function handleCustomerWhatsAppInbound(
     if (pending) {
       await sendCustomerReply(
         deps,
-        channel.companyId,
+        channel,
         conversation.id,
         event.senderPhone,
         CUSTOMER_WHATSAPP_COPY.confirmationCancelled,
@@ -582,7 +583,7 @@ export async function handleCustomerWhatsAppInbound(
   // 7. Assistant Language Interpretation (LLM Intake)
   const company = await deps.db.company.findUnique({
     where: { id: channel.companyId },
-    select: { timezone: true },
+    select: { name: true, timezone: true, businessContext: true },
   });
   const timezone = company?.timezone || "America/Sao_Paulo";
 
@@ -592,6 +593,8 @@ export async function handleCustomerWhatsAppInbound(
     {
       currentTimestamp: now(),
       timezone,
+      companyName: company?.name ?? "",
+      businessContext: company?.businessContext ?? null,
     },
     { allowMissingTicketClientId: true },
   );
@@ -599,7 +602,7 @@ export async function handleCustomerWhatsAppInbound(
   if (interpretation.kind === "clarification") {
     await sendCustomerReply(
       deps,
-      channel.companyId,
+      channel,
       conversation.id,
       event.senderPhone,
       interpretation.message || CUSTOMER_WHATSAPP_COPY.clarificationFallback,
@@ -612,7 +615,7 @@ export async function handleCustomerWhatsAppInbound(
     await setConversationAiStatus(deps.db, channel.companyId, conversation.id, "NEEDS_ATTENTION");
     await sendCustomerReply(
       deps,
-      channel.companyId,
+      channel,
       conversation.id,
       event.senderPhone,
       CUSTOMER_WHATSAPP_COPY.unsupportedOperation,
@@ -626,7 +629,7 @@ export async function handleCustomerWhatsAppInbound(
     await setConversationAiStatus(deps.db, channel.companyId, conversation.id, "NEEDS_ATTENTION");
     await sendCustomerReply(
       deps,
-      channel.companyId,
+      channel,
       conversation.id,
       event.senderPhone,
       CUSTOMER_WHATSAPP_COPY.errorFallback,
@@ -644,7 +647,7 @@ export async function handleCustomerWhatsAppInbound(
   if (!ALLOWED_CUSTOMER_OPERATIONS.has(command.operation)) {
     await sendCustomerReply(
       deps,
-      channel.companyId,
+      channel,
       conversation.id,
       event.senderPhone,
       CUSTOMER_WHATSAPP_COPY.unsupportedOperation,
@@ -681,7 +684,7 @@ export async function handleCustomerWhatsAppInbound(
     await setConversationAiStatus(deps.db, channel.companyId, conversation.id, "NEEDS_ATTENTION");
     await sendCustomerReply(
       deps,
-      channel.companyId,
+      channel,
       conversation.id,
       event.senderPhone,
       CUSTOMER_WHATSAPP_COPY.clientRequiredForJob,
@@ -697,7 +700,7 @@ export async function handleCustomerWhatsAppInbound(
   const deny = async (error: string) => {
     await sendCustomerReply(
       deps,
-      channel.companyId,
+      channel,
       conversation.id,
       event.senderPhone,
       CUSTOMER_WHATSAPP_COPY.unsupportedOperation,
@@ -750,7 +753,7 @@ export async function handleCustomerWhatsAppInbound(
     const prompt = confirmationPrompt(command.operation);
     await sendCustomerReply(
       deps,
-      channel.companyId,
+      channel,
       conversation.id,
       event.senderPhone,
       prompt,
@@ -800,7 +803,7 @@ export async function handleCustomerWhatsAppInbound(
   const reply = formatAssistantResult(execResult);
   await sendCustomerReply(
     deps,
-    channel.companyId,
+    channel,
     conversation.id,
     event.senderPhone,
     reply,

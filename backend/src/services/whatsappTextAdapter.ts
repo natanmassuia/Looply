@@ -196,7 +196,7 @@ export async function handleWhatsAppInboundText(
 
   const company = await deps.db.company.findUnique({
     where: { id: actor.companyId },
-    select: { timezone: true },
+    select: { name: true, timezone: true },
   });
 
   // 4. Explicit transport-level confirmation phrases (never interpreted by LLM).
@@ -228,6 +228,7 @@ export async function handleWhatsAppInboundText(
   const interpreted = await interpretAssistantMessage(deps.languageModel, text, {
     currentTimestamp: now(),
     timezone: company?.timezone ?? "America/Sao_Paulo",
+    companyName: company?.name ?? "",
   });
 
   if (interpreted.kind === "error") {

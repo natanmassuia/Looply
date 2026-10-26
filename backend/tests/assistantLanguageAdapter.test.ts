@@ -18,7 +18,7 @@ class FakeLanguageModel implements AssistantLanguageModel {
   }
 }
 
-const context = { currentTimestamp: new Date("2026-09-01T12:00:00.000Z"), timezone: "America/Sao_Paulo" };
+const context = { currentTimestamp: new Date("2026-09-01T12:00:00.000Z"), timezone: "America/Sao_Paulo", companyName: "Studio Alpha" };
 const iso = "2026-09-02T14:00:00.000Z";
 
 const validCommands = [
@@ -51,6 +51,16 @@ describe("Assistant natural-language adapter", () => {
     expect(model.requests[0].currentTimestamp).toBe("2026-09-01T12:00:00.000Z");
     expect(model.requests[0].message).toBe("marca amanhã às 14h");
     expect(model.requests[0].systemPrompt).toContain("calendar.create");
+  });
+
+  it("uses the company name and business context in the prompt, with no clinic persona", async () => {
+    const model = new FakeLanguageModel({ kind: "clarification", message: "oi" });
+    await interpretAssistantMessage(model, "quanto custa?", { ...context, businessContext: "Corte R$50, seg a sex 9h-18h." });
+    const prompt = model.requests[0].systemPrompt;
+    expect(prompt).toContain("Studio Alpha");
+    expect(prompt).toContain("Corte R$50, seg a sex 9h-18h.");
+    expect(prompt.toLowerCase()).not.toContain("clinic");
+    expect(prompt.toLowerCase()).not.toContain("patient");
   });
 
   it("supports clarification and unsupported results without commands", async () => {

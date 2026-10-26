@@ -37,7 +37,7 @@ export function makeAssistantRouter(db: DB, services?: AssistantDomainServices, 
     }
     const company = await db.company.findUnique({
       where: { id: req.auth!.companyId },
-      select: { timezone: true, workspaceTemplate: true },
+      select: { name: true, timezone: true, workspaceTemplate: true },
     });
     if (!company) {
       res.status(500).json({ ok: false, error: { code: "internal_error", message: "Erro interno do servidor" } });
@@ -46,6 +46,7 @@ export function makeAssistantRouter(db: DB, services?: AssistantDomainServices, 
     const interpreted = await interpretAssistantMessage(languageModel, parsed.data.message, {
       currentTimestamp: new Date(),
       timezone: company.timezone,
+      companyName: company.name,
     });
     if (interpreted.kind !== "command") {
       const status = interpreted.kind === "clarification" ? 409 : interpreted.kind === "unsupported" ? 400 : 502;
