@@ -18,6 +18,7 @@ import {
   ONBOARDING_PATH,
   isWorkspaceActive,
 } from "../lib/workspace";
+import { MVP } from "../config/mvp";
 
 function neutralError(err: unknown): string {
   return err instanceof ApiError ? err.message : "Não foi possível conectar. Tente novamente.";
@@ -198,10 +199,12 @@ const LOCALES: { value: "pt-BR" | "en-US"; label: string }[] = [
   { value: "en-US", label: "English (US)" },
 ];
 
-function StepDots({ step }: { step: number }) {
+const MVP_TOTAL_STEPS = 3;
+
+function StepDots({ step, total = TOTAL_STEPS }: { step: number; total?: number }) {
   return (
     <div className="flex items-center gap-2" aria-hidden="true">
-      {Array.from({ length: TOTAL_STEPS }, (_, i) => (
+      {Array.from({ length: total }, (_, i) => (
         <span
           key={i}
           className={`h-1.5 rounded-full transition-all ${
@@ -275,6 +278,14 @@ export default function Onboarding() {
         timezone: timezoneValue,
         locale: localeValue,
       });
+      if (MVP.forceLocalBusinessOnboarding) {
+        await selectTemplate.mutateAsync("LOCAL_BUSINESS");
+        setTemplate("LOCAL_BUSINESS");
+        await saveAppearance.mutateAsync({ preset: "AURA", mode: "LIGHT" });
+        setPreset("AURA");
+        setStep(7);
+        return;
+      }
       setStep(3);
     } catch (err) {
       setError(neutralError(err));
@@ -328,9 +339,13 @@ export default function Onboarding() {
     <AuthShell>
       <div className="mb-6 flex items-center justify-between gap-4">
         <p className="text-[12px] font-semibold leading-4 text-[var(--looply-color-text-muted)]">
-          Etapa {step} de {TOTAL_STEPS}
+          Etapa {MVP.forceLocalBusinessOnboarding ? (step === 7 ? 3 : step) : step} de{" "}
+          {MVP.forceLocalBusinessOnboarding ? MVP_TOTAL_STEPS : TOTAL_STEPS}
         </p>
-        <StepDots step={step} />
+        <StepDots
+          step={MVP.forceLocalBusinessOnboarding ? (step === 7 ? 3 : step) : step}
+          total={MVP.forceLocalBusinessOnboarding ? MVP_TOTAL_STEPS : TOTAL_STEPS}
+        />
       </div>
 
       {step === 1 && (
@@ -640,7 +655,12 @@ export default function Onboarding() {
           <button type="submit" disabled={busy} className="btn-primary mt-6 h-12 w-full text-[15px] font-semibold">
             {busy ? "Entrando..." : "Entrar no Looply"}
           </button>
-          <button type="button" onClick={() => setStep(6)} disabled={busy} className="btn-secondary mt-3 h-10 w-full">
+          <button
+            type="button"
+            onClick={() => setStep(MVP.forceLocalBusinessOnboarding ? 2 : 6)}
+            disabled={busy}
+            className="btn-secondary mt-3 h-10 w-full"
+          >
             Voltar
           </button>
         </form>

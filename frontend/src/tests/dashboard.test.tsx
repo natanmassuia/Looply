@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import Dashboard from "../features/Dashboard";
 import * as apiModule from "../lib/api";
+import { MVP } from "../config/mvp";
 import type { Dashboard as DashboardData } from "../lib/types";
 
 function mockDashboardData(overrides: Record<string, unknown> = {}) {
@@ -144,7 +145,11 @@ describe("F14.2 Dashboard density + upcoming", () => {
     renderWithClient(<Dashboard />);
 
     expect(screen.getByRole("link", { name: /Demandas ativas/ })).toHaveAttribute("href", "/contents");
-    expect(screen.getByRole("link", { name: /Em aprovação/ })).toHaveAttribute("href", "/contents");
+    if (!MVP.hideApprovalOutsideDemand) {
+      expect(screen.getByRole("link", { name: /Em aprovação/ })).toHaveAttribute("href", "/contents");
+    } else {
+      expect(screen.queryByRole("link", { name: /Em aprovação/ })).toBeNull();
+    }
     expect(screen.getByRole("link", { name: /Clientes ativos/ })).toHaveAttribute("href", "/clients?status=ACTIVE");
     expect(screen.getByRole("link", { name: /Agendados/ })).toHaveAttribute("href", "/calendar");
   });
@@ -265,19 +270,31 @@ describe("F14.7 Dashboard contextual navigation", () => {
     expect(link.getAttribute("href")).toBe("/contents?focus=att-0");
   });
 
-  it("'Em aprovação' KPI drills into Demandas focused on an awaiting demand", () => {
-    mockDashboard(attentionItems);
-    renderWithClient(<Dashboard />);
+  it("'Em aprovação' KPI drills into Demandas focused on an awaiting demand when visible", () => {
+    const prev = MVP.hideApprovalOutsideDemand;
+    MVP.hideApprovalOutsideDemand = false;
+    try {
+      mockDashboard(attentionItems);
+      renderWithClient(<Dashboard />);
 
-    const kpi = screen.getByRole("link", { name: /Em aprovação/ });
-    expect(kpi.getAttribute("href")).toBe("/contents?focus=att-0");
+      const kpi = screen.getByRole("link", { name: /Em aprovação/ });
+      expect(kpi.getAttribute("href")).toBe("/contents?focus=att-0");
+    } finally {
+      MVP.hideApprovalOutsideDemand = prev;
+    }
   });
 
   it("KPIs without a known target keep the plain board link", () => {
-    mockDashboard();
-    renderWithClient(<Dashboard />);
+    const prev = MVP.hideApprovalOutsideDemand;
+    MVP.hideApprovalOutsideDemand = false;
+    try {
+      mockDashboard();
+      renderWithClient(<Dashboard />);
 
-    expect(screen.getByRole("link", { name: /Demandas ativas/ })).toHaveAttribute("href", "/contents");
-    expect(screen.getByRole("link", { name: /Em aprovação/ })).toHaveAttribute("href", "/contents");
+      expect(screen.getByRole("link", { name: /Demandas ativas/ })).toHaveAttribute("href", "/contents");
+      expect(screen.getByRole("link", { name: /Em aprovação/ })).toHaveAttribute("href", "/contents");
+    } finally {
+      MVP.hideApprovalOutsideDemand = prev;
+    }
   });
 });

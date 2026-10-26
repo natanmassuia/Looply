@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, beforeEach } from "vitest";
 import { validateEnv } from "../src/lib/env";
 
 const save = { ...process.env };
@@ -26,6 +26,11 @@ describe("validateEnv", () => {
   });
 
   describe("A4 placeholder secret validation in production", () => {
+    beforeEach(() => {
+      delete process.env.MOCK_PROVIDER;
+      delete process.env.DEMO_MODE;
+    });
+
     it("aborts when secret contains placeholder in production", () => {
       process.env.DATABASE_URL = "postgresql://x";
       process.env.PORT = "4000";

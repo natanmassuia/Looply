@@ -7,6 +7,7 @@ import {
   type WhatsAppMessageTemplate,
 } from "../lib/api";
 import ModalOrSheet from "../components/ModalOrSheet";
+import { MVP } from "../config/mvp";
 
 function StatusBadge({ status }: { status: string }) {
   const normalized = status?.toUpperCase() || "";
@@ -130,12 +131,16 @@ function TemplatePreview({ template }: { template: WhatsAppMessageTemplate }) {
 
 function SendTemplateDialog({
   template,
+  companyNumber,
   onClose,
 }: {
   template: WhatsAppMessageTemplate;
+  companyNumber: string | null;
   onClose: () => void;
 }) {
-  const [to, setTo] = useState("");
+  // MVP (pre-P0-A): sending is locked to the company's own number.
+  const lockedTo = MVP.lockTemplateToSelf ? (companyNumber ?? "") : null;
+  const [to, setTo] = useState(lockedTo ?? "");
   const sendMutation = useSendWhatsAppTemplate();
 
   const handleSend = () => {
@@ -189,17 +194,20 @@ function SendTemplateDialog({
           type="text"
           value={to}
           onChange={(e) => setTo(e.target.value)}
+          readOnly={lockedTo !== null}
           onKeyDown={(e) => {
             if (e.key === "Enter" && to.trim() && !sendMutation.isPending) {
               handleSend();
             }
           }}
           placeholder="5511999998888"
-          autoFocus
-          className="mb-2 w-full rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] px-3.5 py-2.5 font-mono text-sm text-[var(--looply-color-text-primary)] placeholder:text-[var(--looply-color-text-muted)] focus:border-[var(--looply-color-action-primary)] focus:bg-[var(--looply-color-bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--looply-color-focus)]"
+          autoFocus={lockedTo === null}
+          className="mb-2 w-full rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] px-3.5 py-2.5 font-mono text-sm text-[var(--looply-color-text-primary)] placeholder:text-[var(--looply-color-text-muted)] focus:border-[var(--looply-color-action-primary)] focus:bg-[var(--looply-color-bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--looply-color-focus)] read-only:cursor-not-allowed read-only:opacity-70"
         />
         <p className="mb-4 text-[11px] text-[var(--looply-color-text-muted)]">
-          Informe apenas dígitos no padrão E.164 (ex.: 5511999998888).
+          {lockedTo !== null
+            ? "Até o P0-A, o envio é restrito ao número da própria empresa."
+            : "Informe apenas dígitos no padrão E.164 (ex.: 5511999998888)."}
         </p>
 
         {sendMutation.isError && (
@@ -538,6 +546,7 @@ export default function WhatsAppManagement() {
       {sendingTemplate && (
         <SendTemplateDialog
           template={sendingTemplate}
+          companyNumber={phoneNumbers[0]?.display_phone_number ?? null}
           onClose={() => setSendingTemplate(null)}
         />
       )}

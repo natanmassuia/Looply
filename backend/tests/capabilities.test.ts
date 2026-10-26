@@ -19,6 +19,7 @@ describe("template registry", () => {
       Capability.CLIENTS,
       Capability.JOBS,
       Capability.WORKFLOW,
+      Capability.KANBAN,
       Capability.FILES,
       Capability.CALENDAR,
       Capability.ACTIVITY,
@@ -64,10 +65,12 @@ describe("template registry", () => {
     const local = new Set(TEMPLATE_REGISTRY.LOCAL_BUSINESS.capabilities);
     const high = new Set(TEMPLATE_REGISTRY.HIGH_TICKET.capabilities);
     const agency = new Set(TEMPLATE_REGISTRY.MARKETING_AGENCY.capabilities);
-    // LOCAL_BUSINESS is a strict subset of HIGH_TICKET; agency is a superset.
-    for (const cap of local) expect(high.has(cap)).toBe(true);
+    // LOCAL_BUSINESS has KANBAN but not APPROVAL; HIGH_TICKET has APPROVAL but not KANBAN; agency has both.
+    expect(local.has(Capability.KANBAN)).toBe(true);
+    expect(local.has(Capability.APPROVAL)).toBe(false);
     expect(high.has(Capability.KANBAN)).toBe(false);
-    expect(agency.has(Capability.KANBAN)).toBe(true);
+    expect(high.has(Capability.APPROVAL)).toBe(true);
+    for (const cap of local) expect(agency.has(cap)).toBe(true);
     for (const cap of high) expect(agency.has(cap)).toBe(true);
   });
 });
@@ -172,10 +175,10 @@ describe("requireCapability guard", () => {
       req.auth = { userId: "uA", companyId: "cA", role: "MEMBER" };
       next();
     });
-    app.post("/probe", makeRequireCapability(db, Capability.KANBAN), (_req, res) => res.json({ ok: true }));
+    app.post("/probe", makeRequireCapability(db, Capability.APPROVAL), (_req, res) => res.json({ ok: true }));
     const res = await request(app)
       .post("/probe")
-      .send({ companyId: "cB", capabilities: ["KANBAN"], templateCapabilities: ["KANBAN"] });
+      .send({ companyId: "cB", capabilities: ["APPROVAL"], templateCapabilities: ["APPROVAL"] });
     expect(res.status).toBe(403);
   });
 });

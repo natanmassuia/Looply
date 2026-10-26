@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useDashboard, useMe } from "../lib/api";
+import { MVP } from "../config/mvp";
 import { Card, EmptyState, ErrorState, SkeletonCards } from "../components/common";
 import StatusPill from "../components/StatusPill";
 import { FORMAT_LABEL, latestVersion, relativeTime, formatAppointmentLine, formatClock, gmtOffsetLabel } from "../lib/format";
@@ -174,13 +175,15 @@ export default function Dashboard() {
               color="blue"
               to="/contents"
             />
-            <CompactMetric
-              label="Em aprovação"
-              value={inApprovalCount}
-              icon={<IconClock className="h-4 w-4" />}
-              color="violet"
-              to={awaitingHref}
-            />
+            {!MVP.hideApprovalOutsideDemand && (
+              <CompactMetric
+                label="Em aprovação"
+                value={inApprovalCount}
+                icon={<IconClock className="h-4 w-4" />}
+                color="violet"
+                to={awaitingHref}
+              />
+            )}
             <CompactMetric
               label="Clientes ativos"
               value={activeClientsCount}

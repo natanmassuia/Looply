@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useClients, useTeam, useCreateContent, type CreateContentPayload } from "../lib/api";
 import { FORMAT_LABEL } from "../lib/format";
+import { MVP } from "../config/mvp";
 import type { ContentFormat } from "../lib/types";
 import { Card, ErrorState, PageHeader, Spinner } from "../components/common";
 import { ApiError } from "../lib/api";
@@ -114,20 +115,22 @@ export default function NewContent() {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="label">Formato</label>
-                  <select
-                    className="input"
-                    value={form.format}
-                    onChange={(e) => set("format", e.target.value as ContentFormat)}
-                  >
-                    {Object.entries(FORMAT_LABEL).map(([k, v]) => (
-                      <option key={k} value={k}>
-                        {v}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {!MVP.hideEditorialFields && (
+                  <div>
+                    <label className="label">Formato</label>
+                    <select
+                      className="input"
+                      value={form.format}
+                      onChange={(e) => set("format", e.target.value as ContentFormat)}
+                    >
+                      {Object.entries(FORMAT_LABEL).map(([k, v]) => (
+                        <option key={k} value={k}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -161,15 +164,17 @@ export default function NewContent() {
           <Card>
             <h3 className="section-title mb-4">Detalhes</h3>
             <div className="space-y-4">
-              <div>
-                <label className="label">Rede / Canal</label>
-                <input
-                  className="input"
-                  value={form.channel}
-                  onChange={(e) => set("channel", e.target.value)}
-                  placeholder="Instagram, TikTok…"
-                />
-              </div>
+              {!MVP.hideEditorialFields && (
+                <div>
+                  <label className="label">Rede / Canal</label>
+                  <input
+                    className="input"
+                    value={form.channel}
+                    onChange={(e) => set("channel", e.target.value)}
+                    placeholder="Instagram, TikTok…"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="label">Responsável</label>
@@ -187,15 +192,17 @@ export default function NewContent() {
                 </select>
               </div>
 
-              <div>
-                <label className="label">Data prevista de publicação</label>
-                <input
-                  type="date"
-                  className="input"
-                  value={form.publicationTarget}
-                  onChange={(e) => set("publicationTarget", e.target.value)}
-                />
-              </div>
+              {!MVP.hideEditorialFields && (
+                <div>
+                  <label className="label">Data prevista de publicação</label>
+                  <input
+                    type="date"
+                    className="input"
+                    value={form.publicationTarget}
+                    onChange={(e) => set("publicationTarget", e.target.value)}
+                  />
+                </div>
+              )}
             </div>
           </Card>
 

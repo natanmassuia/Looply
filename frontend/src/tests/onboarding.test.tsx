@@ -1,10 +1,11 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import Onboarding, { AccessGate, ChangePassword } from "../features/Onboarding";
 import { ApiError } from "../lib/api";
 import type { OnboardingStatus } from "../lib/types";
+import { MVP } from "../config/mvp";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────
 const meMock = vi.hoisted(() => ({
@@ -390,7 +391,41 @@ describe("Onboarding", () => {
     mutations.complete.mutateAsync.mockResolvedValue({});
   });
 
-  it("step 1 (welcome) is presentational and advances without any API call", async () => {
+  describe("MVP mode (forceLocalBusinessOnboarding)", () => {
+    it("step 1 shows Etapa 1 de 3 and step 2 auto-selects LOCAL_BUSINESS and AURA jumping to Etapa 3 de 3", async () => {
+      const user = userEvent.setup();
+      renderOnboarding();
+      expect(screen.getByText("Etapa 1 de 3")).toBeTruthy();
+      await user.click(screen.getByRole("button", { name: "Começar configuração" }));
+      expect(screen.getByText("Etapa 2 de 3")).toBeTruthy();
+
+      await user.click(screen.getByRole("button", { name: "Continuar" }));
+      await waitFor(() => {
+        expect(mutations.updateCompany.mutateAsync).toHaveBeenCalled();
+        expect(mutations.selectTemplate.mutateAsync).toHaveBeenCalledWith("LOCAL_BUSINESS");
+        expect(mutations.updateAppearance.mutateAsync).toHaveBeenCalledWith({ preset: "AURA", mode: "LIGHT" });
+      });
+      expect(screen.getByText("Etapa 3 de 3")).toBeTruthy();
+      expect(screen.getByText("Seu Looply está pronto para começar.")).toBeTruthy();
+
+      await user.click(screen.getByRole("button", { name: "Entrar no Looply" }));
+      await waitFor(() => {
+        expect(mutations.complete.mutateAsync).toHaveBeenCalledTimes(1);
+      });
+    });
+  });
+
+  describe("Full 7-step onboarding (when MVP flag disabled)", () => {
+    let prevFlag: boolean;
+    beforeEach(() => {
+      prevFlag = MVP.forceLocalBusinessOnboarding;
+      MVP.forceLocalBusinessOnboarding = false;
+    });
+    afterEach(() => {
+      MVP.forceLocalBusinessOnboarding = prevFlag;
+    });
+
+    it("step 1 (welcome) is presentational and advances without any API call", async () => {
     const user = userEvent.setup();
     renderOnboarding();
     expect(screen.getByText(/Bem-vindo, Ana\./)).toBeTruthy();
@@ -555,5 +590,6 @@ describe("Onboarding", () => {
       "Não foi possível conectar. Tente novamente.",
     );
     expect(screen.queryByLabelText("Escolha seu perfil")).toBeNull();
+  });
   });
 });

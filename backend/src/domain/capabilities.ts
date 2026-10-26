@@ -27,10 +27,12 @@ export interface TemplateDefinition {
 
 // LOCAL_BUSINESS: "press a button and it works" — minimal operational surface.
 // WORKFLOW runs internally with simple defaults; the future UI hides complexity.
+// KANBAN is on for the MVP atendimento loop (board + table demand views).
 const LOCAL_BUSINESS: Capability[] = [
   Capability.CLIENTS,
   Capability.JOBS,
   Capability.WORKFLOW,
+  Capability.KANBAN,
   Capability.FILES,
   Capability.CALENDAR,
   Capability.ACTIVITY,

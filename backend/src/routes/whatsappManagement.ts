@@ -1,9 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/db";
-import { asyncHandler } from "../lib/errors";
+import { asyncHandler, badRequest } from "../lib/errors";
 import { logger } from "../lib/logger";
 import { parse } from "../lib/parse";
+import { normalizePhoneNumber } from "../lib/phone";
+import { MVP } from "../config/mvp";
 import { requireRole } from "../middleware/requireAuth";
 import {
   listPhoneNumbers,
@@ -64,8 +66,14 @@ const sendTemplateSchema = z.object({
 
 const router = Router();
 
-router.get("/phone-numbers", asyncHandler(async (_req, res) => {
-  const numbers = await listPhoneNumbers();
+router.get("/phone-numbers", asyncHandler(async (req, res) => {
+  // Show only this company's own numbers, never every number on the WABA.
+  const channels = await prisma.whatsAppChannel.findMany({
+    where: { companyId: req.auth!.companyId, isActive: true, externalAccountId: { not: null } },
+    select: { externalAccountId: true },
+  });
+  const ownIds = new Set(channels.map((c) => c.externalAccountId));
+  const numbers = (await listPhoneNumbers()).filter((n) => ownIds.has(n.id));
   res.json({ phoneNumbers: numbers });
 }));
 
@@ -76,6 +84,21 @@ router.get("/templates", asyncHandler(async (_req, res) => {
 
 router.post("/templates/send", requireRole("OWNER", "ADMIN"), asyncHandler(async (req, res) => {
   const input = parse(sendTemplateSchema, req.body);
+
+  // MVP (pre-P0-A): templates may only be sent to the company's own WhatsApp
+  // number (operator self-test), never to arbitrary customers.
+  if (MVP.lockTemplateToSelf) {
+    const channel = await prisma.whatsAppChannel.findFirst({
+      where: { companyId: req.auth!.companyId, purpose: "CUSTOMER_AI", isActive: true, sourcePhoneNumber: { not: null } },
+      select: { sourcePhoneNumber: true },
+    });
+    const own = channel?.sourcePhoneNumber ? normalizePhoneNumber(channel.sourcePhoneNumber) : null;
+    const target = normalizePhoneNumber(input.to);
+    if (!own || !target || own !== target) {
+      throw badRequest("Até o P0-A, templates só podem ser enviados para o número da própria empresa.");
+    }
+  }
+
   const result = await sendTemplateMessage(
     input.to,
     input.templateName,
