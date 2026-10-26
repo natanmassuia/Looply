@@ -89,9 +89,9 @@ export default function Sidebar({
 
       <aside
         aria-label="Menu principal"
-        className={`flex-col border-r border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] transition-all duration-200 gap-4 ${
+        className={`flex-col border-r border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] transition-all duration-200 gap-4 overflow-y-auto overflow-x-hidden ${
           mobileOpen
-            ? "fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[85vw] p-6 shadow-2xl overflow-y-auto md:relative md:z-auto md:max-w-none md:shadow-none md:overflow-visible"
+            ? "fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[85vw] p-6 shadow-2xl md:relative md:z-auto md:max-w-none md:shadow-none"
             : "relative hidden shrink-0 md:flex"
         } ${
           isCollapsed ? "md:w-[72px] md:px-3 md:py-5" : "md:w-[272px] md:p-6"

@@ -210,6 +210,15 @@ function SendTemplateDialog({
             : "Informe apenas dígitos no padrão E.164 (ex.: 5511999998888)."}
         </p>
 
+        <div className="mb-4 rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-coral-100)] p-3 text-xs text-[var(--looply-color-text-primary)]">
+          <p className="font-semibold text-[var(--looply-color-text-primary)]">
+            Aviso de tarifação Meta:
+          </p>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--looply-color-text-secondary)]">
+            O envio de modelos para contatos fora da janela de 24 horas inicia uma nova conversa tarifada de acordo com as regras da Meta.
+          </p>
+        </div>
+
         {sendMutation.isError && (
           <div className="mb-4 rounded-[10px] border border-[color-mix(in_srgb,var(--looply-color-status-danger)_25%,transparent)] bg-[color-mix(in_srgb,var(--looply-color-status-danger)_10%,transparent)] px-3 py-2 text-xs font-medium text-[var(--looply-color-status-danger)]">
             Falha ao enviar template. Verifique o número e tente novamente.

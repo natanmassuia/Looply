@@ -77,24 +77,29 @@ export default function InboxPage() {
     });
   };
 
-  // Mobile detection via matchMedia + innerWidth fallback
-  const [isMobile, setIsMobile] = useState(() => {
+  // Mobile / Landscape phone detection (portrait <768px or landscape height <=500px on <1024px)
+  const checkIsMobile = () => {
     if (typeof window === "undefined") return false;
     if (window.innerWidth < 768) return true;
+    if (window.innerHeight <= 500 && window.innerWidth < 1024) return true;
     if (typeof window.matchMedia === "function") {
-      return window.matchMedia("(max-width: 767px)").matches;
+      return window.matchMedia("(max-width: 767px), ((max-height: 500px) and (max-width: 1024px))").matches;
     }
     return false;
-  });
+  };
+
+  const [isMobile, setIsMobile] = useState(checkIsMobile);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const mql = typeof window.matchMedia === "function" ? window.matchMedia("(max-width: 767px)") : null;
+    const mql = typeof window.matchMedia === "function"
+      ? window.matchMedia("(max-width: 767px), ((max-height: 500px) and (max-width: 1024px))")
+      : null;
     const handleChange = (e: MediaQueryListEvent) => {
-      setIsMobile(e.matches || window.innerWidth < 768);
+      setIsMobile(e.matches || checkIsMobile());
     };
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 768 || Boolean(mql?.matches));
+      setIsMobile(checkIsMobile());
     };
     handleResize();
     mql?.addEventListener("change", handleChange);

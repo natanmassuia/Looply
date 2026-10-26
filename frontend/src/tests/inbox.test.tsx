@@ -477,4 +477,38 @@ describe("AI Inbox Feature (F15.3)", () => {
       expect(screen.getByText("📅 Agendamento")).toBeTruthy();
     });
   });
+
+  describe("WhatsApp 24-hour customer service window alert", () => {
+    it("displays 24-hour window closed alert and allows opening template modal", async () => {
+      vi.spyOn(apiModule, "useWhatsAppTemplates").mockReturnValue({
+        data: {
+          templates: [
+            {
+              name: "aviso_consulta",
+              language: "pt_BR",
+              status: "APPROVED",
+              category: "UTILITY",
+              components: [{ type: "BODY", text: "Olá, sua consulta foi confirmada." }],
+            },
+          ],
+        },
+        isLoading: false,
+      } as any);
+
+      const user = userEvent.setup();
+      renderInbox("/inbox?id=conv-1");
+
+      expect(screen.getByRole("alert")).toBeTruthy();
+      expect(screen.getByText("Janela de 24 horas encerrada")).toBeTruthy();
+      expect(screen.getByText(/A última mensagem do cliente foi há mais de 24 horas/)).toBeTruthy();
+
+      const templateBtn = screen.getByRole("button", { name: "Enviar Modelo de WhatsApp" });
+      expect(templateBtn).toBeTruthy();
+      await user.click(templateBtn);
+
+      expect(screen.getAllByText("Enviar Modelo de WhatsApp")).toHaveLength(2);
+      expect(screen.getByText("aviso_consulta")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Cancelar" })).toBeTruthy();
+    });
+  });
 });

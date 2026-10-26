@@ -10,6 +10,6 @@ export const MVP = {
   hideEditorialFields: true,
   // Approval entry points outside the demand screen (e.g. dashboard) hidden.
   hideApprovalOutsideDemand: true,
-  // Template sending is locked to the company's own number until P0-A.
-  lockTemplateToSelf: true,
+  // Template sending is unlocked for customer conversations (post-P0-A).
+  lockTemplateToSelf: false,
 };

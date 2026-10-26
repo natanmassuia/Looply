@@ -46,32 +46,44 @@ describe("POST /api/whatsapp/templates/send (MVP lockTemplateToSelf guard)", () 
   });
 
   it("rejects sending to a different customer phone number when lockTemplateToSelf is true", async () => {
-    const app = buildApp();
-    const res = await request(app)
-      .post("/api/whatsapp/templates/send")
-      .send({
-        to: "5511988887777",
-        templateName: "hello_world",
-        languageCode: "pt_BR",
-      });
+    const prev = MVP.lockTemplateToSelf;
+    (MVP as any).lockTemplateToSelf = true;
+    try {
+      const app = buildApp();
+      const res = await request(app)
+        .post("/api/whatsapp/templates/send")
+        .send({
+          to: "5511988887777",
+          templateName: "hello_world",
+          languageCode: "pt_BR",
+        });
 
-    expect(res.status).toBe(400);
-    expect(res.body.error).toContain("Até o P0-A, templates só podem ser enviados para o número da própria empresa");
-    expect(mockSendTemplateMessage).not.toHaveBeenCalled();
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain("Até o P0-A, templates só podem ser enviados para o número da própria empresa");
+      expect(mockSendTemplateMessage).not.toHaveBeenCalled();
+    } finally {
+      (MVP as any).lockTemplateToSelf = prev;
+    }
   });
 
   it("allows sending to the company's own WhatsApp number when lockTemplateToSelf is true", async () => {
-    const app = buildApp();
-    const res = await request(app)
-      .post("/api/whatsapp/templates/send")
-      .send({
-        to: "5511999990000",
-        templateName: "hello_world",
-        languageCode: "pt_BR",
-      });
+    const prev = MVP.lockTemplateToSelf;
+    (MVP as any).lockTemplateToSelf = true;
+    try {
+      const app = buildApp();
+      const res = await request(app)
+        .post("/api/whatsapp/templates/send")
+        .send({
+          to: "5511999990000",
+          templateName: "hello_world",
+          languageCode: "pt_BR",
+        });
 
-    expect(res.status).toBe(200);
-    expect(mockSendTemplateMessage).toHaveBeenCalledWith("5511999990000", "hello_world", "pt_BR", undefined);
+      expect(res.status).toBe(200);
+      expect(mockSendTemplateMessage).toHaveBeenCalledWith("5511999990000", "hello_world", "pt_BR", undefined);
+    } finally {
+      (MVP as any).lockTemplateToSelf = prev;
+    }
   });
 
   it("allows sending to arbitrary customer numbers when lockTemplateToSelf is disabled", async () => {
