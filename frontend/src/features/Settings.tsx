@@ -14,6 +14,7 @@ import { applyTheme } from "../theme/applyTheme";
 import { resolveTheme } from "../theme/resolveTheme";
 import { isHexColor } from "../theme/color";
 import { MVP } from "../config/mvp";
+import { APP_VERSION, COMMIT_HASH, BUILD_TIME, formatBuildDate } from "../config/version";
 import { Card, PageHeader, Spinner } from "../components/common";
 import { IconCheck, IconAlertCircle, IconSun, IconMoon } from "../components/Icons";
 import MyAccountModal from "./MyAccountModal";
@@ -884,6 +885,14 @@ export default function Settings() {
           </Card>
         </div>
       )}
+
+      <div className="pt-6 mt-6 border-t border-[var(--looply-color-border-default)] flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-[var(--looply-color-text-muted)]">
+        <span>Looply · WhatsApp-first Customer Operations</span>
+        <span className="font-mono opacity-70">
+          v{APP_VERSION} ({COMMIT_HASH})
+          {BUILD_TIME ? ` · ${formatBuildDate(BUILD_TIME)}` : ""}
+        </span>
+      </div>
 
       <MyAccountModal
         isOpen={isAccountModalOpen}

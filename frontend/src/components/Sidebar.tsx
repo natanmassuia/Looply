@@ -13,6 +13,7 @@ import {
 import { Logo } from "./Logo";
 import { useUIStore } from "../lib/store";
 import { initials, DISPLAY_ROLE_LABEL } from "../lib/format";
+import { APP_VERSION, COMMIT_HASH, BUILD_TIME, formatBuildDate } from "../config/version";
 
 export interface NavItem {
   to: string;
@@ -412,11 +413,25 @@ export default function Sidebar({
                     Encerrar esta sessão
                   </span>
                 </button>
+
+                <div className="mt-1 border-t border-[var(--looply-color-border-default)] px-3 pt-2 text-[10.5px] font-mono text-[var(--looply-color-text-muted)] opacity-70">
+                  Looply v{APP_VERSION} ({COMMIT_HASH})
+                  {BUILD_TIME ? ` · ${formatBuildDate(BUILD_TIME)}` : ""}
+                </div>
               </div>
             </div>
           </>
         )}
       </div>
+
+      {!sidebarCollapsed && (
+        <div
+          title={BUILD_TIME ? `Build: ${formatBuildDate(BUILD_TIME)}` : undefined}
+          className="px-3 pb-1 text-center text-[10px] font-mono text-[var(--looply-color-text-muted)] opacity-50 select-none"
+        >
+          v{APP_VERSION} ({COMMIT_HASH})
+        </div>
+      )}
     </aside>
   );
 }

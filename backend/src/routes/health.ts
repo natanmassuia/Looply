@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../lib/db";
+import { APP_VERSION, getCommitHash } from "../lib/version";
 
 const router = Router();
 
@@ -9,6 +10,8 @@ router.get("/", (_req, res) => {
   res.json({
     status: "ok",
     service: "looply-backend",
+    version: APP_VERSION,
+    commit: getCommitHash(),
     time: new Date().toISOString(),
     db: prisma ? "configured" : "missing",
   });

@@ -4,6 +4,7 @@ import { useMe, useLogin, ApiError } from "../lib/api";
 import { getPostLoginDestination } from "../lib/workspace";
 import AuthShell, { Eyebrow } from "../components/AuthShell";
 import { PageSkeleton } from "../components/common";
+import { APP_VERSION, COMMIT_HASH, BUILD_TIME, formatBuildDate } from "../config/version";
 import type { ReactNode } from "react";
 
 export default function Login() {
@@ -81,6 +82,12 @@ export default function Login() {
       </div>
       <p className="mt-4 text-center text-[12px] leading-4 text-[var(--looply-color-text-muted)]">
         Acesso seguro para sua equipe
+      </p>
+      <p
+        title={BUILD_TIME ? `Build: ${formatBuildDate(BUILD_TIME)}` : undefined}
+        className="mt-2 text-center text-[10.5px] font-mono text-[var(--looply-color-text-muted)] opacity-50 select-none"
+      >
+        v{APP_VERSION} ({COMMIT_HASH})
       </p>
     </AuthShell>
   );
