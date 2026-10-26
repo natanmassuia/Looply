@@ -179,6 +179,9 @@ function makeApp(auth = { userId: "usr_1", companyId: "comp_1", role: "ADMIN" })
     companyMember: {
       findUnique: async () => ({ id: "mem_1" }),
     },
+    whatsAppChannel: {
+      findFirst: async () => null,
+    },
   };
 
   // Mock auth middleware

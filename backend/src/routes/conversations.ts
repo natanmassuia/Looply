@@ -102,15 +102,17 @@ export function makeConversationsRouter(db: DB, deps?: { storage?: ObjectStorage
     }
 
     // Reply leaves via this company's own WhatsApp number (falls back to .env).
-    const channel = await db.whatsAppChannel.findFirst({
-      where: {
-        companyId: req.auth!.companyId,
-        provider: conversation.provider,
-        purpose: "CUSTOMER_AI",
-        isActive: true,
-      },
-      select: { externalAccountId: true },
-    });
+    const channel = db.whatsAppChannel
+      ? await db.whatsAppChannel.findFirst({
+          where: {
+            companyId: req.auth!.companyId,
+            provider: conversation.provider,
+            purpose: "CUSTOMER_AI",
+            isActive: true,
+          },
+          select: { externalAccountId: true },
+        })
+      : null;
 
     let providerMessageId: string | null = null;
     let deliveryStatus: "SENT" | "FAILED" = "SENT";
