@@ -41,10 +41,13 @@ async function renderTemplateBody(
     let text = parts.join("\n\n");
     const sent = (sentComponents ?? []) as Array<{ type?: string; parameters?: Array<{ text?: string }> }>;
     const bodyComp = sent.find((c) => (c.type ?? "").toLowerCase() === "body");
-    bodyComp?.parameters?.forEach((p, i) => {
-      if (typeof p?.text === "string") {
-        text = text.replace(new RegExp(`\\{\\{\\s*${i + 1}\\s*\\}\\}`, "g"), p.text);
-      }
+    const bodyParams = bodyComp?.parameters ?? [];
+    // Substitute {{n}} placeholders in a single pass with a hardcoded regex
+    // (no dynamic RegExp → no ReDoS surface; also avoids re-substituting into
+    // already-replaced text). The index is 1-based, as in the template.
+    text = text.replace(/\{\{\s*(\d+)\s*\}\}/g, (match, digits) => {
+      const param = bodyParams[Number(digits) - 1];
+      return typeof param?.text === "string" ? param.text : match;
     });
     return text.trim() || fallback;
   } catch {
