@@ -1,14 +1,18 @@
-import { describe, it, expect, afterAll } from "vitest";
+import { describe, it, expect, afterAll, beforeAll } from "vitest";
 import request from "supertest";
 import app from "../src/app";
 import { prisma } from "../src/lib/db";
 import { login, logout } from "../src/services/authService";
 import { seedCredentials } from "./seedCredentials";
-import { tenantBLogin } from "./fixtures";
+import { tenantBLogin, ensureSeedWorkspaceData } from "./fixtures";
 import { SESSION_COOKIE } from "../src/lib/session";
 import { getCalendar } from "../src/services/calendarService";
 
 describe.skipIf(!process.env.DATABASE_URL)("Calendar projection", () => {
+  beforeAll(async () => {
+    await ensureSeedWorkspaceData();
+  });
+
   it("projects only the current tenant's scheduled/publication dates", async () => {
     const a = await login(prisma, seedCredentials().email, seedCredentials().password);
     const b = await tenantBLogin(prisma);

@@ -1,14 +1,18 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";
 import app from "../src/app";
 import { prisma } from "../src/lib/db";
 import { login, logout } from "../src/services/authService";
 import { seedCredentials } from "./seedCredentials";
-import { tenantBLogin } from "./fixtures";
+import { tenantBLogin, ensureSeedWorkspaceData } from "./fixtures";
 import { SESSION_COOKIE } from "../src/lib/session";
 import { getDashboardForCompany } from "../src/services/dashboardService";
 
 describe.skipIf(!process.env.DATABASE_URL)("Dashboard tenant-safe projection", () => {
+  beforeAll(async () => {
+    await ensureSeedWorkspaceData();
+  });
+
   it("Agency dashboard is scoped and includes capability-aware sections", async () => {
     const session = await login(prisma, seedCredentials().email, seedCredentials().password);
     const response = await request(app).get("/api/dashboard").set("Cookie", `${SESSION_COOKIE}=${session.token}`);

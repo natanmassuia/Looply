@@ -110,6 +110,89 @@ export async function tenantBLogin(database: DB) {
   return login(database, b.email, b.password);
 }
 
+const SEED_COMPANY = "Looply Studio";
+const DEMO_CLIENT = "Cliente Demo";
+const DEMO_JOB = "Demanda Demo";
+// A fixed demo publication date; the calendar suite derives its query window
+// from the job's own dates, so the exact value is irrelevant as long as it is
+// stable across runs.
+const DEMO_PUBLICATION_TARGET = new Date("2026-09-15T12:00:00.000Z");
+
+export interface SeedWorkspaceData {
+  companyId: string;
+  clientId: string;
+  jobId: string;
+}
+
+let seedWorkspaceCached: SeedWorkspaceData | undefined;
+
+// The DB-gated integration suites (clients, dashboard, calendar, approval,
+// jobs/workflow) assert that the seeded workspace ("Looply Studio") owns demo
+// data. The base seed (src/seed.ts) only creates the tenant + admin + workflow,
+// so these fixtures provision one active client and one job (with a publication
+// target) at runtime — idempotently, like getTenantB. Never part of the dev/
+// prod seed.
+export async function ensureSeedWorkspaceData(): Promise<SeedWorkspaceData> {
+  if (seedWorkspaceCached) return seedWorkspaceCached;
+
+  const company = await prisma.company.findFirst({ where: { name: SEED_COMPANY } });
+  if (!company) {
+    throw new Error(
+      `fixture: seed company "${SEED_COMPANY}" not found — run the seed (SEED_ADMIN_* + tsx src/seed.ts) first`,
+    );
+  }
+
+  const workflow = await prisma.workflowDefinition.findFirst({
+    where: { companyId: company.id },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+  const firstStage = workflow
+    ? await prisma.workflowStage.findFirst({
+        where: { workflowId: workflow.id, active: true },
+        orderBy: { position: "asc" },
+        select: { id: true },
+      })
+    : null;
+
+  let client = await prisma.client.findFirst({
+    where: { companyId: company.id, name: DEMO_CLIENT },
+  });
+  if (!client) {
+    client = await prisma.client.create({
+      data: { companyId: company.id, name: DEMO_CLIENT, status: "ACTIVE", channels: [] },
+    });
+  }
+
+  let job = await prisma.job.findFirst({
+    where: { companyId: company.id, clientId: client.id, title: DEMO_JOB },
+  });
+  if (!job) {
+    job = await prisma.job.create({
+      data: {
+        companyId: company.id,
+        clientId: client.id,
+        title: DEMO_JOB,
+        format: "POST",
+        workflowId: workflow?.id ?? null,
+        currentStageId: firstStage?.id ?? null,
+        publicationTarget: DEMO_PUBLICATION_TARGET,
+      },
+    });
+  }
+
+  // Approvals are created against a JobVersion; ensure the demo job has one.
+  const existingVersion = await prisma.jobVersion.findFirst({ where: { contentId: job.id } });
+  if (!existingVersion) {
+    await prisma.jobVersion.create({
+      data: { contentId: job.id, versionNumber: 1, caption: "Versão demo" },
+    });
+  }
+
+  seedWorkspaceCached = { companyId: company.id, clientId: client.id, jobId: job.id };
+  return seedWorkspaceCached;
+}
+
 // Revoke every session created by the suites for the fixture companies
 // (Looply Studio from the seed + Teste Corp from getTenantB).
 export async function teardownFixtureSessions(): Promise<void> {
