@@ -1,6 +1,7 @@
 import type { DB } from "../lib/db";
 import { AppError } from "../lib/errors";
 import { logger } from "../lib/logger";
+import { maskPhone } from "../lib/phone";
 import type { TransientStore } from "../lib/transientStore";
 import type { ObjectStorage } from "../lib/storage";
 import type { AssistantLanguageModel } from "./assistantLanguageModel";
@@ -67,10 +68,6 @@ export interface WhatsAppAdapterDeps {
   storage?: ObjectStorage;
   services?: AssistantDomainServices;
   now?: () => Date;
-}
-
-function maskPhone(phone: string): string {
-  return `******${phone.slice(-4)}`;
 }
 
 async function send(deps: WhatsAppAdapterDeps, to: string, text: string) {

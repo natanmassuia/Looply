@@ -3,24 +3,12 @@ import { Link } from "react-router-dom";
 import type { ConversationSummaryDto, ConversationMessageDto, ConversationAiStatus } from "../../../lib/types";
 import { useClients, useBindConversationClient, useSetConversationAiStatus } from "../../../lib/api";
 import { formatDateHeader, formatMessageTime } from "../utils/time";
-import { formatPhone } from "../../../lib/format";
+import { formatPhone, initials } from "../../../lib/format";
 
 interface Props {
   conversation: ConversationSummaryDto;
   messages: ConversationMessageDto[];
   onClose?: () => void;
-}
-
-function initials(name: string): string {
-  return (
-    name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((w) => w[0] ?? "")
-      .join("")
-      .toUpperCase() || "C"
-  );
 }
 
 export default function ContextPanel({ conversation, messages, onClose }: Props) {

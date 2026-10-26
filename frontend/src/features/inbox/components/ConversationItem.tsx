@@ -1,24 +1,12 @@
 import type { ConversationSummaryDto } from "../../../lib/types";
 import { formatTimeAgo } from "../utils/time";
-import { formatPhone } from "../../../lib/format";
+import { formatPhone, initials } from "../../../lib/format";
 
 interface Props {
   conversation: ConversationSummaryDto;
   isSelected: boolean;
   onClick: () => void;
   now?: number;
-}
-
-function initials(name: string): string {
-  return (
-    name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((w) => w[0] ?? "")
-      .join("")
-      .toUpperCase() || "C"
-  );
 }
 
 export default function ConversationItem({

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ConversationSummaryDto, ConversationAiStatus } from "../../../lib/types";
 import { useClients, useBindConversationClient, useSetConversationAiStatus } from "../../../lib/api";
-import { formatPhone } from "../../../lib/format";
+import { formatPhone, initials } from "../../../lib/format";
 
 interface Props {
   conversation: ConversationSummaryDto;
@@ -11,18 +11,6 @@ interface Props {
   isSearchOpen: boolean;
   onToggleInfo?: () => void;
   isInfoOpen?: boolean;
-}
-
-function initials(name: string): string {
-  return (
-    name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((w) => w[0] ?? "")
-      .join("")
-      .toUpperCase() || "C"
-  );
 }
 
 export default function ChatHeader({
