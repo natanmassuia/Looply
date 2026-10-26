@@ -181,6 +181,14 @@ export async function ensureSeedWorkspaceData(): Promise<SeedWorkspaceData> {
     });
   }
 
+  // Approvals are created against a JobVersion; ensure the demo job has one.
+  const existingVersion = await prisma.jobVersion.findFirst({ where: { contentId: job.id } });
+  if (!existingVersion) {
+    await prisma.jobVersion.create({
+      data: { contentId: job.id, versionNumber: 1, caption: "Versão demo" },
+    });
+  }
+
   seedWorkspaceCached = { companyId: company.id, clientId: client.id, jobId: job.id };
   return seedWorkspaceCached;
 }
