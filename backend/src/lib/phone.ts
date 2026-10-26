@@ -25,3 +25,8 @@ export function normalizePhoneNumber(input: string): string | null {
   }
   return null;
 }
+
+// Mask all but the last 4 digits — for logs and other PII-sensitive output.
+export function maskPhone(phone: string): string {
+  return `******${phone.slice(-4)}`;
+}
