@@ -91,7 +91,7 @@ export default function ChatHeader({
           <p className="flex items-center gap-1.5 truncate text-[11px] tabular-nums text-[var(--looply-color-text-muted)]">
             <span>{phoneLabel}</span>
             <span aria-hidden="true">·</span>
-            <span>WhatsApp Cloud API</span>
+            <span>WhatsApp oficial</span>
           </p>
         </div>
       </div>

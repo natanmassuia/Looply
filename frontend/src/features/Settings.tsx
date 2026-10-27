@@ -322,7 +322,7 @@ export default function Settings() {
                 : "border-transparent text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
             }`}
           >
-            Workflow
+            Fluxo de trabalho
           </button>
           <button
             type="button"
@@ -845,7 +845,7 @@ export default function Settings() {
           <Card>
             <div className="flex items-start gap-2 rounded-lg bg-[var(--looply-color-status-info)]/10 px-3 py-2.5 text-sm text-[var(--looply-color-status-info)]">
               <IconAlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>Apenas proprietários e administradores podem configurar o workflow.</span>
+              <span>Apenas proprietários e administradores podem configurar o fluxo de trabalho.</span>
             </div>
           </Card>
         )
@@ -864,7 +864,7 @@ export default function Settings() {
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-[var(--looply-color-text-muted)]">
-                  Envio e aprovação automatizada de demandas via WhatsApp oficial (Meta Cloud API).
+                  Envio e aprovação automatizada de demandas pelo WhatsApp oficial.
                 </p>
               </div>
             </div>
@@ -872,9 +872,9 @@ export default function Settings() {
             <div className="mt-4 rounded-lg border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)]/40 p-4 text-xs text-[var(--looply-color-text-muted)]">
               <div className="flex items-center gap-2 font-medium text-[var(--looply-color-text-primary)] mb-1">
                 <IconAlertCircle className="h-4 w-4 text-[var(--looply-color-status-info)]" />
-                Status da integração
+                Status da conexão
               </div>
-              A conexão com a API oficial do WhatsApp está temporariamente indisponível nesta versão de demonstração. Os links públicos de aprovação funcionam normalmente.
+              A conexão com o WhatsApp oficial está temporariamente indisponível nesta versão de avaliação. Os links públicos de aprovação funcionam normalmente.
             </div>
 
             <div className="mt-4 flex justify-end">
