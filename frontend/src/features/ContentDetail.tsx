@@ -204,7 +204,7 @@ export default function ContentDetail() {
       </div>
     );
   }
-  if (!content || !currentVersion) return <ErrorState message="Demanda não encontrada." />;
+  if (!content) return <ErrorState message="Demanda não encontrada." />;
 
   const onSendApproval = async () => {
     const res = (await run(sendApproval)) as { approvalUrl?: string } | null;
@@ -221,7 +221,7 @@ export default function ContentDetail() {
     <div>
       <PageHeader
         title={content.title}
-        subtitle={`${FORMAT_LABEL[content.format]} · ${content.client?.name} · Versão ${currentVersion.versionNumber}`}
+        subtitle={`${FORMAT_LABEL[content.format]} · ${content.client?.name}${currentVersion ? ` · Versão ${currentVersion.versionNumber}` : ""}`}
         crumbs={[{ label: "Demandas", to: "/contents" }, { label: content.title }]}
         actions={
           <div className="flex items-center gap-2">
@@ -357,24 +357,32 @@ export default function ContentDetail() {
           {/* Content preview */}
           <Card>
             <h3 className="section-title mb-3">Pré-visualização</h3>
-            <MediaPreview
-              url={currentVersion.mediaUrl}
-              alt={content.title}
-              className="mb-4 aspect-video w-full rounded-lg"
-            />
-            <div className="space-y-3">
-              <div>
-                <div className="section-label mb-1.5">Legenda</div>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--looply-color-text-primary)]">
-                  {currentVersion.caption}
-                </p>
-              </div>
-              {currentVersion.changeNote && (
-                <div className="rounded-lg bg-[var(--looply-color-bg-subtle)] px-3 py-2.5 text-xs text-[var(--looply-color-text-muted)]">
-                  <span className="font-medium">Nota da versão:</span> {currentVersion.changeNote}
+            {currentVersion ? (
+              <>
+                <MediaPreview
+                  url={currentVersion.mediaUrl}
+                  alt={content.title}
+                  className="mb-4 aspect-video w-full rounded-lg"
+                />
+                <div className="space-y-3">
+                  <div>
+                    <div className="section-label mb-1.5">Legenda</div>
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--looply-color-text-primary)]">
+                      {currentVersion.caption}
+                    </p>
+                  </div>
+                  {currentVersion.changeNote && (
+                    <div className="rounded-lg bg-[var(--looply-color-bg-subtle)] px-3 py-2.5 text-xs text-[var(--looply-color-text-muted)]">
+                      <span className="font-medium">Nota da versão:</span> {currentVersion.changeNote}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            ) : (
+              <p className="py-6 text-center text-sm text-[var(--looply-color-text-muted)]">
+                Nenhum conteúdo anexado ainda.
+              </p>
+            )}
           </Card>
 
           {/* Metadata card */}
@@ -412,7 +420,7 @@ export default function ContentDetail() {
                 {content.responsible?.name ?? "—"}
                 {content.responsible?.role ? ` · ${ROLE_LABEL[content.responsible.role]}` : ""}
               </Meta>
-              <Meta label="Versão">v{currentVersion.versionNumber}</Meta>
+              <Meta label="Versão">{currentVersion ? `v${currentVersion.versionNumber}` : "—"}</Meta>
               <Meta label="Publicação prevista">{formatDate(content.publicationTarget)}</Meta>
             </div>
             {content.notes && (
