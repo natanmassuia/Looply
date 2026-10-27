@@ -404,7 +404,7 @@ export default function WhatsAppManagement() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="border-b border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
                 <tr>
                   <th className="px-5 py-3 text-left">Número</th>
@@ -492,7 +492,7 @@ export default function WhatsAppManagement() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[720px] text-sm">
               <thead className="border-b border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
                 <tr>
                   <th className="px-5 py-3 text-left">Nome</th>
