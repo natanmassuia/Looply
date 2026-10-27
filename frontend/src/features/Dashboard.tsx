@@ -361,7 +361,7 @@ function ClientDot({ color }: { color?: string | null }) {
   return (
     <span
       className="inline-block h-2 w-2 rounded-full shrink-0"
-      style={{ backgroundColor: color || "#94a3b8" }}
+      style={{ backgroundColor: color || "var(--looply-color-text-muted)" }}
     />
   );
 }
