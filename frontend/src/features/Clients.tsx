@@ -7,6 +7,7 @@ import { Card, EmptyState, ErrorState, PageHeader, SkeletonCards } from "../comp
 import { IconPlus, IconEdit, IconTrash, IconChevronDown, IconX, IconMoreVertical, IconFileText, IconLink, IconMail } from "../components/Icons";
 import ModalOrSheet from "../components/ModalOrSheet";
 import ClientEditor from "../components/ClientEditor";
+import ClientAvatar from "../components/ClientAvatar";
 import ClientDemandsModal from "./ClientDemandsModal";
 
 const CLIENT_STATUS: Record<ClientStatus, { label: string; cls: string }> = {
@@ -516,20 +517,7 @@ export default function Clients() {
             return (
               <Card key={c.id} className="transition-shadow hover:shadow-looply-md">
                 <div className="flex items-start gap-3">
-                  {c.logoUrl ? (
-                    <img
-                      src={c.logoUrl}
-                      alt={c.name}
-                      className="h-10 w-10 shrink-0 rounded-xl object-cover border border-[var(--looply-color-border-default)]"
-                    />
-                  ) : (
-                    <span
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-sm"
-                      style={{ backgroundColor: c.brandColor ?? "#475569" }}
-                    >
-                      {c.name.slice(0, 2).toUpperCase()}
-                    </span>
-                  )}
+                  <ClientAvatar name={c.name} logoUrl={c.logoUrl} brandColor={c.brandColor} textClass="text-sm" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <div className="truncate text-sm font-semibold text-[var(--looply-color-text-primary)]">
@@ -763,20 +751,7 @@ function ClientsTable({
                 <tr key={c.id} className="transition-colors hover:bg-[var(--looply-color-bg-subtle)]">
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2.5">
-                      {c.logoUrl ? (
-                        <img
-                          src={c.logoUrl}
-                          alt=""
-                          className="h-8 w-8 shrink-0 rounded-lg object-cover border border-[var(--looply-color-border-default)]"
-                        />
-                      ) : (
-                        <span
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
-                          style={{ backgroundColor: c.brandColor ?? "#475569" }}
-                        >
-                          {c.name.slice(0, 2).toUpperCase()}
-                        </span>
-                      )}
+                      <ClientAvatar name={c.name} logoUrl={c.logoUrl} brandColor={c.brandColor} sizeClass="h-8 w-8" radiusClass="rounded-lg" />
                       <div className="min-w-0">
                         <Link
                           to={`/clients/${c.id}`}

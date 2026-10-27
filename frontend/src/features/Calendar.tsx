@@ -7,9 +7,10 @@ import {
   useCreateAppointment,
   useUpdateAppointment,
   useCancelAppointment,
+  useMe,
   ApiError,
 } from "../lib/api";
-import { FORMAT_LABEL } from "../lib/format";
+import { FORMAT_LABEL, formatInTimeZone } from "../lib/format";
 import { Card, EmptyState, ErrorState, PageHeader, Spinner } from "../components/common";
 import ModalOrSheet from "../components/ModalOrSheet";
 import type { ContentListItem, Appointment } from "../lib/types";
@@ -65,6 +66,8 @@ export default function Calendar() {
     error: appError,
   } = useAppointments();
   const { data: clients } = useClients();
+  const { data: me } = useMe();
+  const timeZone = me?.workspace?.timezone;
 
   const createAppointment = useCreateAppointment();
   const updateAppointment = useUpdateAppointment();
@@ -536,7 +539,7 @@ export default function Calendar() {
                   {dayEntries.map((item) => (
                     <div key={item.key} className="flex items-center gap-3">
                       <span className="w-12 shrink-0 text-right text-[11px] tabular-nums text-[var(--looply-color-text-muted)]">
-                        {entryTime(item)}
+                        {entryTime(item, timeZone)}
                       </span>
                       <div className="min-w-0 flex-1">
                         <EntryChip item={item} onAppointment={openEditModal} />
@@ -566,7 +569,7 @@ export default function Calendar() {
                         {entries.map(({ item }) => (
                           <div key={item.key} className="flex items-center gap-3">
                             <span className="w-12 shrink-0 text-right text-[11px] tabular-nums text-[var(--looply-color-text-muted)]">
-                              {entryTime(item)}
+                              {entryTime(item, timeZone)}
                             </span>
                             <div className="min-w-0 flex-1">
                               <EntryChip item={item} onAppointment={openEditModal} />
@@ -829,14 +832,15 @@ function dayLabel(d: Date): string {
   return `${WEEKDAYS[d.getDay()]}, ${d.getDate()} ${monthAbbr(d.getMonth())} ${d.getFullYear()}`;
 }
 
-function entryTime(item: CalendarEntry): string {
+// Displayed in the company timezone (same source as the Dashboard), never the
+// browser's — so the same appointment reads the same hour across screens.
+function entryTime(item: CalendarEntry, timeZone: string | null | undefined): string {
   const iso =
     item.origin === "PUBLICATION"
       ? item.data.scheduledAt ?? item.data.publicationTarget
       : item.data.startsAt;
   if (!iso) return "—";
-  const d = new Date(iso);
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  return formatInTimeZone(iso, timeZone, { hour: "2-digit", minute: "2-digit" });
 }
 
 function groupByDay(

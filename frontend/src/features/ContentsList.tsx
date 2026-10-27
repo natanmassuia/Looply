@@ -6,6 +6,7 @@ import { FORMAT_LABEL, latestVersion, relativeTime } from "../lib/format";
 import type { ContentListItem, Client } from "../lib/types";
 import { EmptyState, ErrorState, PageHeader, Spinner } from "../components/common";
 import StatusPill from "../components/StatusPill";
+import ClientAvatar from "../components/ClientAvatar";
 import ModalOrSheet from "../components/ModalOrSheet";
 import ScheduleModal from "../components/ScheduleModal";
 import { IconPlus, IconChevronDown, IconCheck, IconX } from "../components/Icons";
@@ -387,15 +388,8 @@ export default function ContentsList() {
               className="inline-flex min-w-[220px] items-center justify-between gap-2 rounded-lg border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-3 py-2 text-left text-[13px] font-medium text-[var(--looply-color-text-primary)] transition-colors hover:border-[var(--looply-color-border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
             >
               <span className="flex min-w-0 items-center gap-2">
-                {selectedClient?.logoUrl ? (
-                  <img src={selectedClient.logoUrl} alt="" className="h-5 w-5 shrink-0 rounded object-cover" />
-                ) : selectedClient ? (
-                  <span
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[9px] font-bold text-white"
-                    style={{ backgroundColor: selectedClient.brandColor || "#94a3b8" }}
-                  >
-                    {selectedClient.name.slice(0, 2).toUpperCase()}
-                  </span>
+                {selectedClient ? (
+                  <ClientAvatar name={selectedClient.name} logoUrl={selectedClient.logoUrl} brandColor={selectedClient.brandColor} sizeClass="h-5 w-5" radiusClass="rounded" textClass="text-[9px]" />
                 ) : null}
                 <span className="truncate">{selectedClient ? selectedClient.name : "Todos os clientes"}</span>
               </span>
@@ -501,16 +495,7 @@ export default function ContentsList() {
                       clientId === c.id ? "bg-[var(--looply-color-bg-subtle)]" : ""
                     }`}
                   >
-                    {c.logoUrl ? (
-                      <img src={c.logoUrl} alt="" className="h-7 w-7 shrink-0 rounded object-cover" />
-                    ) : (
-                      <span
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-[11px] font-bold text-white"
-                        style={{ backgroundColor: c.brandColor || "#94a3b8" }}
-                      >
-                        {c.name.slice(0, 2).toUpperCase()}
-                      </span>
-                    )}
+                    <ClientAvatar name={c.name} logoUrl={c.logoUrl} brandColor={c.brandColor} sizeClass="h-7 w-7" radiusClass="rounded" textClass="text-[11px]" />
                     <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--looply-color-text-primary)]">
                       {c.name}
                     </span>
@@ -864,7 +849,7 @@ function DemandsTable({
                     <div className="flex items-center gap-2">
                       <span
                         className="inline-block h-2 w-2 shrink-0 rounded-full"
-                        style={{ backgroundColor: c.client?.brandColor || "#94a3b8" }}
+                        style={{ backgroundColor: c.client?.brandColor || "var(--looply-color-text-muted)" }}
                       />
                       <span className="truncate text-[var(--looply-color-text-primary)]">
                         {c.client?.name ?? "—"}
