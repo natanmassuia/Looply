@@ -1,6 +1,7 @@
 import type { DB } from "../lib/db";
 import { Capability, hasCapability, resolveWorkspaceContext } from "../domain/capabilities";
 import { getCalendar } from "./calendarService";
+import { zonedDayRange } from "./scheduling";
 
 const RECENT_LIMIT = 10;
 const ATTENTION_LIMIT = 10;
@@ -22,8 +23,12 @@ export async function getDashboardForCompany(
   if (can(Capability.APPROVAL)) availableSections.push("approvals");
   if (can(Capability.CALENDAR)) availableSections.push("upcoming");
   if (can(Capability.ACTIVITY)) availableSections.push("activity");
+  availableSections.push("attendance");
 
-  const [clientCounts, lifecycleCounts, legacyStatusCounts, totalTeam, recentJobs, attentionJobs, stageCounts, stageNames, approvalCounts, upcoming, recentActivity] = await Promise.all([
+  // "Today" is the company's local calendar day, not the server's.
+  const { start: dayStart, end: dayEnd } = zonedDayRange(now, company.timezone || "America/Sao_Paulo");
+
+  const [clientCounts, lifecycleCounts, legacyStatusCounts, totalTeam, recentJobs, attentionJobs, stageCounts, stageNames, approvalCounts, upcoming, recentActivity, convStatusCounts, conversationsActiveToday, appointmentsToday] = await Promise.all([
     db.client.groupBy({ by: ["status"], where: { companyId: company.id }, _count: { _all: true } }),
     db.job.groupBy({ by: ["lifecycleStatus"], where: { companyId: company.id }, _count: { _all: true } }),
     db.job.groupBy({ by: ["status"], where: { companyId: company.id }, _count: { _all: true } }),
@@ -62,6 +67,10 @@ export async function getDashboardForCompany(
     can(Capability.ACTIVITY)
       ? db.activity.findMany({ where: { companyId: company.id }, orderBy: { createdAt: "desc" }, take: RECENT_LIMIT, select: { id: true, type: true, jobId: true, actorUserId: true, createdAt: true, job: { select: { title: true } } } })
       : Promise.resolve([]),
+    // Attendance KPIs (A3): all tenant-scoped, no migration required.
+    db.conversation.groupBy({ by: ["aiStatus"], where: { companyId: company.id }, _count: { _all: true } }),
+    db.conversation.count({ where: { companyId: company.id, lastMessageAt: { gte: dayStart } } }),
+    db.appointment.count({ where: { companyId: company.id, status: "SCHEDULED", startsAt: { gte: dayStart, lt: dayEnd } } }),
   ]);
 
   const clientsActive = clientCounts.find((row) => row.status === "ACTIVE")?._count._all ?? 0;
@@ -77,8 +86,18 @@ export async function getDashboardForCompany(
   const changesRequestedApprovals = approvalCounts ? approvalCounts[1] : undefined;
   const upcomingEvents = upcoming?.events ?? [];
 
+  const convByStatus = Object.fromEntries(convStatusCounts.map((row) => [row.aiStatus, row._count._all]));
+  const conversationsNeedingAttention = convByStatus.NEEDS_ATTENTION ?? 0;
+  const attendance = {
+    conversationsNeedingAttention,
+    conversationsActiveToday,
+    appointmentsToday,
+    activeDemands: (lifecycle.OPEN ?? 0) + (lifecycle.IN_PROGRESS ?? 0),
+  };
+
   const attention = {
     jobs: attentionJobs,
+    conversationsNeedingAttention,
     ...(can(Capability.APPROVAL) ? { pendingApprovals, changesRequestedApprovals } : {}),
     ...(can(Capability.CALENDAR) ? { upcoming: upcomingEvents.slice(0, ATTENTION_LIMIT) } : {}),
   };
@@ -100,6 +119,7 @@ export async function getDashboardForCompany(
       ...(can(Capability.WORKFLOW) ? { byStage } : {}),
     },
     attention,
+    attendance,
     upcoming: can(Capability.CALENDAR) ? upcoming : undefined,
     recent: {
       jobs: recentJobs,

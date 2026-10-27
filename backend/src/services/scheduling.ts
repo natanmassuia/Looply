@@ -39,6 +39,45 @@ export function parseHm(value: string | null | undefined): number | null {
   return h * 60 + min;
 }
 
+// Minutes the IANA `timezone` is ahead of UTC at the instant `date` (DST-aware).
+function tzOffsetMinutes(date: Date, timezone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  let hour = get("hour");
+  if (hour === 24) hour = 0; // some engines render midnight as "24"
+  const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"), hour, get("minute"), get("second"));
+  return (asUtc - date.getTime()) / 60000;
+}
+
+// [start, end) UTC instants bounding the local calendar day of `now` in `timezone`.
+// DST-aware: end is computed from the next calendar day, not now + 24h.
+export function zonedDayRange(now: Date, timezone: string): { start: Date; end: Date } {
+  const ymd = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  const [y, m, d] = ymd.split("-").map(Number);
+  const midnightUtc = (yy: number, mm: number, dd: number) => {
+    const guess = Date.UTC(yy, mm - 1, dd);
+    return new Date(guess - tzOffsetMinutes(new Date(guess), timezone) * 60000);
+  };
+  const start = midnightUtc(y, m, d);
+  const next = new Date(Date.UTC(y, m - 1, d) + 24 * 60 * 60 * 1000);
+  const end = midnightUtc(next.getUTCFullYear(), next.getUTCMonth() + 1, next.getUTCDate());
+  return { start, end };
+}
+
 // Local weekday (0-6) and minutes-from-midnight for a UTC instant in an IANA tz.
 export function localParts(date: Date, timezone: string): { weekday: number; minutes: number } {
   const parts = new Intl.DateTimeFormat("en-US", {
