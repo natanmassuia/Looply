@@ -88,7 +88,7 @@ export default function ContextPanel({ conversation, messages, onClose, embedded
           </p>
           <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--looply-color-bg-subtle)] px-2.5 py-0.5 text-[10.5px] font-semibold text-[var(--looply-color-text-primary)]">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--looply-color-status-success)]" />
-            WhatsApp Cloud API
+            WhatsApp oficial
           </span>
         </div>
 
@@ -160,7 +160,7 @@ export default function ContextPanel({ conversation, messages, onClose, embedded
         {/* AI Governance */}
         <div className="space-y-2 rounded-[10px] bg-[var(--looply-color-bg-subtle)] p-3">
           <span className="block text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
-            Governança da IA
+            Controle da assistente
           </span>
           <div className="flex items-center gap-2">
             <span

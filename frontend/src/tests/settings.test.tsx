@@ -203,7 +203,8 @@ describe("Settings Feature — F12.2 Profile and Company Data", () => {
 
       renderWithClient(<Settings />);
       fireEvent.click(screen.getByRole("button", { name: "Aparência" }));
-      fireEvent.click(screen.getByRole("button", { name: /Flux/ }));
+      // \b avoids matching the "Fluxo de trabalho" tab; targets the "Flux" preset.
+      fireEvent.click(screen.getByRole("button", { name: /Flux\b/ }));
       fireEvent.click(screen.getByRole("button", { name: "Salvar aparência" }));
 
       expect(updateAppearanceMutate).toHaveBeenCalledWith({
