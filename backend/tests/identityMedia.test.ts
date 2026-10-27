@@ -13,6 +13,9 @@ import {
   createClientLogoIntent,
   completeClientLogoUpload,
   deleteClientLogo,
+  createContactAvatarIntent,
+  completeContactAvatarUpload,
+  deleteContactAvatar,
   resolveMediaDownloadUrl,
   validateImageIntent,
 } from "../src/services/identityMediaService";
@@ -112,7 +115,33 @@ function makeMockDb() {
     },
   ];
 
+  const now = new Date("2026-10-27T12:00:00.000Z");
+  const conversations: any[] = [
+    {
+      id: "conv-1", companyId: "comp-1", provider: "whatsapp", remotePhone: "+5511999990001",
+      contactName: "Contato Um", contactAvatarUrl: null, lastMessagePreview: null, lastMessageAt: null,
+      unreadCount: 0, aiStatus: "ACTIVE", createdAt: now, updatedAt: now, client: null,
+    },
+    {
+      id: "conv-2", companyId: "comp-2", provider: "whatsapp", remotePhone: "+5511999990002",
+      contactName: "Contato Dois",
+      contactAvatarUrl: "/api/media/file?key=company%2Fcomp-2%2Fconversations%2Fconv-2%2Favatar%2Fold.png",
+      lastMessagePreview: null, lastMessageAt: null, unreadCount: 0, aiStatus: "ACTIVE",
+      createdAt: now, updatedAt: now, client: null,
+    },
+  ];
+
   const db: any = {
+    conversation: {
+      findFirst: async ({ where }: any) =>
+        conversations.find((c) => c.id === where.id && (where.companyId ? c.companyId === where.companyId : true)) ?? null,
+      update: async ({ where, data }: any) => {
+        const c = conversations.find((item) => item.id === where.id);
+        if (!c) return null;
+        Object.assign(c, data);
+        return { ...c };
+      },
+    },
     user: {
       findUnique: async ({ where }: any) => users.find((u) => u.id === where.id) ?? null,
       update: async ({ where, data }: any) => {
@@ -152,7 +181,7 @@ function makeMockDb() {
     },
   };
 
-  return { db: db as unknown as DB, users, companies, clients, members };
+  return { db: db as unknown as DB, users, companies, clients, members, conversations };
 }
 
 describe("Identity Media Service — Security & Operations", () => {
@@ -319,6 +348,47 @@ describe("Identity Media Service — Security & Operations", () => {
       await expect(
         deleteClientLogo(mockDb.db, storage, "comp-1", "cli-2"),
       ).rejects.toThrowError(/Cliente não encontrado/i);
+    });
+  });
+
+  describe("Conversation Contact Avatar (manual) & Tenant Isolation", () => {
+    it("creates a conversation-scoped avatar intent for an owned conversation", async () => {
+      const intent = await createContactAvatarIntent(mockDb.db, storage, "comp-1", "conv-1", {
+        contentType: "image/png",
+        sizeBytes: 100_000,
+      });
+      expect(intent.key).toMatch(/^company\/comp-1\/conversations\/conv-1\/avatar\/[a-f0-9-]+\.png$/);
+    });
+
+    it("blocks creating an avatar intent for a cross-tenant conversation (404)", async () => {
+      await expect(
+        createContactAvatarIntent(mockDb.db, storage, "comp-1", "conv-2", { contentType: "image/png", sizeBytes: 100_000 }),
+      ).rejects.toThrowError(/Conversa não encontrada/i);
+    });
+
+    it("completes the avatar upload, persists the canonical URL and cleans up the old object", async () => {
+      const key = "company/comp-2/conversations/conv-2/avatar/new.png";
+      storage.store.set(key, { sizeBytes: 100_000, contentType: "image/png" });
+
+      const updated = await completeContactAvatarUpload(mockDb.db, storage, "comp-2", "conv-2", key);
+      expect(updated.contactAvatarUrl).toContain(encodeURIComponent(key));
+      expect(storage.deletedKeys).toContain("company/comp-2/conversations/conv-2/avatar/old.png");
+    });
+
+    it("blocks complete when the key prefix is spoofed to another conversation/tenant", async () => {
+      await expect(
+        completeContactAvatarUpload(mockDb.db, storage, "comp-1", "conv-1", "company/comp-2/conversations/conv-2/avatar/spoof.png"),
+      ).rejects.toThrowError(/não autorizada/i);
+    });
+
+    it("deletes the contact avatar for the owning tenant", async () => {
+      const key = "company/comp-2/conversations/conv-2/avatar/set.png";
+      storage.store.set(key, { sizeBytes: 50_000, contentType: "image/png" });
+      await completeContactAvatarUpload(mockDb.db, storage, "comp-2", "conv-2", key);
+
+      const updated = await deleteContactAvatar(mockDb.db, storage, "comp-2", "conv-2");
+      expect(updated.contactAvatarUrl).toBeNull();
+      expect(storage.deletedKeys).toContain(key);
     });
   });
 

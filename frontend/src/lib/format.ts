@@ -70,6 +70,16 @@ export function initials(name: string): string {
   );
 }
 
+// Deterministic avatar color for a contact, seeded by phone (or name). The
+// circle carries its own mid-tone background + white text, so it stays legible
+// in both light and dark themes without a theme-specific palette.
+export function avatarColor(seed: string): { bg: string; fg: string } {
+  const s = seed || "?";
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+  return { bg: `hsl(${h} 52% 40%)`, fg: "#ffffff" };
+}
+
 export function latestVersion(c: { versions?: { versionNumber: number }[] }): number {
   if (!c.versions || c.versions.length === 0) return 1;
   return Math.max(...c.versions.map((v) => v.versionNumber));

@@ -1097,6 +1097,35 @@ export function useSetConversationAiStatus() {
   });
 }
 
+// Manual contact photo (WhatsApp Cloud API never delivers a profile photo).
+export function useUploadContactAvatar(conversationId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) =>
+      uploadIdentityImage(
+        `/api/conversations/${conversationId}/avatar/upload-intent`,
+        `/api/conversations/${conversationId}/avatar/complete`,
+        file,
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["conversation", conversationId] });
+    },
+  });
+}
+
+export function useDeleteContactAvatar(conversationId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ ok: boolean }>(`/api/conversations/${conversationId}/avatar`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["conversation", conversationId] });
+    },
+  });
+}
+
 export function useSendConversationMessage() {
   const qc = useQueryClient();
   return useMutation({
