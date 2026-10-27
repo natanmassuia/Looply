@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
-import Settings from "../features/Settings";
+import Settings, { WhatsAppIntegrationCard } from "../features/Settings";
 import MyAccountModal from "../features/MyAccountModal";
 import * as apiModule from "../lib/api";
 import type { WorkspaceAppearance } from "../lib/types";
@@ -339,4 +339,56 @@ describe("Settings Feature — F12.2 Profile and Company Data", () => {
     });
   });
 });
+});
+
+describe("Settings — WhatsApp integration status (real, shared source)", () => {
+  beforeEach(() => vi.restoreAllMocks());
+
+  function renderCard() {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+    return render(
+      <QueryClientProvider client={qc}>
+        <WhatsAppIntegrationCard />
+      </QueryClientProvider>,
+    );
+  }
+
+  it("shows Conectado with the number when the company has an active WhatsApp number", () => {
+    vi.spyOn(apiModule, "useWhatsAppPhoneNumbers").mockReturnValue({
+      data: { phoneNumbers: [{ id: "p1", display_phone_number: "+55 11 99999-8888", verified_name: "Clínica Aurora", quality_rating: "GREEN", status: "CONNECTED" }] },
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    renderCard();
+
+    expect(screen.getByText("Conectado")).toBeInTheDocument();
+    expect(screen.getByText("+55 11 99999-8888")).toBeInTheDocument();
+    expect(screen.queryByText("Não conectado")).not.toBeInTheDocument();
+  });
+
+  it("shows Não conectado when the company has no WhatsApp number", () => {
+    vi.spyOn(apiModule, "useWhatsAppPhoneNumbers").mockReturnValue({
+      data: { phoneNumbers: [] },
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    renderCard();
+
+    expect(screen.getByText("Não conectado")).toBeInTheDocument();
+    expect(screen.queryByText("Conectado")).not.toBeInTheDocument();
+  });
+
+  it("shows Indisponível only on a real API error", () => {
+    vi.spyOn(apiModule, "useWhatsAppPhoneNumbers").mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+    } as any);
+
+    renderCard();
+
+    expect(screen.getByText("Indisponível")).toBeInTheDocument();
+  });
 });
