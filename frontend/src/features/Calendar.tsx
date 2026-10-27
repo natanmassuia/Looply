@@ -47,6 +47,14 @@ type CalendarEntry =
 
 type CalView = "month" | "week" | "day" | "list";
 
+/** Mobile defaults to the list view; the month grid is too cramped at 375px. */
+function initialCalView(): CalView {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return "month";
+  }
+  return window.matchMedia("(max-width: 767px)").matches ? "list" : "month";
+}
+
 export default function Calendar() {
   const { data: publications, isLoading: pubLoading, isError: pubIsError, error: pubError } =
     usePublications();
@@ -63,7 +71,7 @@ export default function Calendar() {
   const cancelAppointment = useCancelAppointment();
 
   const today = new Date();
-  const [view, setView] = useState<CalView>("month");
+  const [view, setView] = useState<CalView>(initialCalView);
   const [anchor, setAnchor] = useState<Date>(() => new Date());
   const y = anchor.getFullYear();
   const m = anchor.getMonth();
@@ -381,15 +389,15 @@ export default function Calendar() {
 
           {/* MONTH */}
           {view === "month" && (
-            <>
-              <div className="grid grid-cols-7 border-b border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] text-center text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--looply-color-text-muted)]">
+            <div className="overflow-x-auto">
+              <div className="grid min-w-[640px] grid-cols-7 border-b border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] text-center text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--looply-color-text-muted)]">
                 {WEEKDAYS.map((d) => (
                   <div key={d} className="px-2 py-2.5">
                     {d}
                   </div>
                 ))}
               </div>
-              <div className="grid grid-cols-7">
+              <div className="grid min-w-[640px] grid-cols-7">
                 {cells.map((cell, i) => {
                   const items = cell ? byDay.get(dateKey(cell)) ?? [] : [];
                   const isToday = Boolean(cell && isSameDay(cell, today));
@@ -454,7 +462,7 @@ export default function Calendar() {
                   );
                 })}
               </div>
-            </>
+            </div>
           )}
 
           {/* WEEK */}
