@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import Dashboard from "../features/Dashboard";
 import * as apiModule from "../lib/api";
-import { MVP } from "../config/mvp";
 import type { Dashboard as DashboardData } from "../lib/types";
 
 function mockDashboardData(overrides: Record<string, unknown> = {}) {
@@ -35,6 +34,12 @@ function mockDashboardData(overrides: Record<string, unknown> = {}) {
       client: { id: "cli-1", name: "Acme", brandColor: "#333" },
     })),
     needingAttention: [],
+    attendance: {
+      conversationsNeedingAttention: 2,
+      conversationsActiveToday: 7,
+      appointmentsToday: 3,
+      activeDemands: 9,
+    },
     workspace: { timezone: "America/Sao_Paulo" },
     upcoming: {
       timezone: "America/Sao_Paulo",
@@ -134,7 +139,7 @@ describe("F14.2 Dashboard density + upcoming", () => {
   });
 
   // F14.3 — KPI drill-down links.
-  it("KPI cards link to the correct drill-down destinations", () => {
+  it("attendance KPI tiles link to the correct drill-down destinations", () => {
     vi.spyOn(apiModule, "useDashboard").mockReturnValue({
       data: mockDashboardData(),
       isLoading: false,
@@ -144,14 +149,10 @@ describe("F14.2 Dashboard density + upcoming", () => {
 
     renderWithClient(<Dashboard />);
 
+    expect(screen.getByRole("link", { name: /Precisam de atenção/ })).toHaveAttribute("href", "/inbox?aiStatus=NEEDS_ATTENTION");
+    expect(screen.getByRole("link", { name: /Conversas hoje/ })).toHaveAttribute("href", "/inbox");
+    expect(screen.getByRole("link", { name: /Agendamentos hoje/ })).toHaveAttribute("href", "/calendar");
     expect(screen.getByRole("link", { name: /Demandas ativas/ })).toHaveAttribute("href", "/contents");
-    if (!MVP.hideApprovalOutsideDemand) {
-      expect(screen.getByRole("link", { name: /Em aprovação/ })).toHaveAttribute("href", "/contents");
-    } else {
-      expect(screen.queryByRole("link", { name: /Em aprovação/ })).toBeNull();
-    }
-    expect(screen.getByRole("link", { name: /Clientes ativos/ })).toHaveAttribute("href", "/clients?status=ACTIVE");
-    expect(screen.getByRole("link", { name: /Agendados/ })).toHaveAttribute("href", "/calendar");
   });
 });
 
@@ -270,31 +271,20 @@ describe("F14.7 Dashboard contextual navigation", () => {
     expect(link.getAttribute("href")).toBe("/contents?focus=att-0");
   });
 
-  it("'Em aprovação' KPI drills into Demandas focused on an awaiting demand when visible", () => {
-    const prev = MVP.hideApprovalOutsideDemand;
-    MVP.hideApprovalOutsideDemand = false;
-    try {
-      mockDashboard(attentionItems);
-      renderWithClient(<Dashboard />);
+  it("conversations-needing-attention row links to the Inbox filtered by NEEDS_ATTENTION", () => {
+    mockDashboard(attentionItems);
+    renderWithClient(<Dashboard />);
 
-      const kpi = screen.getByRole("link", { name: /Em aprovação/ });
-      expect(kpi.getAttribute("href")).toBe("/contents?focus=att-0");
-    } finally {
-      MVP.hideApprovalOutsideDemand = prev;
-    }
+    // Both the KPI tile and the in-panel row point at the filtered Inbox.
+    const links = screen.getAllByRole("link").filter((l) => l.getAttribute("href") === "/inbox?aiStatus=NEEDS_ATTENTION");
+    expect(links.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("KPIs without a known target keep the plain board link", () => {
-    const prev = MVP.hideApprovalOutsideDemand;
-    MVP.hideApprovalOutsideDemand = false;
-    try {
-      mockDashboard();
-      renderWithClient(<Dashboard />);
+  it("attendance KPI tiles keep stable destinations regardless of pending demands", () => {
+    mockDashboard();
+    renderWithClient(<Dashboard />);
 
-      expect(screen.getByRole("link", { name: /Demandas ativas/ })).toHaveAttribute("href", "/contents");
-      expect(screen.getByRole("link", { name: /Em aprovação/ })).toHaveAttribute("href", "/contents");
-    } finally {
-      MVP.hideApprovalOutsideDemand = prev;
-    }
+    expect(screen.getByRole("link", { name: /Demandas ativas/ })).toHaveAttribute("href", "/contents");
+    expect(screen.getByRole("link", { name: /Agendamentos hoje/ })).toHaveAttribute("href", "/calendar");
   });
 });

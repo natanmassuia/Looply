@@ -366,6 +366,12 @@ export interface Dashboard {
   };
   recentContents: ContentListItem[];
   needingAttention: ContentListItem[];
+  attendance?: {
+    conversationsNeedingAttention: number;
+    conversationsActiveToday: number;
+    appointmentsToday: number;
+    activeDemands: number;
+  };
   workspace?: { timezone?: string | null };
   upcoming?: {
     timezone?: string;

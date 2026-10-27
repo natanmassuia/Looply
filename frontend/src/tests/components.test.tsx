@@ -61,10 +61,12 @@ describe("shared component foundation consumes semantic tokens", () => {
     expect(DASHBOARD_SRC).toContain("Ver demandas");
     expect(DASHBOARD_SRC).not.toContain("Nova demanda");
     expect(DASHBOARD_SRC).not.toContain("Novo conteúdo");
-    expect(DASHBOARD_SRC).toContain("Atenção agora");
+    expect(DASHBOARD_SRC).toContain("Precisam de você agora");
     expect(DASHBOARD_SRC).toContain("Demandas ativas");
-    expect(DASHBOARD_SRC).toContain("Em aprovação");
-    expect(DASHBOARD_SRC).toContain("Clientes ativos");
+    // Attendance-first KPIs (WhatsApp + agenda core).
+    expect(DASHBOARD_SRC).toContain("Precisam de atenção");
+    expect(DASHBOARD_SRC).toContain("Conversas hoje");
+    expect(DASHBOARD_SRC).toContain("Agendamentos hoje");
   });
 
   it("Clients.tsx never references a legacy --looply-* alias and uses Demandas vocabulary", () => {

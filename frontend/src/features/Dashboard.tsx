@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useDashboard, useMe } from "../lib/api";
-import { MVP } from "../config/mvp";
 import { Card, EmptyState, ErrorState, SkeletonCards } from "../components/common";
 import StatusPill from "../components/StatusPill";
 import { FORMAT_LABEL, latestVersion, relativeTime, formatAppointmentLine, formatClock, gmtOffsetLabel } from "../lib/format";
@@ -49,9 +48,14 @@ export default function Dashboard() {
   const activeDemandsCount = data
     ? Math.max(0, (data.counts.totalContents ?? 0) - (data.counts.published ?? 0))
     : 0;
-  const activeClientsCount = data ? data.counts.totalClients ?? 0 : 0;
-  const inApprovalCount = data ? data.counts.awaitingClient : 0;
-  const scheduledCount = data ? data.counts.scheduled : 0;
+  // Attendance KPIs (core: WhatsApp + agenda). Fallbacks keep the tiles at 0
+  // when an older backend omits the block.
+  const att = data?.attendance;
+  const convNeedsAttention = att?.conversationsNeedingAttention ?? 0;
+  const conversationsToday = att?.conversationsActiveToday ?? 0;
+  const appointmentsToday = att?.appointmentsToday ?? 0;
+  const activeDemands = att?.activeDemands ?? activeDemandsCount;
+  const inboxAttentionHref = "/inbox?aiStatus=NEEDS_ATTENTION";
 
   // Upcoming = future events, ascending, max 3.
   const nowIso = new Date();
@@ -62,9 +66,7 @@ export default function Dashboard() {
   // F14.7 — contextual navigation: when a concrete demand is the target of a
   // dashboard action, pass it as ?focus so Demandas brings it into view.
   const firstAttentionId = data?.needingAttention[0]?.id;
-  const firstAwaitingId = data?.needingAttention.find((c) => c.status === "AWAITING_CLIENT")?.id;
   const attentionHref = firstAttentionId ? `/contents?focus=${firstAttentionId}` : "/contents";
-  const awaitingHref = firstAwaitingId ? `/contents?focus=${firstAwaitingId}` : "/contents";
 
   return (
     <div>
@@ -107,17 +109,28 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {/* Primary attention panel (2/3) */}
             <div className="lg:col-span-2">
-          {data.needingAttention.length > 0 ? (
+          {data.needingAttention.length > 0 || convNeedsAttention > 0 ? (
             <Card className="border-l-4 border-l-[var(--looply-color-status-warning)]">
               <div className="flex items-start gap-3">
                 <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--looply-color-status-warning)]/10 text-[var(--looply-color-status-warning)]">
                   <IconAlertCircle className="h-4 w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-sm font-semibold text-[var(--looply-color-text-primary)]">Atenção agora</h2>
+                  <h2 className="text-sm font-semibold text-[var(--looply-color-text-primary)]">Precisam de você agora</h2>
                   <p className="mt-0.5 text-xs text-[var(--looply-color-text-muted)]">
                     {data.needingAttention.length} {data.needingAttention.length === 1 ? "demanda pendente" : "demandas pendentes"}
                   </p>
+                  {convNeedsAttention > 0 && (
+                    <Link
+                      to={inboxAttentionHref}
+                      className="mt-2.5 flex items-center justify-between gap-3 rounded-lg bg-[var(--looply-color-status-warning)]/10 px-2.5 py-2 transition-colors hover:bg-[var(--looply-color-status-warning)]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
+                    >
+                      <span className="text-sm font-medium text-[var(--looply-color-text-primary)]">
+                        {convNeedsAttention} {convNeedsAttention === 1 ? "conversa precisa de resposta" : "conversas precisam de resposta"}
+                      </span>
+                      <IconChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--looply-color-text-muted)]" />
+                    </Link>
+                  )}
                   <ul className="mt-2.5 space-y-1.5">
                     {data.needingAttention.slice(0, PENDING_LIMIT).map((c) => (
                       <li key={c.id}>
@@ -166,37 +179,36 @@ export default function Dashboard() {
           )}
             </div>
 
-            {/* KPI tiles (1/3), 2×2, top-aligned */}
+            {/* Attendance KPI tiles (1/3), 2×2, top-aligned — core is WhatsApp +
+                agenda, so these lead and each links to the right place. */}
             <div className="grid grid-cols-2 gap-3 lg:col-span-1 lg:self-start">
             <CompactMetric
-              label="Demandas ativas"
-              value={activeDemandsCount}
-              icon={<IconTrendingUp className="h-4 w-4" />}
-              color="blue"
-              to="/contents"
-            />
-            {!MVP.hideApprovalOutsideDemand && (
-              <CompactMetric
-                label="Em aprovação"
-                value={inApprovalCount}
-                icon={<IconClock className="h-4 w-4" />}
-                color="violet"
-                to={awaitingHref}
-              />
-            )}
-            <CompactMetric
-              label="Clientes ativos"
-              value={activeClientsCount}
-              icon={<IconCheck className="h-4 w-4" />}
-              color="emerald"
-              to="/clients?status=ACTIVE"
-            />
-            <CompactMetric
-              label="Agendados"
-              value={scheduledCount}
-              icon={<IconSend className="h-4 w-4" />}
+              label="Precisam de atenção"
+              value={convNeedsAttention}
+              icon={<IconAlertCircle className="h-4 w-4" />}
               color="amber"
+              to={inboxAttentionHref}
+            />
+            <CompactMetric
+              label="Conversas hoje"
+              value={conversationsToday}
+              icon={<IconSend className="h-4 w-4" />}
+              color="blue"
+              to="/inbox"
+            />
+            <CompactMetric
+              label="Agendamentos hoje"
+              value={appointmentsToday}
+              icon={<IconClock className="h-4 w-4" />}
+              color="violet"
               to="/calendar"
+            />
+            <CompactMetric
+              label="Demandas ativas"
+              value={activeDemands}
+              icon={<IconTrendingUp className="h-4 w-4" />}
+              color="emerald"
+              to="/contents"
             />
             </div>
           </div>
