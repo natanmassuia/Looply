@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { ConversationSummaryDto, ConversationAiStatus } from "../../../lib/types";
 import { useClients, useBindConversationClient, useSetConversationAiStatus } from "../../../lib/api";
-import { formatPhone, initials } from "../../../lib/format";
+import { formatPhone } from "../../../lib/format";
+import ContactAvatar from "./ContactAvatar";
 
 interface Props {
   conversation: ConversationSummaryDto;
@@ -72,18 +73,8 @@ export default function ChatHeader({
           </button>
         )}
 
-        {/* Contact Avatar (Figma 16 — 40×40 coral-100 circle) */}
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--looply-color-action-primary)_14%,transparent)] text-xs font-bold text-[var(--looply-color-text-primary)]">
-          {conversation.contactAvatarUrl ? (
-            <img
-              src={conversation.contactAvatarUrl}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <span>{initials(displayName)}</span>
-          )}
-        </div>
+        {/* Contact avatar — manual photo or deterministic coloured initials. */}
+        <ContactAvatar name={displayName} seed={conversation.remotePhone} avatarUrl={conversation.contactAvatarUrl} />
 
         {/* Contact Name & Details */}
         <div className="min-w-0">

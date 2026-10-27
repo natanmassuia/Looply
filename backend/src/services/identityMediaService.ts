@@ -3,6 +3,9 @@ import type { DB } from "../lib/db";
 import { badRequest, conflict, notFound, forbidden } from "../lib/errors";
 import type { ObjectStorage } from "../lib/storage";
 import { logger } from "../lib/logger";
+import { toConversationSummaryDto } from "./conversationService";
+
+const CONVERSATION_SUMMARY_INCLUDE = { client: { select: { id: true, name: true } } } as const;
 
 export const ALLOWED_IMAGE_MIME_TYPES = [
   "image/jpeg",
@@ -340,6 +343,86 @@ export async function deleteClientLogo(
 
   await safeDeleteOldObject(storage, oldLogo);
   return updated;
+}
+
+// ── 3b. CONVERSATION CONTACT AVATAR ────────────────────────────────────────
+// WhatsApp Cloud API never delivers a contact profile photo, so this is a
+// manual, operator-set avatar stored in Conversation.contactAvatarUrl.
+
+export async function createContactAvatarIntent(
+  db: DB,
+  storage: ObjectStorage,
+  companyId: string,
+  conversationId: string,
+  input: MediaIntentInput,
+) {
+  const conversation = await db.conversation.findFirst({ where: { id: conversationId, companyId } });
+  if (!conversation) throw notFound("Conversa não encontrada");
+
+  const { extension, contentType } = validateImageIntent(input);
+  const storageKey = `company/${companyId}/conversations/${conversationId}/avatar/${randomUUID()}.${extension}`;
+  const signed = await storage.createUploadUrl({ key: storageKey, contentType, sizeBytes: input.sizeBytes });
+
+  return {
+    uploadUrl: signed.url,
+    key: storageKey,
+    expiresAt: signed.expiresAt,
+    headers: { "content-type": contentType, "content-length": String(input.sizeBytes) },
+  };
+}
+
+export async function completeContactAvatarUpload(
+  db: DB,
+  storage: ObjectStorage,
+  companyId: string,
+  conversationId: string,
+  key: string,
+) {
+  const conversation = await db.conversation.findFirst({ where: { id: conversationId, companyId } });
+  if (!conversation) throw notFound("Conversa não encontrada");
+
+  const expectedPrefix = `company/${companyId}/conversations/${conversationId}/avatar/`;
+  if (!key || !key.startsWith(expectedPrefix) || key.includes("..")) {
+    throw forbidden("Chave de armazenamento inválida ou não autorizada");
+  }
+
+  const head = await storage.headObject(key);
+  if (!head) throw conflict("Objeto da foto do contato ainda não foi enviado");
+  if (head.sizeBytes > MAX_IMAGE_SIZE_BYTES) throw badRequest("Imagem excede o limite máximo de 5 MB");
+  if (head.contentType && !ALLOWED_IMAGE_MIME_TYPES.includes(head.contentType as AllowedImageMimeType)) {
+    throw badRequest("Tipo de conteúdo retornado pelo storage é inválido");
+  }
+
+  const oldAvatar = conversation.contactAvatarUrl;
+  const canonicalUrl = `/api/media/file?key=${encodeURIComponent(key)}`;
+  const updated = await db.conversation.update({
+    where: { id: conversationId },
+    data: { contactAvatarUrl: canonicalUrl },
+    include: CONVERSATION_SUMMARY_INCLUDE,
+  });
+
+  await safeDeleteOldObject(storage, oldAvatar);
+  return toConversationSummaryDto(updated);
+}
+
+export async function deleteContactAvatar(
+  db: DB,
+  storage: ObjectStorage,
+  companyId: string,
+  conversationId: string,
+) {
+  const conversation = await db.conversation.findFirst({ where: { id: conversationId, companyId } });
+  if (!conversation) throw notFound("Conversa não encontrada");
+
+  const oldAvatar = conversation.contactAvatarUrl;
+  const updated = await db.conversation.update({
+    where: { id: conversationId },
+    data: { contactAvatarUrl: null },
+    include: CONVERSATION_SUMMARY_INCLUDE,
+  });
+
+  await safeDeleteOldObject(storage, oldAvatar);
+  return toConversationSummaryDto(updated);
 }
 
 // ── 4. MEDIA SERVING / DOWNLOAD ────────────────────────────────────────────
