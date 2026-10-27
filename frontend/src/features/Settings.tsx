@@ -6,6 +6,7 @@ import {
   useUpdateCompanySettings,
   useUploadCompanyLogo,
   useDeleteCompanyLogo,
+  useWhatsAppPhoneNumbers,
   ApiError,
 } from "../lib/api";
 import type { AppearanceMode, AppearancePreset, CustomColors } from "../lib/types";
@@ -854,35 +855,7 @@ export default function Settings() {
       {/* Tab: Integrações */}
       {activeTab === "integrations" && (
         <div className="space-y-6">
-          <Card>
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="section-title">WhatsApp Oficial</h3>
-                  <span className="rounded-full bg-[var(--looply-color-status-info)]/10 px-2.5 py-0.5 text-xs font-medium text-[var(--looply-color-status-info)]">
-                    Não configurado
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-[var(--looply-color-text-muted)]">
-                  Envio e aprovação automatizada de demandas via WhatsApp oficial (Meta Cloud API).
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-lg border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)]/40 p-4 text-xs text-[var(--looply-color-text-muted)]">
-              <div className="flex items-center gap-2 font-medium text-[var(--looply-color-text-primary)] mb-1">
-                <IconAlertCircle className="h-4 w-4 text-[var(--looply-color-status-info)]" />
-                Status da integração
-              </div>
-              A conexão com a API oficial do WhatsApp está temporariamente indisponível nesta versão de demonstração. Os links públicos de aprovação funcionam normalmente.
-            </div>
-
-            <div className="mt-4 flex justify-end">
-              <button type="button" disabled className="btn-secondary text-xs opacity-60 cursor-not-allowed">
-                Conectar WhatsApp
-              </button>
-            </div>
-          </Card>
+          <WhatsAppIntegrationCard />
         </div>
       )}
 
@@ -899,5 +872,69 @@ export default function Settings() {
         onClose={() => setIsAccountModalOpen(false)}
       />
     </div>
+  );
+}
+
+// Reuses the SAME source as the WhatsApp tab (useWhatsAppPhoneNumbers →
+// GET /api/whatsapp/phone-numbers, which lists only this company's active
+// WhatsAppChannel numbers). Shared query cache guarantees both screens agree.
+// display_phone_number / verified_name are public business data — no token.
+export function WhatsAppIntegrationCard() {
+  const { data, isLoading, isError } = useWhatsAppPhoneNumbers();
+  const numbers = data?.phoneNumbers ?? [];
+  const connected = numbers.length > 0;
+
+  const badge = isLoading
+    ? { label: "Verificando…", cls: "bg-[var(--looply-color-status-info)]/10 text-[var(--looply-color-status-info)]" }
+    : isError
+      ? { label: "Indisponível", cls: "bg-[var(--looply-color-status-warning)]/10 text-[var(--looply-color-status-warning)]" }
+      : connected
+        ? { label: "Conectado", cls: "bg-[var(--looply-color-status-success)]/10 text-[var(--looply-color-status-success)]" }
+        : { label: "Não conectado", cls: "bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-muted)]" };
+
+  return (
+    <Card>
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="section-title">WhatsApp Oficial</h3>
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.cls}`}>
+              {badge.label}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-[var(--looply-color-text-muted)]">
+            Envio e aprovação automatizada de demandas pelo WhatsApp oficial.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-lg border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)]/40 p-4 text-xs text-[var(--looply-color-text-muted)]">
+        {isLoading ? (
+          "Verificando a conexão com o WhatsApp…"
+        ) : isError ? (
+          <div className="flex items-center gap-2 text-[var(--looply-color-text-primary)]">
+            <IconAlertCircle className="h-4 w-4 text-[var(--looply-color-status-warning)]" />
+            Não foi possível verificar a conexão agora. Tente novamente em instantes.
+          </div>
+        ) : connected ? (
+          <ul className="space-y-2">
+            {numbers.map((pn) => (
+              <li key={pn.id} className="flex items-center gap-2 text-[var(--looply-color-text-primary)]">
+                <IconCheck className="h-4 w-4 shrink-0 text-[var(--looply-color-status-success)]" />
+                <span className="font-medium">{pn.display_phone_number}</span>
+                {pn.verified_name ? (
+                  <span className="text-[var(--looply-color-text-muted)]">· {pn.verified_name}</span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="flex items-center gap-2">
+            <IconAlertCircle className="h-4 w-4 text-[var(--looply-color-text-muted)]" />
+            Nenhum número de WhatsApp conectado a este workspace. Fale com o suporte para habilitar o canal oficial.
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
