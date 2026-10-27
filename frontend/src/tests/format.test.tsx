@@ -8,7 +8,7 @@ describe("format helpers", () => {
     expect(STATUS_LABEL.DRAFT).toBe("Rascunho");
     expect(STATUS_LABEL.AWAITING_CLIENT).toBe("Aguardando cliente");
     expect(STATUS_LABEL.CHANGES_REQUESTED).toBe("Alterações solicitadas");
-    expect(STATUS_LABEL.PUBLISHED).toBe("Publicado");
+    expect(STATUS_LABEL.PUBLISHED).toBe("Concluído");
   });
 
   it("exposes Portuguese labels for formats", () => {

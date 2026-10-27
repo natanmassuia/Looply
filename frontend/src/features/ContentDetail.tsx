@@ -204,7 +204,7 @@ export default function ContentDetail() {
       </div>
     );
   }
-  if (!content || !currentVersion) return <ErrorState message="Demanda não encontrada." />;
+  if (!content) return <ErrorState message="Demanda não encontrada." />;
 
   const onSendApproval = async () => {
     const res = (await run(sendApproval)) as { approvalUrl?: string } | null;
@@ -221,7 +221,7 @@ export default function ContentDetail() {
     <div>
       <PageHeader
         title={content.title}
-        subtitle={`${FORMAT_LABEL[content.format]} · ${content.client?.name} · Versão ${currentVersion.versionNumber}`}
+        subtitle={`${FORMAT_LABEL[content.format]} · ${content.client?.name}${currentVersion ? ` · Versão ${currentVersion.versionNumber}` : ""}`}
         crumbs={[{ label: "Demandas", to: "/contents" }, { label: content.title }]}
         actions={
           <div className="flex items-center gap-2">
@@ -262,7 +262,7 @@ export default function ContentDetail() {
       {/* Grouped state banner */}
       {content.parentId && (
         <div className="mb-5 flex flex-col gap-2 rounded-lg border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-subtle)] px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between text-xs text-[var(--looply-color-text-muted)]">
-          <span>Este conteúdo faz parte de um agrupamento de demandas.</span>
+          <span>Esta demanda faz parte de um agrupamento.</span>
           <button
             type="button"
             className="btn-ghost btn-sm text-xs font-medium text-[var(--looply-color-action-primary)] hover:bg-[var(--looply-color-action-primary)]/10 w-fit"
@@ -306,7 +306,7 @@ export default function ContentDetail() {
             </select>
           </div>
           <div>
-            <label className="label">Publicação prevista</label>
+            <label className="label">Prazo</label>
             <input
               className="input"
               type="date"
@@ -356,25 +356,33 @@ export default function ContentDetail() {
         <div className="space-y-5 lg:col-span-3">
           {/* Content preview */}
           <Card>
-            <h3 className="section-title mb-3">Pré-visualização</h3>
-            <MediaPreview
-              url={currentVersion.mediaUrl}
-              alt={content.title}
-              className="mb-4 aspect-video w-full rounded-lg"
-            />
-            <div className="space-y-3">
-              <div>
-                <div className="section-label mb-1.5">Legenda</div>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--looply-color-text-primary)]">
-                  {currentVersion.caption}
-                </p>
-              </div>
-              {currentVersion.changeNote && (
-                <div className="rounded-lg bg-[var(--looply-color-bg-subtle)] px-3 py-2.5 text-xs text-[var(--looply-color-text-muted)]">
-                  <span className="font-medium">Nota da versão:</span> {currentVersion.changeNote}
+            <h3 className="section-title mb-3">Visualização</h3>
+            {currentVersion ? (
+              <>
+                <MediaPreview
+                  url={currentVersion.mediaUrl}
+                  alt={content.title}
+                  className="mb-4 aspect-video w-full rounded-lg"
+                />
+                <div className="space-y-3">
+                  <div>
+                    <div className="section-label mb-1.5">Descrição</div>
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--looply-color-text-primary)]">
+                      {currentVersion.caption}
+                    </p>
+                  </div>
+                  {currentVersion.changeNote && (
+                    <div className="rounded-lg bg-[var(--looply-color-bg-subtle)] px-3 py-2.5 text-xs text-[var(--looply-color-text-muted)]">
+                      <span className="font-medium">Nota da versão:</span> {currentVersion.changeNote}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            ) : (
+              <p className="py-6 text-center text-sm text-[var(--looply-color-text-muted)]">
+                Nenhum conteúdo anexado ainda.
+              </p>
+            )}
           </Card>
 
           {/* Metadata card */}
@@ -406,14 +414,14 @@ export default function ContentDetail() {
                   {content.client?.name}
                 </span>
               </Meta>
-              <Meta label="Formato">{FORMAT_LABEL[content.format]}</Meta>
+              <Meta label="Tipo">{FORMAT_LABEL[content.format]}</Meta>
               <Meta label="Canal">{content.channel ?? "—"}</Meta>
               <Meta label="Responsável">
                 {content.responsible?.name ?? "—"}
                 {content.responsible?.role ? ` · ${ROLE_LABEL[content.responsible.role]}` : ""}
               </Meta>
-              <Meta label="Versão">v{currentVersion.versionNumber}</Meta>
-              <Meta label="Publicação prevista">{formatDate(content.publicationTarget)}</Meta>
+              <Meta label="Versão">{currentVersion ? `v${currentVersion.versionNumber}` : "—"}</Meta>
+              <Meta label="Prazo">{formatDate(content.publicationTarget)}</Meta>
             </div>
             {content.notes && (
               <div className="mt-4 border-t border-[var(--looply-color-border-default)] pt-3">
@@ -605,7 +613,7 @@ export default function ContentDetail() {
                 <ActionButton
                   loading={publish.isPending}
                   onClick={() => run(publish)}
-                  label="Marcar como publicado"
+                  label="Marcar como concluído"
                   icon={<IconCheck className="h-4 w-4" />}
                 />
               </div>
@@ -784,16 +792,16 @@ function NewVersionForm({
     <div className="space-y-3 rounded-lg border border-[var(--looply-color-border-default)] p-3.5">
       <div className="section-label">Nova versão</div>
       <div>
-        <label className="label">Legenda *</label>
+        <label className="label">Descrição *</label>
         <textarea
           className="input min-h-[90px] resize-none text-sm"
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
-          placeholder="Legenda atualizada…"
+          placeholder="Descrição atualizada…"
         />
       </div>
       <div>
-        <label className="label">URL da mídia (opcional)</label>
+        <label className="label">Anexo (link, opcional)</label>
         <input
           className="input text-sm"
           value={mediaUrl}
@@ -850,7 +858,7 @@ function ScheduleForm({
 
   return (
     <div className="space-y-3">
-      <div className="section-label">Agendar publicação</div>
+      <div className="section-label">Agendar</div>
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="label">Data</label>
@@ -948,11 +956,11 @@ function activityCopy(type: ActivityType): { title: string; defaultActor: string
     case "APPROVAL_REQUESTED":
       return { title: "enviou a demanda para aprovação do cliente", defaultActor: "Membro da equipe" };
     case "APPROVAL_APPROVED":
-      return { title: "aprovou o conteúdo", defaultActor: "Cliente" };
+      return { title: "aprovou a demanda", defaultActor: "Cliente" };
     case "APPROVAL_CHANGES_REQUESTED":
-      return { title: "solicitou alterações no conteúdo", defaultActor: "Cliente" };
+      return { title: "solicitou alterações na demanda", defaultActor: "Cliente" };
     case "APPROVAL_REJECTED":
-      return { title: "reprovou o conteúdo", defaultActor: "Cliente" };
+      return { title: "reprovou a demanda", defaultActor: "Cliente" };
     case "APPROVAL_REVOKED":
       return { title: "revogou o link de aprovação", defaultActor: "Membro da equipe" };
     default:

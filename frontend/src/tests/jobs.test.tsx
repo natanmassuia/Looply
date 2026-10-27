@@ -429,7 +429,7 @@ describe("Jobs Feature — B4 Metadata Editing + Ungroup Wiring", () => {
         "/contents/job-child-1",
       );
 
-      expect(screen.getByText("Este conteúdo faz parte de um agrupamento de demandas.")).toBeInTheDocument();
+      expect(screen.getByText("Esta demanda faz parte de um agrupamento.")).toBeInTheDocument();
 
       const ungroupBtn = screen.getByRole("button", { name: "Desagrupar demanda" });
       fireEvent.click(ungroupBtn);
@@ -456,7 +456,7 @@ describe("Jobs Feature — B4 Metadata Editing + Ungroup Wiring", () => {
         "/contents/job-1",
       );
 
-      expect(screen.queryByText("Este conteúdo faz parte de um agrupamento de demandas.")).not.toBeInTheDocument();
+      expect(screen.queryByText("Esta demanda faz parte de um agrupamento.")).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Desagrupar demanda" })).not.toBeInTheDocument();
     });
   });
@@ -513,7 +513,7 @@ describe("Jobs Feature — B4 Metadata Editing + Ungroup Wiring", () => {
       renderWithApproved();
       dragApprovedToScheduled();
       // Modal opens (title) and exposes date/time controls.
-      expect(screen.getByRole("heading", { name: "Agendar conteúdo" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Agendar" })).toBeInTheDocument();
       expect(screen.getByLabelText("Data")).toBeInTheDocument();
       expect(screen.getByLabelText("Horário")).toBeInTheDocument();
     });
@@ -546,7 +546,7 @@ describe("Jobs Feature — B4 Metadata Editing + Ungroup Wiring", () => {
       fireEvent.drop(agendadoColumn!, {
         dataTransfer: { getData: vi.fn().mockReturnValue("job-approved") },
       });
-      expect(screen.getByRole("heading", { name: "Agendar conteúdo" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Agendar" })).toBeInTheDocument();
       expect(screen.getByLabelText("Data")).toBeInTheDocument();
       expect(screen.getByLabelText("Horário")).toBeInTheDocument();
     });
@@ -731,6 +731,29 @@ describe("Jobs Feature — B4 Metadata Editing + Ungroup Wiring", () => {
       expect(mediaLink).toHaveAttribute("href", "https://cdn.example.com/assets/banner.png");
       expect(mediaLink).toHaveAttribute("target", "_blank");
       expect(mediaLink).toHaveAttribute("rel", "noopener noreferrer");
+    });
+  });
+
+  describe("Job without any version (created by AI / no content yet)", () => {
+    it("renders the demand instead of the not-found card, with a friendly empty content state", () => {
+      vi.spyOn(apiModule, "useContent").mockReturnValue({
+        data: { ...mockJobDetail, versions: [] },
+        isLoading: false,
+        isError: false,
+        refetch: vi.fn(),
+      } as any);
+      vi.spyOn(apiModule, "useClients").mockReturnValue({ data: mockClients } as any);
+
+      renderWithProviders(
+        <Routes>
+          <Route path="/contents/:id" element={<ContentDetail />} />
+        </Routes>,
+        "/contents/job-1",
+      );
+
+      expect(screen.queryByText("Demanda não encontrada.")).not.toBeInTheDocument();
+      expect(screen.getAllByText("Post Cardápio de Verão").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText("Nenhum conteúdo anexado ainda.")).toBeInTheDocument();
     });
   });
 });

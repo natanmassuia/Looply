@@ -37,7 +37,7 @@ export default function NewContent() {
   const submit = async () => {
     setFormError(null);
     if (!form.title.trim() || !form.clientId || !form.caption.trim()) {
-      setFormError("Preencha título, cliente e legenda.");
+      setFormError("Preencha título, cliente e descrição.");
       return;
     }
     const payload: CreateContentPayload = {
@@ -117,7 +117,7 @@ export default function NewContent() {
                 </div>
                 {!MVP.hideEditorialFields && (
                   <div>
-                    <label className="label">Formato</label>
+                    <label className="label">Tipo</label>
                     <select
                       className="input"
                       value={form.format}
@@ -134,17 +134,17 @@ export default function NewContent() {
               </div>
 
               <div>
-                <label className="label">Legenda</label>
+                <label className="label">Descrição</label>
                 <textarea
                   className="input min-h-[140px]"
                   value={form.caption}
                   onChange={(e) => set("caption", e.target.value)}
-                  placeholder="Escreva a legenda da demanda…"
+                  placeholder="Escreva a descrição da demanda…"
                 />
               </div>
 
               <div>
-                <label className="label">URL da mídia (demo)</label>
+                <label className="label">Anexo (link)</label>
                 <input
                   className="input"
                   value={form.mediaUrl}
@@ -152,7 +152,7 @@ export default function NewContent() {
                   placeholder="https://… (opcional)"
                 />
                 <p className="mt-1 text-xs text-[var(--looply-color-text-muted)]">
-                  Em produção, aqui seria o upload de imagem/vídeo.
+                  Em produção, aqui seria o upload do arquivo.
                 </p>
               </div>
             </div>
@@ -194,7 +194,7 @@ export default function NewContent() {
 
               {!MVP.hideEditorialFields && (
                 <div>
-                  <label className="label">Data prevista de publicação</label>
+                  <label className="label">Prazo</label>
                   <input
                     type="date"
                     className="input"

@@ -7,7 +7,7 @@ export const STATUS_LABEL: Record<ContentStatus, string> = {
   CHANGES_REQUESTED: "Alterações solicitadas",
   APPROVED: "Aprovado",
   SCHEDULED: "Agendado",
-  PUBLISHED: "Publicado",
+  PUBLISHED: "Concluído",
 };
 
 export const STATUS_STYLE: Record<ContentStatus, string> = {
@@ -68,6 +68,16 @@ export function initials(name: string): string {
       .join("")
       .toUpperCase() || "·"
   );
+}
+
+// Deterministic avatar color for a contact, seeded by phone (or name). The
+// circle carries its own mid-tone background + white text, so it stays legible
+// in both light and dark themes without a theme-specific palette.
+export function avatarColor(seed: string): { bg: string; fg: string } {
+  const s = seed || "?";
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+  return { bg: `hsl(${h} 52% 40%)`, fg: "#ffffff" };
 }
 
 export function latestVersion(c: { versions?: { versionNumber: number }[] }): number {

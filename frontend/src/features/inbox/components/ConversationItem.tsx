@@ -1,6 +1,7 @@
 import type { ConversationSummaryDto } from "../../../lib/types";
 import { formatTimeAgo } from "../utils/time";
-import { formatPhone, initials } from "../../../lib/format";
+import { formatPhone } from "../../../lib/format";
+import ContactAvatar from "./ContactAvatar";
 
 interface Props {
   conversation: ConversationSummaryDto;
@@ -43,19 +44,9 @@ export default function ConversationItem({
           : "border-transparent bg-[var(--looply-color-bg-surface)] hover:bg-[var(--looply-color-bg-subtle)]"
       }`}
     >
-      {/* Contact Avatar (Figma 16 — 40×40 coral-100 circle + text-primary initials) */}
+      {/* Contact avatar — manual photo or deterministic coloured initials. */}
       <div className="relative shrink-0">
-        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[var(--looply-color-coral-100)] text-xs font-bold text-[var(--looply-color-text-primary)]">
-          {conversation.contactAvatarUrl ? (
-            <img
-              src={conversation.contactAvatarUrl}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <span>{initials(displayName)}</span>
-          )}
-        </div>
+        <ContactAvatar name={displayName} seed={conversation.remotePhone} avatarUrl={conversation.contactAvatarUrl} />
 
         {/* AI Status Dot */}
         <span

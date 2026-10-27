@@ -5,6 +5,7 @@ import { Card, Spinner } from "../components/common";
 import StatusPill from "../components/StatusPill";
 import ModalOrSheet from "../components/ModalOrSheet";
 import ClientEditor from "../components/ClientEditor";
+import ClientAvatar from "../components/ClientAvatar";
 import {
   IconArrowLeft,
   IconEdit,
@@ -101,20 +102,7 @@ export default function ClientDetail() {
       {/* Header Profile */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          {client.logoUrl ? (
-            <img
-              src={client.logoUrl}
-              alt={client.name}
-              className="h-12 w-12 shrink-0 rounded-xl object-cover border border-[var(--looply-color-border-default)]"
-            />
-          ) : (
-            <div
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-white shadow-xs"
-              style={{ backgroundColor: client.brandColor || "#F06D55" }}
-            >
-              {client.name.charAt(0).toUpperCase()}
-            </div>
-          )}
+          <ClientAvatar name={client.name} logoUrl={client.logoUrl} brandColor={client.brandColor} sizeClass="h-12 w-12" textClass="text-lg" />
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-[var(--looply-color-text-primary)]">

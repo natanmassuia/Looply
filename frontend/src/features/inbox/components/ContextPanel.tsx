@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import type { ConversationSummaryDto, ConversationMessageDto, ConversationAiStatus } from "../../../lib/types";
-import { useClients, useBindConversationClient, useSetConversationAiStatus } from "../../../lib/api";
+import { useClients, useBindConversationClient, useSetConversationAiStatus, useUploadContactAvatar, useDeleteContactAvatar } from "../../../lib/api";
 import { formatDateHeader, formatMessageTime } from "../utils/time";
-import { formatPhone, initials } from "../../../lib/format";
+import { formatPhone } from "../../../lib/format";
+import ContactAvatar from "./ContactAvatar";
 
 interface Props {
   conversation: ConversationSummaryDto;
@@ -17,6 +18,9 @@ export default function ContextPanel({ conversation, messages, onClose, embedded
   const { data: clients } = useClients();
   const bindClientMutation = useBindConversationClient();
   const setAiStatusMutation = useSetConversationAiStatus();
+  const uploadAvatar = useUploadContactAvatar(conversation.id);
+  const deleteAvatar = useDeleteContactAvatar(conversation.id);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const [isChangingClient, setIsChangingClient] = useState(false);
 
@@ -73,11 +77,45 @@ export default function ContextPanel({ conversation, messages, onClose, embedded
       <div className="flex-1 space-y-4 p-4">
         {/* Contact Overview (Figma 16 — 490:7 Contact Context) */}
         <div className="flex flex-col items-center text-center">
-          <div className="mb-2.5 flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[var(--looply-color-coral-100)] text-sm font-bold text-[var(--looply-color-text-primary)]">
-            {conversation.contactAvatarUrl ? (
-              <img src={conversation.contactAvatarUrl} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <span>{initials(displayName)}</span>
+          <div className="mb-2.5">
+            <ContactAvatar
+              name={displayName}
+              seed={conversation.remotePhone}
+              avatarUrl={conversation.contactAvatarUrl}
+              sizeClass="h-12 w-12"
+              textClass="text-sm"
+            />
+          </div>
+          {/* Manual contact photo controls — WhatsApp sends no profile photo. */}
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) uploadAvatar.mutate(file);
+              e.target.value = "";
+            }}
+          />
+          <div className="mb-2 flex items-center gap-2 text-[11px]">
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={uploadAvatar.isPending}
+              className="font-semibold text-[var(--looply-color-text-brand)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] disabled:opacity-60"
+            >
+              {uploadAvatar.isPending ? "Enviando…" : conversation.contactAvatarUrl ? "Alterar foto" : "Definir foto"}
+            </button>
+            {conversation.contactAvatarUrl && (
+              <button
+                type="button"
+                onClick={() => deleteAvatar.mutate()}
+                disabled={deleteAvatar.isPending}
+                className="text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-status-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)] disabled:opacity-60"
+              >
+                Remover
+              </button>
             )}
           </div>
           <h4 className="text-[15px] font-bold text-[var(--looply-color-text-primary)]">
@@ -88,7 +126,7 @@ export default function ContextPanel({ conversation, messages, onClose, embedded
           </p>
           <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--looply-color-bg-subtle)] px-2.5 py-0.5 text-[10.5px] font-semibold text-[var(--looply-color-text-primary)]">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--looply-color-status-success)]" />
-            WhatsApp Cloud API
+            WhatsApp oficial
           </span>
         </div>
 
@@ -160,7 +198,7 @@ export default function ContextPanel({ conversation, messages, onClose, embedded
         {/* AI Governance */}
         <div className="space-y-2 rounded-[10px] bg-[var(--looply-color-bg-subtle)] p-3">
           <span className="block text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
-            Governança da IA
+            Controle da assistente
           </span>
           <div className="flex items-center gap-2">
             <span

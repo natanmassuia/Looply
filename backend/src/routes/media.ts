@@ -14,6 +14,9 @@ import {
   createClientLogoIntent,
   completeClientLogoUpload,
   deleteClientLogo,
+  createContactAvatarIntent,
+  completeContactAvatarUpload,
+  deleteContactAvatar,
   resolveMediaDownloadUrl,
 } from "../services/identityMediaService";
 
@@ -107,6 +110,25 @@ router.post("/clients/:id/logo/complete", asyncHandler(async (req, res) => {
 router.delete("/clients/:id/logo", asyncHandler(async (req, res) => {
   const client = await deleteClientLogo(prisma, getObjectStorage(), req.auth!.companyId, req.params.id);
   res.json({ ok: true, client });
+}));
+
+// ── 4. CONVERSATION CONTACT AVATAR (manual; WhatsApp sends no profile photo) ─
+
+router.post("/conversations/:id/avatar/upload-intent", asyncHandler(async (req, res) => {
+  const input = parse(intentSchema, req.body);
+  const result = await createContactAvatarIntent(prisma, getObjectStorage(), req.auth!.companyId, req.params.id, input);
+  res.status(201).json(result);
+}));
+
+router.post("/conversations/:id/avatar/complete", asyncHandler(async (req, res) => {
+  const { key } = parse(completeSchema, req.body);
+  const conversation = await completeContactAvatarUpload(prisma, getObjectStorage(), req.auth!.companyId, req.params.id, key);
+  res.json({ conversation });
+}));
+
+router.delete("/conversations/:id/avatar", asyncHandler(async (req, res) => {
+  const conversation = await deleteContactAvatar(prisma, getObjectStorage(), req.auth!.companyId, req.params.id);
+  res.json({ ok: true, conversation });
 }));
 
 export default router;

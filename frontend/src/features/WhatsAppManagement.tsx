@@ -160,7 +160,7 @@ function SendTemplateDialog({
       isOpen={true}
       onClose={onClose}
       title="Enviar template"
-      subtitle="Disparo ativo via WhatsApp Cloud API"
+      subtitle="Disparo ativo pelo WhatsApp oficial"
       maxWidth="max-w-md"
     >
       <div>
@@ -276,7 +276,7 @@ export default function WhatsAppManagement() {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <div className="typo-eyebrow mb-1 text-[10.5px] tracking-[0.08em] text-[var(--looply-color-text-muted)]">
-            INTEGRAÇÃO META CLOUD API
+            INTEGRAÇÃO WHATSAPP OFICIAL
           </div>
           <h1 className="text-xl font-bold tracking-tight text-[var(--looply-color-text-primary)] sm:text-2xl">
             WhatsApp Business
@@ -289,7 +289,7 @@ export default function WhatsAppManagement() {
         <div className="flex flex-wrap items-center gap-2.5">
           <span className="inline-flex items-center gap-2 rounded-full border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-3.5 py-1.5 text-xs font-semibold text-[var(--looply-color-text-primary)]">
             <span className="h-2 w-2 rounded-full bg-[var(--looply-color-status-success)]" />
-            Cloud API · Conectado
+            WhatsApp oficial · Conectado
           </span>
           <Link
             to="/inbox"

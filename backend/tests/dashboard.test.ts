@@ -60,11 +60,17 @@ describe("Dashboard capability side-channel", () => {
       },
       workflowStage: { findMany: async () => [] },
       activity: { findMany: async () => [] },
-      appointment: { findMany: async () => [] },
+      appointment: { findMany: async () => [], count: async () => 0 },
+      conversation: { groupBy: async () => [{ aiStatus: "NEEDS_ATTENTION", _count: { _all: 2 } }], count: async () => 3 },
       approval: { count: async () => { calls.push("approval"); throw new Error("should not query approval"); } },
     };
     const dashboard = await getDashboardForCompany(db, "c1", new Date("2026-08-14T00:00:00.000Z"));
     expect(dashboard.availableSections).not.toContain("approvals");
+    expect(dashboard.availableSections).toContain("attendance");
+    expect(dashboard.attendance.conversationsNeedingAttention).toBe(2);
+    expect(dashboard.attendance.conversationsActiveToday).toBe(3);
+    expect(dashboard.attendance.appointmentsToday).toBe(0);
+    expect(dashboard.attention.conversationsNeedingAttention).toBe(2);
     expect(calls).toEqual([]);
   });
 });

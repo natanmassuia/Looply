@@ -90,13 +90,13 @@ export default function WorkflowSettings() {
     }
   };
 
-  if (isLoading) return <Spinner label="Carregando workflow…" />;
+  if (isLoading) return <Spinner label="Carregando fluxo de trabalho…" />;
   if (isError || !workflow) {
     return (
       <Card>
         <div className="flex items-start gap-2 rounded-lg bg-[var(--looply-color-status-danger)]/10 px-3 py-2.5 text-sm text-[var(--looply-color-status-danger)]">
           <IconAlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>Não foi possível carregar o workflow.</span>
+          <span>Não foi possível carregar o fluxo de trabalho.</span>
         </div>
       </Card>
     );

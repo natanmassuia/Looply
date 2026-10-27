@@ -170,7 +170,7 @@ describe("Workflow Kanban (R1.3)", () => {
 
     dragCardToStage("Post Aprovado", "job-approved", "s5");
 
-    expect(await screen.findByRole("heading", { name: "Agendar conteúdo" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Agendar" })).toBeInTheDocument();
     expect(transition).not.toHaveBeenCalled();
   });
 
@@ -181,10 +181,10 @@ describe("Workflow Kanban (R1.3)", () => {
     );
 
     dragCardToStage("Post Aprovado", "job-approved", "s5");
-    await screen.findByRole("heading", { name: "Agendar conteúdo" });
+    await screen.findByRole("heading", { name: "Agendar" });
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
 
-    expect(screen.queryByRole("heading", { name: "Agendar conteúdo" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Agendar" })).not.toBeInTheDocument();
     expect(columnOf("Post Aprovado")).toBe("s4");
   });
 
@@ -196,10 +196,10 @@ describe("Workflow Kanban (R1.3)", () => {
     );
 
     dragCardToStage("Post Aprovado", "job-approved", "s5");
-    await screen.findByRole("heading", { name: "Agendar conteúdo" });
+    await screen.findByRole("heading", { name: "Agendar" });
     fireEvent.change(screen.getByLabelText("Data"), { target: { value: "2026-09-01" } });
     fireEvent.change(screen.getByLabelText("Horário"), { target: { value: "10:00" } });
-    fireEvent.click(screen.getByRole("button", { name: "Agendar conteúdo" }));
+    fireEvent.click(screen.getByRole("button", { name: "Agendar" }));
 
     await waitFor(() => expect(screen.getByText("Falha ao agendar")).toBeInTheDocument());
     expect(columnOf("Post Aprovado")).toBe("s4");

@@ -15,8 +15,11 @@ export default function InboxPage() {
   const queryId = searchParams.get("id") || searchParams.get("conversationId");
   const activeConversationId = queryId || routeId || null;
 
-  // Filter state
-  const [aiStatusFilter, setAiStatusFilter] = useState<ConversationAiStatus | "ALL">("ALL");
+  // Filter state — a ?aiStatus deep-link (e.g. from the Dashboard) preselects it.
+  const [aiStatusFilter, setAiStatusFilter] = useState<ConversationAiStatus | "ALL">(() => {
+    const q = searchParams.get("aiStatus");
+    return q === "ACTIVE" || q === "PAUSED" || q === "NEEDS_ATTENTION" ? q : "ALL";
+  });
   const [searchTerm, setSearchTerm] = useState("");
 
   // Debounced search for API
