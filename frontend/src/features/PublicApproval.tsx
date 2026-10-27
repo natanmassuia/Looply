@@ -16,7 +16,7 @@ export default function PublicApproval() {
   const [reviewerName, setReviewerName] = useState("");
   const [err, setErr] = useState<string | null>(null);
 
-  if (isLoading) return <Centered><Spinner label="Carregando conteúdo…" /></Centered>;
+  if (isLoading) return <Centered><Spinner label="Carregando demanda…" /></Centered>;
   if (isError)
     return (
       <Centered>
@@ -66,7 +66,7 @@ export default function PublicApproval() {
           </div>
           <div>
             <div className="text-base font-bold leading-tight">{content.client?.name}</div>
-            <div className="text-xs text-white/75">Revisão de conteúdo · Looply</div>
+            <div className="text-xs text-white/75">Revisão da demanda · Looply</div>
           </div>
         </div>
 
@@ -101,7 +101,7 @@ export default function PublicApproval() {
           <div className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
             {/* Caption */}
             <div>
-              <div className="section-label mb-1.5">Legenda</div>
+              <div className="section-label mb-1.5">Descrição</div>
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--looply-color-text-primary)]">
                 {version?.caption}
               </p>
@@ -114,7 +114,7 @@ export default function PublicApproval() {
                   <rect x="3" y="4" width="18" height="17" rx="2" />
                   <path d="M3 9h18M8 2v4M16 2v4" />
                 </svg>
-                <span className="font-medium text-[var(--looply-color-text-primary)]">Publicação prevista:</span>{" "}
+                <span className="font-medium text-[var(--looply-color-text-primary)]">Prazo:</span>{" "}
                 {formatDate(content.publicationTarget)}
               </div>
             )}
@@ -126,7 +126,7 @@ export default function PublicApproval() {
             {decided ? (
               <ResultBox
                 tone={status === "APPROVED" ? "success" : "warn"}
-                title={status === "APPROVED" ? "Conteúdo aprovado" : "Alteração registrada"}
+                title={status === "APPROVED" ? "Demanda aprovada" : "Alteração registrada"}
                 description={
                   status === "APPROVED"
                     ? "Obrigado! Já recebemos sua aprovação e a equipe foi notificada."
@@ -193,7 +193,7 @@ export default function PublicApproval() {
 
         {/* Footer */}
         <p className="mt-8 text-center text-xs text-[var(--looply-color-text-muted)]">
-          Looply · revisão de conteúdo · {formatDateTime(data.createdAt ?? new Date().toISOString())}
+          Looply · revisão da demanda · {formatDateTime(data.createdAt ?? new Date().toISOString())}
         </p>
       </div>
     </div>

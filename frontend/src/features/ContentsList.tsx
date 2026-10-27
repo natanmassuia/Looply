@@ -712,7 +712,7 @@ function CardStack({
             <button
               type="button"
               className="btn-ghost shrink-0 px-1.5 py-0.5 text-[10px] font-medium text-[var(--looply-color-text-brand)] hover:bg-[var(--looply-color-bg-subtle)] rounded"
-              title="Agendar conteúdo"
+              title="Agendar"
               aria-label={`Agendar ${parent.title}`}
               onClick={(e) => {
                 e.stopPropagation();
