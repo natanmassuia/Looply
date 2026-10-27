@@ -9,9 +9,11 @@ interface Props {
   conversation: ConversationSummaryDto;
   messages: ConversationMessageDto[];
   onClose?: () => void;
+  /** When rendered inside a ModalOrSheet (mobile): drop the fixed-width chrome and own header. */
+  embedded?: boolean;
 }
 
-export default function ContextPanel({ conversation, messages, onClose }: Props) {
+export default function ContextPanel({ conversation, messages, onClose, embedded = false }: Props) {
   const { data: clients } = useClients();
   const bindClientMutation = useBindConversationClient();
   const setAiStatusMutation = useSetConversationAiStatus();
@@ -41,26 +43,32 @@ export default function ContextPanel({ conversation, messages, onClose }: Props)
     <aside
       data-testid="inbox-context-panel"
       aria-label="Painel de contexto da conversa"
-      className="flex h-full w-72 shrink-0 flex-col overflow-y-auto rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)]"
+      className={
+        embedded
+          ? "flex flex-col bg-[var(--looply-color-bg-surface)]"
+          : "flex h-full w-72 shrink-0 flex-col overflow-y-auto rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)]"
+      }
     >
-      {/* Header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-[var(--looply-color-border-default)] px-4 py-3.5">
-        <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
-          Detalhes do Contato
-        </h3>
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar painel de detalhes"
-            className="cursor-pointer rounded-[8px] border-none bg-transparent p-1.5 text-[var(--looply-color-text-muted)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        )}
-      </div>
+      {/* Header (own chrome only inline; the sheet supplies title + close on mobile) */}
+      {!embedded && (
+        <div className="flex shrink-0 items-center justify-between border-b border-[var(--looply-color-border-default)] px-4 py-3.5">
+          <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-[var(--looply-color-text-muted)]">
+            Detalhes do Contato
+          </h3>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Fechar painel de detalhes"
+              className="cursor-pointer rounded-[8px] border-none bg-transparent p-1.5 text-[var(--looply-color-text-muted)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex-1 space-y-4 p-4">
         {/* Contact Overview (Figma 16 — 490:7 Contact Context) */}

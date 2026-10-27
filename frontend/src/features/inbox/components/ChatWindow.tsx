@@ -419,13 +419,24 @@ export default function ChatWindow({ conversation, isMobile = false, onBack }: P
         <AIStatusFooter conversation={conversation} messages={messages} />
       </div>
 
-      {/* Right Desktop Context Panel (Figma 16 — 490:7 Contact Context) */}
-      {isInfoOpen && (
-        <ContextPanel
-          conversation={conversation}
-          messages={messages}
+      {/* Context Panel: inline 3rd column on desktop; bottom sheet on mobile so it
+          does not squeeze the chat (Figma 16 — 490:7 Contact Context). */}
+      {isMobile ? (
+        <ModalOrSheet
+          isOpen={isInfoOpen}
           onClose={() => setInfoOverride(false)}
-        />
+          title="Detalhes do Contato"
+        >
+          <ContextPanel conversation={conversation} messages={messages} embedded />
+        </ModalOrSheet>
+      ) : (
+        isInfoOpen && (
+          <ContextPanel
+            conversation={conversation}
+            messages={messages}
+            onClose={() => setInfoOverride(false)}
+          />
+        )
       )}
 
       {isTemplateModalOpen && (
