@@ -91,7 +91,7 @@ export default function ScheduleModal({
     <ModalOrSheet
       isOpen={Boolean(intent)}
       onClose={onClose}
-      title="Agendar conteúdo"
+      title="Agendar"
       subtitle={`${intent.title}${offset ? ` · Horário da empresa ${offset}` : ""}`}
       maxWidth="max-w-md"
     >
@@ -131,7 +131,7 @@ export default function ScheduleModal({
             Cancelar
           </button>
           <button type="button" className="btn-primary btn-sm" onClick={submit} disabled={pending}>
-            {pending ? "Agendando…" : "Agendar conteúdo"}
+            {pending ? "Agendando…" : "Agendar"}
           </button>
         </div>
       </div>

@@ -7,7 +7,7 @@ export const STATUS_LABEL: Record<ContentStatus, string> = {
   CHANGES_REQUESTED: "Alterações solicitadas",
   APPROVED: "Aprovado",
   SCHEDULED: "Agendado",
-  PUBLISHED: "Publicado",
+  PUBLISHED: "Concluído",
 };
 
 export const STATUS_STYLE: Record<ContentStatus, string> = {
