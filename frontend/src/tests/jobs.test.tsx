@@ -733,4 +733,27 @@ describe("Jobs Feature — B4 Metadata Editing + Ungroup Wiring", () => {
       expect(mediaLink).toHaveAttribute("rel", "noopener noreferrer");
     });
   });
+
+  describe("Job without any version (created by AI / no content yet)", () => {
+    it("renders the demand instead of the not-found card, with a friendly empty content state", () => {
+      vi.spyOn(apiModule, "useContent").mockReturnValue({
+        data: { ...mockJobDetail, versions: [] },
+        isLoading: false,
+        isError: false,
+        refetch: vi.fn(),
+      } as any);
+      vi.spyOn(apiModule, "useClients").mockReturnValue({ data: mockClients } as any);
+
+      renderWithProviders(
+        <Routes>
+          <Route path="/contents/:id" element={<ContentDetail />} />
+        </Routes>,
+        "/contents/job-1",
+      );
+
+      expect(screen.queryByText("Demanda não encontrada.")).not.toBeInTheDocument();
+      expect(screen.getAllByText("Post Cardápio de Verão").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText("Nenhum conteúdo anexado ainda.")).toBeInTheDocument();
+    });
+  });
 });
