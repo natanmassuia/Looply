@@ -175,6 +175,7 @@ export default function Sidebar({
               <img
                 src={companyLogoUrl}
                 alt={workspaceName || "Logo da empresa"}
+                onError={(e) => { e.currentTarget.style.display = "none"; }}
                 className="h-8 w-8 shrink-0 rounded-full object-cover border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)]"
               />
             ) : (
@@ -189,6 +190,7 @@ export default function Sidebar({
               <img
                 src={companyLogoUrl}
                 alt={workspaceName || "Logo da empresa"}
+                onError={(e) => { e.currentTarget.style.display = "none"; }}
                 className="h-8 w-8 shrink-0 rounded-full object-cover border border-[var(--looply-color-border-default)]"
               />
             ) : (
@@ -345,6 +347,7 @@ export default function Sidebar({
                   <img
                     src={user.avatarUrl}
                     alt=""
+                    onError={(e) => { e.currentTarget.style.display = "none"; }}
                     className="h-full w-full object-cover"
                   />
                 ) : (

@@ -474,6 +474,7 @@ export default function Team() {
                         <img
                           src={u.avatarUrl}
                           alt=""
+                          onError={(e) => { e.currentTarget.style.display = "none"; }}
                           className="h-10 w-10 shrink-0 rounded-full object-cover border border-[var(--looply-color-border-default)]"
                         />
                       ) : (
@@ -613,6 +614,7 @@ export default function Team() {
                   <img
                     src={u.avatarUrl}
                     alt=""
+                    onError={(e) => { e.currentTarget.style.display = "none"; }}
                     className="h-10 w-10 shrink-0 rounded-full object-cover border border-[var(--looply-color-border-default)]"
                   />
                 ) : (

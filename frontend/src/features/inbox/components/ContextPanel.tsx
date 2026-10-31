@@ -5,6 +5,7 @@ import { useClients, useBindConversationClient, useSetConversationAiStatus, useU
 import { formatDateHeader, formatMessageTime } from "../utils/time";
 import { formatPhone } from "../../../lib/format";
 import ContactAvatar from "./ContactAvatar";
+import { IconArrowRight } from "../../../components/Icons";
 
 interface Props {
   conversation: ConversationSummaryDto;
@@ -183,9 +184,10 @@ export default function ContextPanel({ conversation, messages, onClose, embedded
               </span>
               <Link
                 to={`/clients/${conversation.client.id}`}
-                className="shrink-0 text-xs font-semibold text-[var(--looply-color-text-brand)] hover:underline"
+                className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-[var(--looply-color-text-brand)] hover:underline"
               >
-                Abrir perfil →
+                Abrir perfil
+                <IconArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               </Link>
             </div>
           ) : (

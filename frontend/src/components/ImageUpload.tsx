@@ -144,6 +144,7 @@ export default function ImageUpload({
             <img
               src={effectiveUrl}
               alt="Foto"
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
               className={`w-full h-full object-cover ${isLoading ? "opacity-60" : ""}`}
             />
           ) : (

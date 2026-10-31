@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { IconArrowRight } from "../components/Icons";
 import {
   useWhatsAppPhoneNumbers,
   useWhatsAppTemplates,
@@ -295,7 +296,8 @@ export default function WhatsAppManagement() {
             to="/inbox"
             className="inline-flex items-center gap-1.5 rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-3.5 py-1.5 text-xs font-semibold text-[var(--looply-color-text-primary)] transition-colors hover:bg-[var(--looply-color-bg-subtle)]"
           >
-            Abrir Conversas →
+            Abrir Conversas
+            <IconArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </Link>
         </div>
       </div>

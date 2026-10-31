@@ -50,7 +50,7 @@ function AccountMenu({
         className="relative flex items-center gap-1.5 rounded-full bg-[var(--looply-color-coral-100)] px-2.5 py-1 text-[12.5px] font-bold text-[var(--looply-color-text-primary)] transition-colors hover:text-[var(--looply-color-text-brand)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
       >
         {avatarUrl ? (
-          <img src={avatarUrl} alt="" className="h-6 w-6 rounded-full object-cover" />
+          <img src={avatarUrl} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} className="h-6 w-6 rounded-full object-cover" />
         ) : null}
         <span className="px-0.5">{firstName ?? "Conta"}</span>
         <span

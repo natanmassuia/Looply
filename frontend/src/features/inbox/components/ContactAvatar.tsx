@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { initials, avatarColor } from "../../../lib/format";
 
 // Contact avatar used everywhere a conversation contact is shown. Shows the
@@ -17,13 +18,15 @@ export default function ContactAvatar({
   textClass?: string;
 }) {
   const { bg, fg } = avatarColor(seed || name);
+  const [failed, setFailed] = useState(false);
+  const showImg = avatarUrl && !failed;
   return (
     <div
       className={`flex ${sizeClass} shrink-0 items-center justify-center overflow-hidden rounded-full font-bold ${textClass}`}
-      style={avatarUrl ? undefined : { backgroundColor: bg, color: fg }}
+      style={showImg ? undefined : { backgroundColor: bg, color: fg }}
     >
-      {avatarUrl ? (
-        <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+      {showImg ? (
+        <img src={avatarUrl} alt="" onError={() => setFailed(true)} className="h-full w-full object-cover" />
       ) : (
         <span aria-hidden="true">{initials(name)}</span>
       )}

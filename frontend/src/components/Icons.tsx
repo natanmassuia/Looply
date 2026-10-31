@@ -113,6 +113,12 @@ export const IconArrowLeft = (p: P) => (
   </svg>
 );
 
+export const IconArrowRight = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M5 12h14M12 5l7 7-7 7" />
+  </svg>
+);
+
 export const IconSearch = (p: P) => (
   <svg {...base(p)}>
     <circle cx="11" cy="11" r="8" />

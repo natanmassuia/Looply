@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useMe, useUpdateProfile, useUploadUserAvatar, useDeleteUserAvatar } from "../lib/api";
 import ModalOrSheet from "../components/ModalOrSheet";
 import ImageUpload from "../components/ImageUpload";
+import { IconArrowRight } from "../components/Icons";
 import PhoneInput, { hydratePhone } from "../components/PhoneInput";
 import { initials, DISPLAY_ROLE_LABEL } from "../lib/format";
 
@@ -94,6 +95,7 @@ export default function MyAccountModal({ isOpen, onClose }: MyAccountModalProps)
             <img
               src={user.avatarUrl}
               alt={name || "Avatar"}
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
               className="h-12 w-12 shrink-0 rounded-full object-cover border border-[var(--looply-color-border-default)]"
             />
           ) : (
@@ -244,9 +246,10 @@ export default function MyAccountModal({ isOpen, onClose }: MyAccountModalProps)
           <Link
             to="/change-password"
             onClick={onClose}
-            className="text-xs font-semibold text-[var(--looply-color-action-primary)] hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--looply-color-action-primary)] hover:underline"
           >
-            Alterar minha senha →
+            Alterar minha senha
+            <IconArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </Link>
           <button
             type="button"

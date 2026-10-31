@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useRequestPasswordRecovery, ApiError } from "../lib/api";
 import AuthShell, { Eyebrow } from "../components/AuthShell";
+import { IconArrowLeft } from "../components/Icons";
 
 export default function Recovery() {
   const [email, setEmail] = useState("");
@@ -44,9 +45,10 @@ export default function Recovery() {
           <div className="mt-6">
             <Link
               to="/login"
-              className="inline-flex items-center text-[13px] font-semibold text-[var(--looply-color-text-brand)] hover:underline"
+              className="inline-flex items-center gap-1 text-[13px] font-semibold text-[var(--looply-color-text-brand)] hover:underline"
             >
-              ← Voltar para o login
+              <IconArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+              Voltar para o login
             </Link>
           </div>
         </div>
@@ -83,9 +85,10 @@ export default function Recovery() {
           <div className="mt-6 text-center">
             <Link
               to="/login"
-              className="text-[13px] font-medium text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)] transition-colors"
+              className="inline-flex items-center gap-1 text-[13px] font-medium text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)] transition-colors"
             >
-              ← Voltar para o login
+              <IconArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+              Voltar para o login
             </Link>
           </div>
         </form>

@@ -239,7 +239,7 @@ export function MediaPreview({
       </div>
     );
   }
-  return <img src={url} alt={alt ?? ""} className={`object-cover ${className}`} />;
+  return <img src={url} alt={alt ?? ""} onError={(e) => { e.currentTarget.style.display = "none"; }} className={`object-cover ${className}`} />;
 }
 
 export function KpiCard({

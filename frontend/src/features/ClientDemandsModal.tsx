@@ -4,6 +4,7 @@ import type { Client } from "../lib/types";
 import { FORMAT_LABEL, relativeTime } from "../lib/format";
 import StatusPill from "../components/StatusPill";
 import ModalOrSheet from "../components/ModalOrSheet";
+import { IconArrowRight } from "../components/Icons";
 import { Spinner } from "../components/common";
 
 export interface ClientDemandsModalProps {
@@ -81,8 +82,9 @@ export default function ClientDemandsModal({
 
               <div className="shrink-0 flex items-center gap-2">
                 <StatusPill status={demand.status} />
-                <span className="text-[12px] font-medium text-[var(--looply-color-action-primary)]">
-                  Abrir →
+                <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[var(--looply-color-action-primary)]">
+                  Abrir
+                  <IconArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </span>
               </div>
             </button>

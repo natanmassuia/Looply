@@ -4,7 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useClients, useDeleteClient, ApiError } from "../lib/api";
 import type { Client, ClientStatus } from "../lib/types";
 import { Card, EmptyState, ErrorState, PageHeader, SkeletonCards } from "../components/common";
-import { IconPlus, IconEdit, IconTrash, IconChevronDown, IconX, IconMoreVertical, IconFileText, IconLink, IconMail } from "../components/Icons";
+import { IconPlus, IconEdit, IconTrash, IconChevronDown, IconChevronUp, IconArrowRight, IconX, IconMoreVertical, IconFileText, IconLink, IconMail } from "../components/Icons";
 import ModalOrSheet from "../components/ModalOrSheet";
 import ClientEditor from "../components/ClientEditor";
 import ClientAvatar from "../components/ClientAvatar";
@@ -554,7 +554,7 @@ export default function Clients() {
                         aria-label={`${demandCountText} ativas de ${c.name}`}
                       >
                         <span>{demandCountText}</span>
-                        <span aria-hidden="true">→</span>
+                        <IconArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
                       </button>
                     </dd>
                   </div>
@@ -681,7 +681,11 @@ function SortHeader({
     >
       <span>{label}</span>
       <span aria-hidden="true" className={active ? "opacity-100" : "opacity-30"}>
-        {active && dir === "asc" ? "↑" : "↓"}
+        {active && dir === "asc" ? (
+          <IconChevronUp className="h-3 w-3" />
+        ) : (
+          <IconChevronDown className="h-3 w-3" />
+        )}
       </span>
     </button>
   );
@@ -780,7 +784,7 @@ function ClientsTable({
                       aria-label={`${demandCountText} ativas de ${c.name}`}
                     >
                       <span className="tabular-nums">{demandCount}</span>
-                      <span aria-hidden="true">→</span>
+                      <IconArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
                     </button>
                   </td>
                   <td className="max-w-[200px] truncate px-4 py-2.5 text-[var(--looply-color-text-primary)]">

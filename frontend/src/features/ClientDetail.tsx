@@ -14,6 +14,7 @@ import {
   IconPhone,
   IconUser,
   IconPlus,
+  IconChevronRight,
 } from "../components/Icons";
 import type { ClientStatus } from "../lib/types";
 import { FORMAT_LABEL } from "../lib/format";
@@ -257,9 +258,10 @@ export default function ClientDetail() {
                 </div>
                 <div className="shrink-0 flex items-center gap-3">
                   <StatusPill status={demand.status} />
-                  <span className="text-xs text-[var(--looply-color-text-muted)] group-hover:text-[var(--looply-color-text-primary)]">
-                    →
-                  </span>
+                  <IconChevronRight
+                    className="h-4 w-4 shrink-0 text-[var(--looply-color-text-muted)] group-hover:text-[var(--looply-color-text-primary)]"
+                    aria-hidden="true"
+                  />
                 </div>
               </Link>
             ))}

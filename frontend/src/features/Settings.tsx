@@ -349,6 +349,7 @@ export default function Settings() {
                   <img
                     src={session.user.avatarUrl}
                     alt={session.user.name}
+                    onError={(e) => { e.currentTarget.style.display = "none"; }}
                     className="h-16 w-16 rounded-full object-cover border border-[var(--looply-color-border-default)]"
                   />
                 ) : (

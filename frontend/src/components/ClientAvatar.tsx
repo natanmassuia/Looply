@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { initials } from "../lib/format";
 
 // Single client "badge": the logo when set, otherwise the brand-coloured
@@ -18,11 +19,13 @@ export default function ClientAvatar({
   radiusClass?: string;
   textClass?: string;
 }) {
-  if (logoUrl) {
+  const [failed, setFailed] = useState(false);
+  if (logoUrl && !failed) {
     return (
       <img
         src={logoUrl}
         alt={name}
+        onError={() => setFailed(true)}
         className={`${sizeClass} shrink-0 ${radiusClass} border border-[var(--looply-color-border-default)] object-cover`}
       />
     );

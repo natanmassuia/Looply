@@ -143,7 +143,7 @@ const MessageList = forwardRef<MessageListHandle, Props>(function MessageList(
           type="button"
           onClick={() => scrollToBottom(true)}
           aria-label="Rolar para o final"
-          className="absolute bottom-4 right-6 z-10 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] text-[var(--looply-color-text-primary)] shadow-md transition-all hover:scale-105 active:scale-95"
+          className="absolute bottom-4 right-6 z-10 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] text-[var(--looply-color-text-primary)] shadow-md transition-colors hover:bg-[var(--looply-color-bg-subtle)] hover:border-[var(--looply-color-border-strong)]"
         >
           <svg
             className="h-5 w-5"
