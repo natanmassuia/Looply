@@ -122,7 +122,7 @@ describe("F14.2 Dashboard density + upcoming", () => {
 
     expect(screen.queryByText("Passado")).not.toBeInTheDocument();
     expect(screen.getByText("Nenhuma agenda próxima")).toBeInTheDocument();
-    expect(screen.getByText("Os próximos agendamentos aparecerão aqui.")).toBeInTheDocument();
+    expect(screen.getByText("Ver agenda completa")).toBeInTheDocument();
   });
 
   it("shows the live workspace clock with company timezone label", () => {

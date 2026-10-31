@@ -213,10 +213,12 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Main content: asymmetric 2-col */}
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
-            {/* Left: In progress (~65%) */}
-            <div className="lg:col-span-3">
+          {/* Main content: demandas lead; the agenda sits beside them only when
+              something is scheduled — an empty agenda is a slim strip, not a
+              column that eats 40% of the row (zero is not information). */}
+          <div className={`grid grid-cols-1 gap-5 ${upcomingEvents.length > 0 ? "lg:grid-cols-5" : ""}`}>
+            {/* Left: In progress */}
+            <div className={upcomingEvents.length > 0 ? "lg:col-span-3" : ""}>
               <Card className="p-0">
                 <div className="flex items-center justify-between border-b border-[var(--looply-color-border-default)] px-5 py-3.5">
                   <h2 className="text-sm font-semibold text-[var(--looply-color-text-primary)]">Demandas em andamento</h2>
@@ -275,26 +277,16 @@ export default function Dashboard() {
               </Card>
             </div>
 
-            {/* Right: Upcoming appointments (~35%) */}
-            <div className="lg:col-span-2">
-              <Card className="p-0">
-                <div className="flex items-center justify-between border-b border-[var(--looply-color-border-default)] px-5 py-3.5">
-                  <h2 className="text-sm font-semibold text-[var(--looply-color-text-primary)]">Próximas agendas</h2>
-                  <Link to="/calendar" className="text-xs font-semibold text-[var(--looply-color-action-primary)] hover:underline">
-                    Ver agenda completa
-                  </Link>
-                </div>
-                {upcomingEvents.length === 0 ? (
-                  <div className="px-5 py-6 text-center">
-                    <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-muted)]">
-                      <IconClock className="h-4 w-4" />
-                    </div>
-                    <p className="text-xs font-medium text-[var(--looply-color-text-primary)]">Nenhuma agenda próxima</p>
-                    <p className="mt-0.5 text-xs text-[var(--looply-color-text-muted)]">
-                      Os próximos agendamentos aparecerão aqui.
-                    </p>
+            {/* Right: Upcoming appointments — only when there is something */}
+            {upcomingEvents.length > 0 && (
+              <div className="lg:col-span-2">
+                <Card className="p-0">
+                  <div className="flex items-center justify-between border-b border-[var(--looply-color-border-default)] px-5 py-3.5">
+                    <h2 className="text-sm font-semibold text-[var(--looply-color-text-primary)]">Próximas agendas</h2>
+                    <Link to="/calendar" className="text-xs font-semibold text-[var(--looply-color-action-primary)] hover:underline">
+                      Ver agenda completa
+                    </Link>
                   </div>
-                ) : (
                   <div className="divide-y divide-[var(--looply-color-border-default)]">
                     {upcomingEvents.map((ev) => (
                       <Link
@@ -315,10 +307,27 @@ export default function Dashboard() {
                       </Link>
                     ))}
                   </div>
-                )}
-              </Card>
-            </div>
+                </Card>
+              </div>
+            )}
           </div>
+
+          {/* Empty agenda → slim full-width strip, still one tap to the calendar */}
+          {upcomingEvents.length === 0 && (
+            <Link
+              to="/calendar"
+              className="flex items-center justify-between gap-3 rounded-xl border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-5 py-3 transition-colors hover:bg-[var(--looply-color-bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
+            >
+              <span className="flex items-center gap-2.5 text-sm text-[var(--looply-color-text-muted)]">
+                <IconClock className="h-4 w-4 shrink-0" />
+                Nenhuma agenda próxima
+              </span>
+              <span className="flex items-center gap-1 text-xs font-semibold text-[var(--looply-color-action-primary)]">
+                Ver agenda completa
+                <IconChevronRight className="h-3.5 w-3.5" />
+              </span>
+            </Link>
+          )}
         </div>
       )}
     </div>
