@@ -13,7 +13,7 @@ import AIStatusFooter from "./AIStatusFooter";
 import ConversationSearchBar from "./ConversationSearchBar";
 import ContextPanel from "./ContextPanel";
 import ModalOrSheet from "../../../components/ModalOrSheet";
-import { IconAlertCircle, IconWhatsApp } from "../../../components/Icons";
+import { IconAlertCircle, IconWhatsApp, IconMessageSquare } from "../../../components/Icons";
 import { formatPhone } from "../../../lib/format";
 
 interface Props {
@@ -259,19 +259,7 @@ export default function ChatWindow({ conversation, isMobile = false, onBack }: P
     return (
       <div className="flex h-full flex-1 flex-col items-center justify-center rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] p-8 text-center text-[var(--looply-color-text-muted)]">
         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-[14px] bg-[var(--looply-color-coral-100)] text-[var(--looply-color-action-primary)]">
-          <svg
-            className="h-7 w-7"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.75}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-            />
-          </svg>
+          <IconMessageSquare className="h-7 w-7" strokeWidth={1.75} />
         </div>
         <h3 className="mb-1 text-base font-bold text-[var(--looply-color-text-primary)]">
           Nenhuma conversa selecionada

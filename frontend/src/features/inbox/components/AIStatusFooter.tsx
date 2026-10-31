@@ -1,5 +1,6 @@
 import type { ConversationSummaryDto, ConversationAiStatus, ConversationMessageDto } from "../../../lib/types";
 import { useSetConversationAiStatus } from "../../../lib/api";
+import { IconSparkles, IconPause, IconAlertCircle } from "../../../components/Icons";
 import { formatMessageTime } from "../utils/time";
 
 interface Props {
@@ -63,31 +64,11 @@ export default function AIStatusFooter({ conversation, messages = [] }: Props) {
               }`}
             >
               {status === "ACTIVE" ? (
-                <svg
-                  className="h-3.5 w-3.5 fill-current"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
-                  <path d="M18 14l.75 2.25L21 17l-2.25.75L18 20l-.75-2.25L15 17l2.25-.75L18 14z" />
-                </svg>
+                <IconSparkles className="h-3.5 w-3.5 fill-current" />
               ) : status === "PAUSED" ? (
-                <svg
-                  className="h-3.5 w-3.5 fill-current"
-                  viewBox="0 0 24 24"
-                >
-                  <rect x="6" y="4" width="4" height="16" rx="1" />
-                  <rect x="14" y="4" width="4" height="16" rx="1" />
-                </svg>
+                <IconPause className="h-3.5 w-3.5" />
               ) : (
-                <svg
-                  className="h-3.5 w-3.5 fill-none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 8v4M12 16h.01" />
-                </svg>
+                <IconAlertCircle className="h-3.5 w-3.5" strokeWidth={2} />
               )}
             </div>
 

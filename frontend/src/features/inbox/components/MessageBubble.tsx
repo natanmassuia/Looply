@@ -1,5 +1,6 @@
 import type { ConversationMessageDto } from "../../../lib/types";
 import { formatMessageTime } from "../utils/time";
+import { IconSparkles } from "../../../components/Icons";
 import MessageStatusIcon from "./MessageStatusIcon";
 import TextBubble from "./bubbles/TextBubble";
 import AudioBubble from "./bubbles/AudioBubble";
@@ -107,12 +108,7 @@ export default function MessageBubble({
           <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-[var(--looply-color-text-secondary)]">
             {isAi ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--looply-color-action-primary)_14%,transparent)] px-2 py-0.5 text-[10px] font-bold text-[var(--looply-color-text-primary)]">
-                <svg
-                  className="h-3 w-3 fill-current text-[var(--looply-color-action-primary)]"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
-                </svg>
+                <IconSparkles className="h-3 w-3 fill-current text-[var(--looply-color-action-primary)]" />
                 Looply AI
               </span>
             ) : isUser ? (

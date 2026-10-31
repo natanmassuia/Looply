@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import type { ConversationSummaryDto, ConversationAiStatus } from "../../../lib/types";
+import { IconSearch } from "../../../components/Icons";
 import { SkeletonRows } from "../../../components/common";
 import ConversationItem from "./ConversationItem";
 
@@ -55,19 +56,10 @@ export default function ConversationList({
 
         {/* Search Input */}
         <div className="relative">
-          <svg
-            className="
-              pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5
-              -translate-y-1/2 text-[var(--looply-color-text-muted)]
-            "
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+          <IconSearch
+            className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--looply-color-text-muted)]"
             strokeWidth={2}
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="M21 21l-4.35-4.35" />
-          </svg>
+          />
           <input
             type="text"
             value={searchTerm}

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { IconSearch, IconChevronUp, IconChevronDown, IconX } from "../../../components/Icons";
 
 interface Props {
   query: string;
@@ -48,19 +49,10 @@ export default function ConversationSearchBar({
       "
     >
       <div className="relative flex-1">
-        <svg
-          className="
-            pointer-events-none absolute left-3 top-1/2 h-4 w-4
-            -translate-y-1/2 text-[var(--looply-color-text-muted)]
-          "
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
+        <IconSearch
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--looply-color-text-muted)]"
           strokeWidth={2}
-        >
-          <circle cx="11" cy="11" r="8" />
-          <path d="M21 21l-4.35-4.35" />
-        </svg>
+        />
         <input
           ref={inputRef}
           type="text"
@@ -105,9 +97,7 @@ export default function ConversationSearchBar({
             disabled:opacity-30
           "
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-          </svg>
+          <IconChevronUp className="h-4 w-4" strokeWidth={2} />
         </button>
 
         {/* Next match */}
@@ -125,9 +115,7 @@ export default function ConversationSearchBar({
             disabled:opacity-30
           "
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
+          <IconChevronDown className="h-4 w-4" strokeWidth={2} />
         </button>
 
         {/* Close */}
@@ -143,9 +131,7 @@ export default function ConversationSearchBar({
             hover:text-[var(--looply-color-status-danger)]
           "
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <IconX className="h-4 w-4" strokeWidth={2} />
         </button>
       </div>
     </div>

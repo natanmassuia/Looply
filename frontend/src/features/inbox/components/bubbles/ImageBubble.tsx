@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { formatMessageText } from "../../utils/formatMessageText";
 import type { ConversationMessageDto } from "../../../../lib/types";
+import { IconSpinner } from "../../../../components/Icons";
 
 interface Props {
   msg: ConversationMessageDto;
@@ -48,25 +49,7 @@ export default function ImageBubble({
         >
           {!isLoaded && !hasError && (
             <div className="w-[280px] h-[180px] flex items-center justify-center animate-pulse bg-[var(--looply-color-bg-subtle)]">
-              <svg
-                className="w-6 h-6 animate-spin text-[var(--looply-color-text-muted)]"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v8H4z"
-                />
-              </svg>
+              <IconSpinner className="w-6 h-6 animate-spin text-[var(--looply-color-text-muted)]" />
             </div>
           )}
 

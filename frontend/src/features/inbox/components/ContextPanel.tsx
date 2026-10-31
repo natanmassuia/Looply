@@ -5,7 +5,7 @@ import { useClients, useBindConversationClient, useSetConversationAiStatus, useU
 import { formatDateHeader, formatMessageTime } from "../utils/time";
 import { formatPhone } from "../../../lib/format";
 import ContactAvatar from "./ContactAvatar";
-import { IconArrowRight } from "../../../components/Icons";
+import { IconArrowRight, IconX } from "../../../components/Icons";
 
 interface Props {
   conversation: ConversationSummaryDto;
@@ -67,9 +67,7 @@ export default function ContextPanel({ conversation, messages, onClose, embedded
               aria-label="Fechar painel de detalhes"
               className="cursor-pointer rounded-[8px] border-none bg-transparent p-1.5 text-[var(--looply-color-text-muted)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <IconX className="h-4 w-4" strokeWidth={2} />
             </button>
           )}
         </div>

@@ -359,3 +359,53 @@ export const IconCard = (p: P) => (
   </svg>
 );
 
+export const IconPlay = (p: P) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width={18} height={18} {...p}>
+    <path d="M5 3l14 9-14 9V3z" />
+  </svg>
+);
+
+export const IconPause = (p: P) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width={18} height={18} {...p}>
+    <rect x="6" y="4" width="4" height="16" rx="1" />
+    <rect x="14" y="4" width="4" height="16" rx="1" />
+  </svg>
+);
+
+export const IconDownload = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+  </svg>
+);
+
+export const IconInfo = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 16v-4M12 8h.01" />
+  </svg>
+);
+
+export const IconMessageSquare = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+  </svg>
+);
+
+export const IconMessageCircle = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+  </svg>
+);
+
+export const IconArrowDown = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+  </svg>
+);
+
+export const IconMic = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+  </svg>
+);
+

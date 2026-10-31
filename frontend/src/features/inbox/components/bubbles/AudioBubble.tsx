@@ -1,5 +1,6 @@
 import { useState } from "react";
 import AudioPlayer from "../../../../components/AudioPlayer";
+import { IconMic } from "../../../../components/Icons";
 import { formatMessageText } from "../../utils/formatMessageText";
 import type { ConversationMessageDto } from "../../../../lib/types";
 
@@ -64,19 +65,7 @@ export default function AudioBubble({
         <div className="rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] p-2.5 text-[12px] text-[var(--looply-color-text-primary)]">
           <div className="mb-1 flex items-center justify-between gap-1 text-[10.5px] font-bold uppercase tracking-wider text-[var(--looply-color-text-muted)]">
             <span className="flex items-center gap-1">
-              <svg
-                className="h-3.5 w-3.5 text-[var(--looply-color-action-primary)]"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                />
-              </svg>
+              <IconMic className="h-3.5 w-3.5 text-[var(--looply-color-action-primary)]" strokeWidth={2} />
               Transcrição por IA
             </span>
             <button

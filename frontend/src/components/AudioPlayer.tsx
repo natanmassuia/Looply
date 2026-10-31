@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { IconPlay, IconPause, IconSpinner, IconDownload } from "./Icons";
 
 export interface AudioPlayerProps {
   url: string | null;
@@ -218,14 +219,9 @@ export default function AudioPlayer({
         className={`w-9 h-9 shrink-0 flex items-center justify-center rounded-full transition-all active:scale-90 border-none cursor-pointer ${btnBg}`}
       >
         {isPlaying ? (
-          <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-            <rect x="6" y="4" width="4" height="16" rx="1" />
-            <rect x="14" y="4" width="4" height="16" rx="1" />
-          </svg>
+          <IconPause className="w-4 h-4" />
         ) : (
-          <svg className="w-4 h-4 fill-current ml-0.5" viewBox="0 0 24 24">
-            <path d="M5 3l14 9-14 9V3z" />
-          </svg>
+          <IconPlay className="w-4 h-4 ml-0.5" />
         )}
       </button>
 
@@ -294,40 +290,9 @@ export default function AudioPlayer({
           className={`w-7 h-7 shrink-0 flex items-center justify-center rounded-md transition-all border-none cursor-pointer disabled:cursor-wait disabled:opacity-60 ${iconBg}`}
         >
           {isDownloading ? (
-            <svg
-              className="h-3.5 w-3.5 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v8H4z"
-              />
-            </svg>
+            <IconSpinner className="h-3.5 w-3.5 animate-spin" />
           ) : (
-            <svg
-              className="h-3.5 w-3.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-              />
-            </svg>
+            <IconDownload className="h-3.5 w-3.5" strokeWidth={2} />
           )}
         </button>
       )}

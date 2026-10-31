@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ConversationSummaryDto, ConversationAiStatus } from "../../../lib/types";
+import { IconChevronLeft, IconChevronDown, IconClients, IconCheck, IconSearch, IconInfo } from "../../../components/Icons";
 import { useClients, useBindConversationClient, useSetConversationAiStatus } from "../../../lib/api";
 import { formatPhone } from "../../../lib/format";
 import ContactAvatar from "./ContactAvatar";
@@ -57,19 +58,7 @@ export default function ChatHeader({
             aria-label="Voltar para lista de conversas"
             className="-ml-1 cursor-pointer rounded-[10px] border-none bg-transparent p-1.5 text-[var(--looply-color-text-muted)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
+            <IconChevronLeft className="h-5 w-5" strokeWidth={2} />
           </button>
         )}
 
@@ -124,15 +113,7 @@ export default function ChatHeader({
                 ? "IA Pausada"
                 : "Atenção"}
             </span>
-            <svg
-              className="ml-0.5 h-3.5 w-3.5 text-[var(--looply-color-text-muted)]"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
+            <IconChevronDown className="ml-0.5 h-3.5 w-3.5 text-[var(--looply-color-text-muted)]" strokeWidth={2} />
           </button>
 
           {statusMenuOpen && (
@@ -192,25 +173,7 @@ export default function ChatHeader({
             className="flex cursor-pointer items-center gap-1.5 rounded-[10px] border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-2.5 py-1.5 text-xs font-medium text-[var(--looply-color-text-secondary)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
             title="Vincular ou alterar cliente"
           >
-            <svg
-              className="h-3.5 w-3.5 text-[var(--looply-color-text-muted)]"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.8}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
-              />
-              <circle cx="9" cy="7" r="4" />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11"
-              />
-            </svg>
+            <IconClients className="h-3.5 w-3.5 text-[var(--looply-color-text-muted)]" />
             <span className="max-w-[100px] truncate">
               {conversation.client?.name || "Vincular"}
             </span>
@@ -253,19 +216,7 @@ export default function ChatHeader({
                     >
                       <span className="truncate">{c.name}</span>
                       {conversation.client?.id === c.id && (
-                        <svg
-                          className="h-3.5 w-3.5 shrink-0 text-[var(--looply-color-action-primary)]"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
+                        <IconCheck className="h-3.5 w-3.5 shrink-0 text-[var(--looply-color-action-primary)]" strokeWidth={2} />
                       )}
                     </button>
                   ))
@@ -291,16 +242,7 @@ export default function ChatHeader({
               : "bg-transparent text-[var(--looply-color-text-muted)] hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
           }`}
         >
-          <svg
-            className="h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="M21 21l-4.35-4.35" />
-          </svg>
+          <IconSearch className="h-4 w-4" strokeWidth={2} />
         </button>
 
         {/* Info/Context Panel Toggle */}
@@ -317,16 +259,7 @@ export default function ChatHeader({
             }`}
             title="Detalhes do contato e contexto da IA"
           >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 16v-4M12 8h.01" />
-            </svg>
+            <IconInfo className="h-4 w-4" strokeWidth={2} />
           </button>
         )}
       </div>
