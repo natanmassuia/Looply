@@ -461,7 +461,7 @@ export default function ContentDetail() {
               <div className="py-2 text-xs text-[var(--looply-color-text-muted)]">Carregando arquivos…</div>
             ) : !jobFiles?.files || jobFiles.files.length === 0 ? (
               <div className="rounded-lg border border-dashed border-[var(--looply-color-border-default)] p-4 text-center text-xs text-[var(--looply-color-text-muted)]">
-                Nenhum arquivo anexado a esta demanda. Clique em "Enviar arquivo" para fazer upload.
+                Nenhum arquivo anexado a esta demanda.
               </div>
             ) : (
               <div className="divide-y divide-[var(--looply-color-border-default)]">

@@ -1,36 +1,46 @@
 # Audit: site inteiro (visant-killer)
 
-Rodado em `src` (82 arquivos tsx, ~15 rotas). `killer-scan --all`.
-Gate: `impeccable` **zero**; `audit:design` 54; `copy` 38; `noise` 63.
+`killer-scan --all src` (82 tsx, ~15 rotas). Branch `audit/visant-killer-site-2026-10-31`.
 
-## Aplicado (defeitos reais confirmados — este branch)
+## Estado final do gate
 
-| Regra | Qtd | O que mudou |
+| Detector | Antes | Agora |
 |---|---|---|
-| `arrow-glyph` (LAW) | 13 | `→ ← ↑ ↓` como texto viraram componentes de ícone (`IconArrowRight` novo em `Icons.tsx`; reuso de `IconArrowLeft`/`IconChevronUp`/`IconChevronDown`). Arquivos: ClientDemandsModal, ClientDetail, Clients (×3), MyAccountModal, Recovery (×2), ResetPassword (×2), WhatsAppManagement, ContextPanel. |
-| `hover-lift` (LAW) | 1 | `MessageList`: `transition-all hover:scale-105 active:scale-95` → `transition-colors hover:bg-subtle hover:border-strong`. |
-| `blur-on-card` | 1 | `PublicApproval`: removido `backdrop-blur-sm` do avatar do header. |
-| `tile-img-no-onerror` | 14 | `onError` em todo `<img>`. Avatares compartilhados (`ClientAvatar`, `ContactAvatar`) caem para iniciais via estado; avatares/logos pontuais (AppLayout, Sidebar ×3, common, ImageUpload, Team ×2, Settings, MyAccountModal) escondem a imagem quebrada. |
+| impeccable (AI tell) | zero | **zero** |
+| audit:design (token) | 54 | **zero** |
+| copy (tic) | 38 | 38 — convenção (ver abaixo) |
+| noise (chrome) | 63 | 14 — convenção/taste (ver abaixo) |
 
-Verificado: `tsc --noEmit` limpo; `npm run test` 355/355; re-scan dessas regras = zero.
+`tsc --noEmit` limpo; `npm run test` 355/355 em cada bateria.
 
-## NÃO aplicado — decisão sua (a skill não vira isso em fix sozinha)
+## Aplicado (defeitos confirmados — commits nesta branch)
 
-1. **`hand-drawn-icon` (21)** — o repo tem sistema de ícone local (`Icons.tsx`, SVG
-   inline, sem lib). É arquitetura, não 21 bugs. Migrar p/ `lucide-react`/
-   `@phosphor-icons/react` adiciona dependência e mexe em 15+ arquivos.
-2. **`audit:design` token (54)** — `StatusPill` e vários usam classes de paleta
-   Tailwind (`bg-slate-400`, `bg-amber-500`, `bg-red-500`…). Converter p/ tokens
-   semânticos exige **criar tokens de status** que não existem (draft/review/
-   scheduled/published; só há success/warning/danger/info). Parte são dado
-   legítimo (temas em `Settings`, logo em `Logo.tsx`, `brandColor` dinâmico) =
-   falso-positivo da regra.
-3. **`copy` bullet-separator + em-dash (38)** — `·` é o separador de metadados do
-   app inteiro; `copy-lint` canônico passa limpo. Convenção, não defeito.
-4. **`box-in-box` (8, AuthShell), `shouting-label` (3), `caption`/`usage` (3),
-   `opacity-ladder` (1, kanban ContentsList)** — taste/estrutura; proposta, não fix.
+1. **LAW/proibições:** 13 `arrow-glyph` (`→ ← ↑ ↓` → ícones), 1 `hover-lift`
+   (`hover:scale-105`), 1 `blur-on-card`.
+2. **tile-img-no-onerror (14):** `onError` em todo `<img>` (avatares caem pra
+   iniciais; logos pontuais escondem imagem quebrada).
+3. **audit:design (54 → 0):** classes de paleta / hex → tokens. `StatusPill`
+   ganhou tokens categóricos `--looply-color-stage-*`; erro/sucesso/danger usam
+   tokens semânticos; dado legítimo (logo, temas, `brandColor`, cor categórica)
+   leva exceção escrita.
+4. **hand-drawn-icon (21 → 0):** ~51 SVG inline centralizados no `Icons.tsx`
+   (16 ícones novos + reuso), sem dependência nova. Relocação verbatim.
+5. **usage-instruction (1):** removida a instrução "Clique em…" do empty state
+   de arquivos.
+
+## NÃO aplicado — convenção/falso-positivo/taste (Rule zero: proposta, não fix)
+
+- **copy `bullet-separator`+`em-dash` (38):** o `·` é o separador de metadados do
+  app inteiro; **`copy-lint` canônico (visant-copy) passa limpo** — só o detector
+  embutido do killer-scan acusa. Mudar é mudança de convenção, decisão do dono.
+- **noise `box-in-box` (8, AuthShell):** é o **mock de preview** do produto
+  (dashboard fake com cards aninhados de propósito). Flatten quebraria o mock.
+- **noise `shouting-label` (3, ClientDetail):** labels uppercase = mesmo padrão do
+  componente `Eyebrow` usado no app todo.
+- **noise `caption-of-what-follows` (2, ChatWindow):** copy de empty-state; reescrita
+  é subjetiva.
 
 ## Não executado
 
 - **Browser (Step 5):** overflow 390px, tema claro, backend-down, teclado, feel.
-  Sem playwright nem app com DB neste ambiente. Pendente.
+  Sem playwright nem app com DB no ambiente. Pendente.
