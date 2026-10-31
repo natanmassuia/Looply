@@ -262,11 +262,13 @@ describe("AI Inbox Feature (F15.3)", () => {
   describe("ConversationList & Filtering", () => {
     it("renders conversation items with names, previews, client badges, and unread counts", () => {
       renderInbox();
-      expect(screen.getByText("Mariana Costa")).toBeTruthy();
-      expect(screen.getByText("Lucas Mendes")).toBeTruthy();
-      expect(screen.getByText("Carla Silveira")).toBeTruthy();
-      expect(screen.getByText("Estética Viva")).toBeTruthy();
-      expect(screen.getByText("Odonto Clean")).toBeTruthy();
+      // Desktop auto-selects a conversation, so the selected contact's name can
+      // also appear in the thread header — assert presence, not uniqueness.
+      expect(screen.getAllByText("Mariana Costa").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Lucas Mendes").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Carla Silveira").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Estética Viva").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Odonto Clean").length).toBeGreaterThan(0);
       // Total unread count header
       expect(screen.getAllByText("3")[0]).toBeTruthy();
     });
@@ -428,9 +430,9 @@ describe("AI Inbox Feature (F15.3)", () => {
   });
 
   describe("Master-Detail responsiveness & selection", () => {
-    it("shows empty state when no conversation is selected on desktop", () => {
+    it("auto-selects a conversation on desktop (no empty thread panel)", () => {
       renderInbox("/inbox");
-      expect(screen.getByText("Nenhuma conversa selecionada")).toBeTruthy();
+      expect(screen.queryByText("Nenhuma conversa selecionada")).toBeNull();
     });
 
     it("marks conversation as read and shows detail when conversation is selected", () => {

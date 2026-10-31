@@ -113,6 +113,23 @@ export default function InboxPage() {
     };
   }, []);
 
+  // Desktop lands the operator in work, not on an empty thread panel: when
+  // nothing is selected, open the first conversation needing attention (else
+  // the first). Mobile keeps the list as the entry point.
+  useEffect(() => {
+    if (isMobile || activeConversationId || isLoading || conversations.length === 0) return;
+    const first = conversations.find((c) => c.aiStatus === "NEEDS_ATTENTION") ?? conversations[0];
+    if (!first) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("id", first.id);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [isMobile, activeConversationId, isLoading, conversations, setSearchParams]);
+
   // Resizable sidebar on desktop (clamped between 320px and 460px)
   const [listWidth, setListWidth] = useState(() => {
     try {
