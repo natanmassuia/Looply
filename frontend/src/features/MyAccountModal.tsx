@@ -79,12 +79,12 @@ export default function MyAccountModal({ isOpen, onClose }: MyAccountModalProps)
     >
       <div className="space-y-5">
         {error && (
-          <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-600">
+          <div className="rounded-lg bg-[var(--looply-color-status-danger)]/10 border border-[var(--looply-color-status-danger)]/20 p-3 text-xs text-[var(--looply-color-status-danger)]">
             {error}
           </div>
         )}
         {success && (
-          <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs text-emerald-600">
+          <div className="rounded-lg bg-[var(--looply-color-status-success)]/10 border border-[var(--looply-color-status-success)]/20 p-3 text-xs text-[var(--looply-color-status-success)]">
             Perfil atualizado com sucesso!
           </div>
         )}

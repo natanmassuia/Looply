@@ -37,6 +37,17 @@
     --looply-color-status-danger: #dc2626;
     --looply-color-status-info: #7c5c6b;
 
+    /* Categorical content-pipeline stage dots (StatusPill). Not semantic
+       status: these only identify the stage, so they live outside the
+       success/warning/danger set. Same hue reads fine on light and dark. */
+    --looply-color-stage-draft: #94a3b8;
+    --looply-color-stage-review: #f59e0b;
+    --looply-color-stage-awaiting: #8b5cf6;
+    --looply-color-stage-changes: #f43f5e;
+    --looply-color-stage-approved: #10b981;
+    --looply-color-stage-scheduled: #3b82f6;
+    --looply-color-stage-published: #14b8a6;
+
     /* ── Required contract aliases → canonical roles. var() aliases resolve at
        computed-value time, so runtime applyTheme overrides on <html> propagate
        to these names automatically (elevated surfaces read bg-surface; accent
@@ -328,7 +339,7 @@
     color: var(--looply-color-text-inverse);
   }
   .btn-danger:hover:not(:disabled) {
-    background: #b91c1c;
+    background: color-mix(in srgb, var(--looply-color-status-danger) 85%, black);
   }
   .btn-danger:active:not(:disabled) {
     transform: scale(0.98);

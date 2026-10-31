@@ -119,7 +119,7 @@ export default function ConversationList({
             onClick={() => onSelectAiStatus("ACTIVE")}
             className={`flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-[10px] border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
               selectedAiStatus === "ACTIVE"
-                ? "bg-emerald-600 border-emerald-600 text-white shadow-xs"
+                ? "bg-[var(--looply-color-status-success)] border-[var(--looply-color-status-success)] text-white shadow-xs"
                 : "border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] text-[var(--looply-color-text-muted)] hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)]"
             }`}
           >

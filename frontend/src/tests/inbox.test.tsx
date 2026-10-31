@@ -277,7 +277,7 @@ describe("AI Inbox Feature (F15.3)", () => {
 
       const activeFilterBtn = screen.getByRole("button", { name: /Ativas/i });
       await user.click(activeFilterBtn);
-      expect(activeFilterBtn.className).toContain("bg-emerald-600");
+      expect(activeFilterBtn.className).toContain("bg-[var(--looply-color-status-success)]");
     });
 
     it("filters conversations by search input", async () => {

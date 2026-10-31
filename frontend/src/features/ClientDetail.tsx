@@ -112,10 +112,10 @@ export default function ClientDetail() {
               <span
                 className={`rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${
                   client.status === "ACTIVE"
-                    ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
+                    ? "bg-[var(--looply-color-status-success)]/10 text-[var(--looply-color-status-success)] border border-[var(--looply-color-status-success)]/20"
                     : client.status === "PROSPECT"
-                    ? "bg-amber-500/10 text-amber-600 border border-amber-500/20"
-                    : "bg-zinc-500/10 text-zinc-600 border border-zinc-500/20"
+                    ? "bg-[var(--looply-color-status-warning)]/10 text-[var(--looply-color-status-warning)] border border-[var(--looply-color-status-warning)]/20"
+                    : "bg-[var(--looply-color-text-muted)]/10 text-[var(--looply-color-text-muted)] border border-[var(--looply-color-text-muted)]/20"
                 }`}
               >
                 {CLIENT_STATUS_LABEL[client.status]}
@@ -139,7 +139,7 @@ export default function ClientDetail() {
           <button
             type="button"
             onClick={() => setIsDeleteOpen(true)}
-            className="btn-ghost text-xs text-red-500 hover:bg-red-50 hover:text-red-600 flex items-center gap-1.5"
+            className="btn-ghost text-xs text-[var(--looply-color-status-danger)] hover:bg-[var(--looply-color-status-danger)]/10 hover:text-[var(--looply-color-status-danger)] flex items-center gap-1.5"
           >
             <IconTrash className="h-3.5 w-3.5" />
             Excluir
@@ -300,7 +300,7 @@ export default function ClientDetail() {
               type="button"
               onClick={handleDelete}
               disabled={deleteClientMutation.isPending}
-              className="btn-primary text-xs bg-red-600 hover:bg-red-700 text-white"
+              className="btn-primary text-xs bg-[var(--looply-color-status-danger)] hover:opacity-90 text-white"
             >
               {deleteClientMutation.isPending ? "Excluindo..." : "Confirmar exclusão"}
             </button>

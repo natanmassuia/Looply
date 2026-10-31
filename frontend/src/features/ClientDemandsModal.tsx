@@ -67,7 +67,7 @@ export default function ClientDemandsModal({
                 <div className="flex items-center gap-2 mb-1">
                   <span
                     className="h-2 w-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: client.brandColor ?? "#475569" }}
+                    style={{ backgroundColor: client.brandColor ?? "var(--looply-color-text-primary)" }}
                   />
                   <span className="truncate text-xs font-semibold text-[var(--looply-color-text-primary)]">
                     {demand.title}

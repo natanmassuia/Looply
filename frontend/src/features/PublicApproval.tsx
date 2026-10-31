@@ -59,7 +59,7 @@ export default function PublicApproval() {
         {/* Brand header */}
         <div
           className="mb-8 flex items-center gap-3 rounded-xl px-5 py-4 text-white shadow-looply-md"
-          style={{ backgroundColor: content.client?.brandColor ?? "#2a171f" }}
+          style={{ backgroundColor: content.client?.brandColor ?? "var(--looply-color-text-primary)" }}
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20 text-base font-black">
             {content.client?.name?.slice(0, 1).toUpperCase()}

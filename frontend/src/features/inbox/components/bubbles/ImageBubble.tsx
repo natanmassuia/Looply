@@ -47,9 +47,9 @@ export default function ImageBubble({
           onClick={() => setModalOpen(true)}
         >
           {!isLoaded && !hasError && (
-            <div className="w-[280px] h-[180px] flex items-center justify-center animate-pulse bg-zinc-200 dark:bg-zinc-800">
+            <div className="w-[280px] h-[180px] flex items-center justify-center animate-pulse bg-[var(--looply-color-bg-subtle)]">
               <svg
-                className="w-6 h-6 animate-spin text-zinc-400"
+                className="w-6 h-6 animate-spin text-[var(--looply-color-text-muted)]"
                 fill="none"
                 viewBox="0 0 24 24"
               >
@@ -71,7 +71,7 @@ export default function ImageBubble({
           )}
 
           {hasError ? (
-            <div className="w-[280px] h-[120px] flex flex-col items-center justify-center p-3 text-center text-xs text-zinc-500">
+            <div className="w-[280px] h-[120px] flex flex-col items-center justify-center p-3 text-center text-xs text-[var(--looply-color-text-muted)]">
               <span>Imagem indisponível</span>
             </div>
           ) : (
@@ -119,7 +119,7 @@ export default function ImageBubble({
               type="button"
               onClick={() => setModalOpen(false)}
               aria-label="Fechar"
-              className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white dark:bg-zinc-800 text-black dark:text-white flex items-center justify-center font-bold shadow-md hover:bg-zinc-100 dark:hover:bg-zinc-700"
+              className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-[var(--looply-color-bg-surface)] text-[var(--looply-color-text-primary)] flex items-center justify-center font-bold shadow-md transition-colors hover:bg-[var(--looply-color-bg-subtle)]"
             >
               ✕
             </button>

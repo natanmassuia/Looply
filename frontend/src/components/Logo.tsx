@@ -45,6 +45,7 @@ export function Logo({
           strokeLinecap="round"
           strokeLinejoin="miter"
         />
+        {/* EXCEÇÃO ao token-fallback/raw-hex: cor fixa do símbolo da marca; o logo não pode reagir ao tema */}
         <circle cx="87" cy="108" r="9" fill="#2A171F" />
         <circle cx="81" cy="60" r="9" fill="#2A171F" />
       </svg>

@@ -872,7 +872,7 @@ function EntryChip({
         to={`/contents/${p.id}`}
         onClick={(e) => e.stopPropagation()}
         className="block truncate rounded px-1.5 py-0.5 text-[11px] font-medium text-white transition-opacity hover:opacity-90"
-        style={{ backgroundColor: p.client?.brandColor ?? "#475569" }}
+        style={{ backgroundColor: p.client?.brandColor ?? "var(--looply-color-text-primary)" }}
         title={`${p.client?.name ?? "Demanda"} — ${p.title}`}
       >
         {p.client?.name ?? "Demanda"} · {FORMAT_LABEL[p.format]}

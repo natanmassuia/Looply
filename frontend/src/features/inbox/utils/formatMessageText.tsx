@@ -20,6 +20,7 @@ export function HighlightedText({
   const regex = new RegExp(`(${escaped})`, "gi");
   const parts = text.split(regex);
 
+  // EXCEÇÃO ao token-fallback/tailwind-palette: realce de busca (<mark>), cor de destaque intencional sem token semântico
   return (
     <>
       {parts.map((part, i) =>
@@ -96,6 +97,7 @@ export function formatMessageText(
         const isBlock = part.startsWith("```");
         const codeContent = part.replace(/^```|```$|^`|`$/g, "");
 
+        // EXCEÇÃO ao token-fallback/tailwind-palette: estilo intencional de code-span (overlay neutro + cor de sintaxe)
         return (
           <code
             key={i}

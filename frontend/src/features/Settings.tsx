@@ -28,25 +28,25 @@ const PRESETS: { value: AppearancePreset; title: string; description: string; co
     value: "AURA",
     title: "Aura",
     description: "Calma e claridade — o padrão do Looply",
-    colors: ["#F06D55", "#F3B84B", "#FFF7F1", "#2A171F"],
+    colors: ["#F06D55", "#F3B84B", "#FFF7F1", "#2A171F"], // EXCEÇÃO ao token-fallback/raw-hex: amostra de cores do tema (dado exibido ao usuário), não cor de design
   },
   {
     value: "FLUX",
     title: "Flux",
     description: "Foco e movimento com tonalidades quentes",
-    colors: ["#F06D55", "#F3B84B", "#FCF5EC", "#3A2418"],
+    colors: ["#F06D55", "#F3B84B", "#FCF5EC", "#3A2418"], // EXCEÇÃO ao token-fallback/raw-hex: amostra de cores do tema (dado exibido ao usuário), não cor de design
   },
   {
     value: "PULSE",
     title: "Pulse",
     description: "Energia, contraste e presença marcante",
-    colors: ["#E11D48", "#FB7185", "#FFF1F2", "#1E1B4B"],
+    colors: ["#E11D48", "#FB7185", "#FFF1F2", "#1E1B4B"], // EXCEÇÃO ao token-fallback/raw-hex: amostra de cores do tema (dado exibido ao usuário), não cor de design
   },
   {
     value: "CUSTOM",
     title: "Customizado",
     description: "Paleta personalizada com suas próprias cores",
-    colors: ["#6366F1", "#A855F7", "#F8FAFC", "#0F172A"],
+    colors: ["#6366F1", "#A855F7", "#F8FAFC", "#0F172A"], // EXCEÇÃO ao token-fallback/raw-hex: amostra de cores do tema (dado exibido ao usuário), não cor de design
   },
 ];
 
@@ -60,6 +60,7 @@ const TIMEZONES = [
   { value: "UTC", label: "UTC · GMT+0" },
 ];
 
+// EXCEÇÃO ao token-fallback/raw-hex: valores iniciais da paleta customizável (dado do usuário), não cores de design
 const DEFAULT_CUSTOM: CustomColors = {
   primary: "#F06D55",
   secondary: "#F3B84B",

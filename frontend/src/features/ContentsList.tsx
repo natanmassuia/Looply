@@ -22,17 +22,10 @@ const SCROLL_EDGE = 64;
 const SCROLL_STEP = 12;
 
 // Presentation-only accent per board position. Semantics never come from here.
+// EXCEÇÃO ao token-fallback/tailwind-palette: paleta categórica decorativa por posição no board, sem significado semântico
 const STAGE_COLORS = [
-  "bg-slate-400",
-  "bg-amber-400",
-  "bg-violet-400",
-  "bg-rose-400",
-  "bg-emerald-400",
-  "bg-blue-400",
-  "bg-teal-400",
-  "bg-fuchsia-400",
-  "bg-orange-400",
-  "bg-cyan-400",
+  "bg-slate-400", "bg-amber-400", "bg-violet-400", "bg-rose-400", "bg-emerald-400",
+  "bg-blue-400", "bg-teal-400", "bg-fuchsia-400", "bg-orange-400", "bg-cyan-400",
 ];
 
 // Horizontal auto-scroll while dragging: finger in the right edge zone scrolls

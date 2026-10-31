@@ -174,7 +174,7 @@ export default function ImageUpload({
               type="button"
               onClick={() => setShowDeleteConfirm(true)}
               disabled={disabled || isLoading}
-              className="text-xs text-[var(--looply-color-text-muted)] hover:text-red-500 transition-colors text-left"
+              className="text-xs text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-status-danger)] transition-colors text-left"
             >
               {removeLabel}
             </button>
@@ -184,7 +184,7 @@ export default function ImageUpload({
 
       {/* Error */}
       {error && (
-        <p className="text-xs text-red-500">{error}</p>
+        <p className="text-xs text-[var(--looply-color-status-danger)]">{error}</p>
       )}
 
       {/* Delete confirm */}
@@ -202,7 +202,7 @@ export default function ImageUpload({
             <button
               type="button"
               onClick={handleDelete}
-              className="text-xs px-2.5 py-1 rounded-lg bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
+              className="text-xs px-2.5 py-1 rounded-lg bg-[var(--looply-color-status-danger)] text-white font-medium hover:opacity-90 transition-opacity"
             >
               Remover
             </button>

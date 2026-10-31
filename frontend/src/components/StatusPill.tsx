@@ -2,13 +2,13 @@ import { STATUS_LABEL, STATUS_STYLE } from "../lib/format";
 import type { ContentStatus } from "../lib/types";
 
 const statusDot: Record<ContentStatus, string> = {
-  DRAFT: "bg-slate-400",
-  IN_REVIEW: "bg-amber-500",
-  AWAITING_CLIENT: "bg-violet-500",
-  CHANGES_REQUESTED: "bg-rose-500",
-  APPROVED: "bg-emerald-500",
-  SCHEDULED: "bg-blue-500",
-  PUBLISHED: "bg-teal-500",
+  DRAFT: "bg-[var(--looply-color-stage-draft)]",
+  IN_REVIEW: "bg-[var(--looply-color-stage-review)]",
+  AWAITING_CLIENT: "bg-[var(--looply-color-stage-awaiting)]",
+  CHANGES_REQUESTED: "bg-[var(--looply-color-stage-changes)]",
+  APPROVED: "bg-[var(--looply-color-stage-approved)]",
+  SCHEDULED: "bg-[var(--looply-color-stage-scheduled)]",
+  PUBLISHED: "bg-[var(--looply-color-stage-published)]",
 };
 
 export default function StatusPill({ status }: { status: ContentStatus }) {

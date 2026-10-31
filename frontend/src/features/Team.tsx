@@ -25,6 +25,7 @@ const MEMBER_ROLE_STYLE: Record<MemberRole, string> = {
     "bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-secondary)] ring-[var(--looply-color-border-default)]",
 };
 
+// EXCEÇÃO ao token-fallback/tailwind-palette: cores categóricas de avatar por papel, sem significado semântico de status
 const MEMBER_AVATAR_COLORS: Record<MemberRole, string> = {
   OWNER: "bg-purple-600",
   ADMIN: "bg-brand-600",
@@ -44,6 +45,7 @@ const ROLE_STYLE: Record<UserRole, string> = {
     "bg-[color-mix(in_srgb,var(--looply-color-action-secondary)_18%,transparent)] text-[var(--looply-color-text-primary)] ring-[color-mix(in_srgb,var(--looply-color-action-secondary)_32%,transparent)]",
 };
 
+// EXCEÇÃO ao token-fallback/tailwind-palette: cores categóricas de avatar por papel, sem significado semântico de status
 const AVATAR_COLORS: Record<UserRole, string> = {
   ADMIN: "bg-brand-600",
   CONTENT_MANAGER: "bg-violet-600",
@@ -480,6 +482,7 @@ export default function Team() {
                       ) : (
                         <div
                           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${
+                            // EXCEÇÃO ao token-fallback/tailwind-palette: fallback categórico de cor de avatar por papel
                             MEMBER_AVATAR_COLORS[role] ?? "bg-slate-600"
                           }`}
                         >
@@ -620,6 +623,7 @@ export default function Team() {
                 ) : (
                   <div
                     className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${
+                      // EXCEÇÃO ao token-fallback/tailwind-palette: fallback categórico de cor de avatar por papel
                       AVATAR_COLORS[u.role] ?? "bg-slate-600"
                     }`}
                   >
@@ -636,6 +640,7 @@ export default function Team() {
               <div className="mt-4 flex items-center justify-between">
                 <span
                   className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset ${
+                    // EXCEÇÃO ao token-fallback/tailwind-palette: fallback neutro do badge de papel quando o papel é desconhecido
                     ROLE_STYLE[u.role] ?? "bg-slate-50 text-slate-700 ring-slate-200"
                   }`}
                 >
