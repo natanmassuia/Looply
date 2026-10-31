@@ -292,3 +292,70 @@ export const IconMenu = (p: P) => (
   </svg>
 );
 
+// Loading spinner: caller adds `animate-spin` + size/color via className.
+export const IconSpinner = (p: P) => (
+  <svg viewBox="0 0 24 24" fill="none" {...p}>
+    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.2" />
+    <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+  </svg>
+);
+
+export const IconGrid = (p: P) => (
+  <svg {...base(p)}>
+    <rect x="3" y="3" width="7" height="7" rx="1.5" />
+    <rect x="14" y="3" width="7" height="7" rx="1.5" />
+    <rect x="3" y="14" width="7" height="7" rx="1.5" />
+    <rect x="14" y="14" width="7" height="7" rx="1.5" />
+  </svg>
+);
+
+export const IconListView = (p: P) => (
+  <svg {...base(p)}>
+    <line x1="8" y1="6" x2="21" y2="6" />
+    <line x1="8" y1="12" x2="21" y2="12" />
+    <line x1="8" y1="18" x2="21" y2="18" />
+    <line x1="3.5" y1="6" x2="3.5" y2="6" />
+    <line x1="3.5" y1="12" x2="3.5" y2="12" />
+    <line x1="3.5" y1="18" x2="3.5" y2="18" />
+  </svg>
+);
+
+export const IconBars = (p: P) => (
+  <svg {...base(p)}>
+    <rect x="3" y="4" width="5" height="16" rx="1.5" />
+    <rect x="10" y="4" width="5" height="11" rx="1.5" />
+    <rect x="17" y="4" width="4" height="7" rx="1.5" />
+  </svg>
+);
+
+export const IconReels = (p: P) => (
+  <svg {...base(p)}>
+    <rect x="5" y="2" width="14" height="20" rx="3" />
+    <circle cx="12" cy="18" r="1" fill="currentColor" />
+  </svg>
+);
+
+export const IconCarousel = (p: P) => (
+  <svg {...base(p)}>
+    <rect x="2" y="4" width="14" height="14" rx="2" />
+    <rect x="8" y="6" width="14" height="14" rx="2" opacity="0.5" />
+    <circle cx="9" cy="11" r="1.5" />
+    <path d="M21 17l-4-4-4 4" />
+  </svg>
+);
+
+// Double chevron (collapse). Caller rotates with `rotate-180` to point right.
+export const IconChevronsLeft = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M11 6l-6 6 6 6" />
+    <path d="M17 6l-6 6 6 6" opacity="0.35" />
+  </svg>
+);
+
+export const IconCard = (p: P) => (
+  <svg {...base(p)}>
+    <rect x="2" y="5" width="20" height="14" rx="2" />
+    <path d="M20 10H4" />
+  </svg>
+);
+

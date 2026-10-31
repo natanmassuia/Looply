@@ -9,7 +9,7 @@ import StatusPill from "../components/StatusPill";
 import ClientAvatar from "../components/ClientAvatar";
 import ModalOrSheet from "../components/ModalOrSheet";
 import ScheduleModal from "../components/ScheduleModal";
-import { IconPlus, IconChevronDown, IconCheck, IconX } from "../components/Icons";
+import { IconPlus, IconChevronDown, IconCheck, IconX, IconBars, IconListView } from "../components/Icons";
 
 // ── R1.3 — the board is WorkflowStage-driven. Columns come from the active
 // stages of the workflow (id/order/label), cards are placed by currentStageId,
@@ -416,11 +416,7 @@ export default function ContentsList() {
                     : "text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
                 }`}
               >
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="4" width="5" height="16" rx="1.5" />
-                  <rect x="10" y="4" width="5" height="11" rx="1.5" />
-                  <rect x="17" y="4" width="4" height="7" rx="1.5" />
-                </svg>
+                <IconBars className="h-3.5 w-3.5" strokeWidth={2} />
                 Kanban
               </button>
               <button
@@ -433,14 +429,7 @@ export default function ContentsList() {
                     : "text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
                 }`}
               >
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <line x1="8" y1="6" x2="21" y2="6" />
-                  <line x1="8" y1="12" x2="21" y2="12" />
-                  <line x1="8" y1="18" x2="21" y2="18" />
-                  <line x1="3.5" y1="6" x2="3.5" y2="6" />
-                  <line x1="3.5" y1="12" x2="3.5" y2="12" />
-                  <line x1="3.5" y1="18" x2="3.5" y2="18" />
-                </svg>
+                <IconListView className="h-3.5 w-3.5" strokeWidth={2} />
                 Lista
               </button>
             </div>
@@ -780,9 +769,7 @@ function CardStack({
       {groupReady && (
         <div className="absolute inset-0 flex items-center justify-center rounded-xl border-2 border-brand-500 bg-brand-100/70 pointer-events-none">
           <div className="flex flex-col items-center gap-1">
-            <svg className="h-5 w-5 text-brand-600" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
-            </svg>
+            <IconPlus className="h-5 w-5 text-brand-600" strokeWidth={2} />
             <span className="text-[0.6875rem] font-bold text-brand-700">Solte para agrupar</span>
           </div>
         </div>

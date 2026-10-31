@@ -4,7 +4,7 @@ import { useDashboard, useMe } from "../lib/api";
 import { Card, EmptyState, ErrorState, SkeletonCards } from "../components/common";
 import StatusPill from "../components/StatusPill";
 import { FORMAT_LABEL, latestVersion, relativeTime, formatAppointmentLine, formatClock, gmtOffsetLabel } from "../lib/format";
-import { IconAlertCircle, IconCheck, IconClock, IconSend, IconEye, IconTrendingUp, IconChevronRight } from "../components/Icons";
+import { IconAlertCircle, IconCheck, IconClock, IconSend, IconEye, IconTrendingUp, IconChevronRight, IconImage, IconVideo, IconFileText } from "../components/Icons";
 import type { ReactNode } from "react";
 import type { DashboardUpcomingEvent } from "../lib/types";
 
@@ -383,25 +383,12 @@ function FormatIcon({ format }: { format: string }) {
     case "POST":
     case "CAROUSEL":
     case "IMAGE":
-      return (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <rect x="3" y="3" width="18" height="18" rx="2" />
-          <line x1="3" y1="9" x2="21" y2="9" />
-        </svg>
-      );
+      return <IconImage className="h-4 w-4" strokeWidth={1.5} />;
     case "STORY":
     case "REELS":
     case "VIDEO":
-      return (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <rect x="6" y="2" width="12" height="20" rx="3" />
-        </svg>
-      );
+      return <IconVideo className="h-4 w-4" strokeWidth={1.5} />;
     default:
-      return (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <circle cx="12" cy="12" r="9" />
-        </svg>
-      );
+      return <IconFileText className="h-4 w-4" strokeWidth={1.5} />;
   }
 }

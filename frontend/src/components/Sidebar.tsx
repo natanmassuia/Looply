@@ -10,6 +10,7 @@ import {
   IconSettings,
   IconWhatsApp,
   IconX,
+  IconChevronsLeft,
 } from "./Icons";
 import { Logo } from "./Logo";
 import { useUIStore } from "../lib/store";
@@ -129,20 +130,7 @@ export default function Sidebar({
                 title="Recolher sidebar"
                 className="hidden md:flex h-8 w-8 items-center justify-center rounded-[10px] text-[var(--looply-color-text-muted)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
               >
-                <svg
-                  aria-hidden="true"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M11 6l-6 6 6 6" />
-                  <path d="M17 6l-6 6 6 6" opacity="0.35" />
-                </svg>
+                <IconChevronsLeft aria-hidden="true" width={16} height={16} strokeWidth={2} />
               </button>
 
               {mobileOpen && (
@@ -312,21 +300,7 @@ export default function Sidebar({
               title="Expandir sidebar"
               className="flex w-full items-center justify-center rounded-[10px] py-2 text-[var(--looply-color-text-muted)] transition-colors hover:bg-[var(--looply-color-bg-subtle)] hover:text-[var(--looply-color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--looply-color-focus)]"
             >
-              <svg
-                aria-hidden="true"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="rotate-180"
-              >
-                <path d="M11 6l-6 6 6 6" />
-                <path d="M17 6l-6 6 6 6" opacity="0.35" />
-              </svg>
+              <IconChevronsLeft aria-hidden="true" width={16} height={16} strokeWidth={2} className="rotate-180" />
             </button>
           )}
 

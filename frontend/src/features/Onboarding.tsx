@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { IconCheck, IconCard } from "../components/Icons";
 import {
   ApiError,
   useChangePassword,
@@ -497,9 +498,7 @@ export default function Onboarding() {
             {PROFILE_PREP[templateValue].map((item) => (
               <li key={item} className="flex items-center gap-3 rounded-xl border border-[var(--looply-color-border-default)] px-4 py-3 text-[14px] font-medium text-[var(--looply-color-text-primary)]">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--looply-color-status-success)_14%,var(--looply-color-bg-surface))] text-[var(--looply-color-status-success)]">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M20 6L9 17l-5-5" />
-                  </svg>
+                  <IconCheck width={12} height={12} strokeWidth={3} aria-hidden="true" />
                 </span>
                 {item}
               </li>
@@ -532,10 +531,7 @@ export default function Onboarding() {
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--looply-color-bg-surface)] text-[var(--looply-color-text-muted)]">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                    <rect x="2" y="5" width="20" height="14" rx="2" />
-                    <path d="M20 10H4" />
-                  </svg>
+                  <IconCard width={20} height={20} strokeWidth={1.5} aria-hidden="true" />
                 </div>
                 <div>
                   <p className="text-[14px] font-semibold text-[var(--looply-color-text-primary)]">WhatsApp / Instagram</p>

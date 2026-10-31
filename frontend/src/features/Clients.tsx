@@ -4,7 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useClients, useDeleteClient, ApiError } from "../lib/api";
 import type { Client, ClientStatus } from "../lib/types";
 import { Card, EmptyState, ErrorState, PageHeader, SkeletonCards } from "../components/common";
-import { IconPlus, IconEdit, IconTrash, IconChevronDown, IconChevronUp, IconArrowRight, IconX, IconMoreVertical, IconFileText, IconLink, IconMail } from "../components/Icons";
+import { IconPlus, IconEdit, IconTrash, IconChevronDown, IconChevronUp, IconArrowRight, IconX, IconMoreVertical, IconFileText, IconLink, IconMail, IconSearch, IconGrid, IconListView } from "../components/Icons";
 import ModalOrSheet from "../components/ModalOrSheet";
 import ClientEditor from "../components/ClientEditor";
 import ClientAvatar from "../components/ClientAvatar";
@@ -236,19 +236,7 @@ export default function Clients() {
                 onChange={(e) => setSearch(e.target.value)}
               />
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[var(--looply-color-text-muted)]">
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="M21 21l-4.35-4.35" />
-                </svg>
+                <IconSearch width={15} height={15} strokeWidth={2} />
               </div>
             </div>
           </div>
@@ -337,12 +325,7 @@ export default function Clients() {
                     : "text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
                 }`}
               >
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="7" height="7" rx="1.5" />
-                  <rect x="14" y="3" width="7" height="7" rx="1.5" />
-                  <rect x="3" y="14" width="7" height="7" rx="1.5" />
-                  <rect x="14" y="14" width="7" height="7" rx="1.5" />
-                </svg>
+                <IconGrid className="h-3.5 w-3.5" strokeWidth={2} />
                 Cards
               </button>
               <button
@@ -355,14 +338,7 @@ export default function Clients() {
                     : "text-[var(--looply-color-text-muted)] hover:text-[var(--looply-color-text-primary)]"
                 }`}
               >
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <line x1="8" y1="6" x2="21" y2="6" />
-                  <line x1="8" y1="12" x2="21" y2="12" />
-                  <line x1="8" y1="18" x2="21" y2="18" />
-                  <line x1="3.5" y1="6" x2="3.5" y2="6" />
-                  <line x1="3.5" y1="12" x2="3.5" y2="12" />
-                  <line x1="3.5" y1="18" x2="3.5" y2="18" />
-                </svg>
+                <IconListView className="h-3.5 w-3.5" strokeWidth={2} />
                 Lista
               </button>
             </div>

@@ -13,7 +13,7 @@ import {
 import type { MemberRole, UserRole } from "../lib/types";
 import { MEMBER_ROLE_LABEL, ROLE_LABEL, formatDate, initials } from "../lib/format";
 import { Card, EmptyState, ErrorState, PageHeader, Spinner } from "../components/common";
-import { IconPlus, IconCheck, IconEdit, IconX } from "../components/Icons";
+import { IconPlus, IconCheck, IconEdit, IconX, IconSearch } from "../components/Icons";
 import ModalOrSheet from "../components/ModalOrSheet";
 
 const MEMBER_ROLE_STYLE: Record<MemberRole, string> = {
@@ -399,10 +399,7 @@ export default function Team() {
               aria-label="Buscar membro"
             />
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[var(--looply-color-text-muted)]">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8" />
-                <path d="M21 21l-4.35-4.35" />
-              </svg>
+              <IconSearch width={15} height={15} strokeWidth={2} />
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">

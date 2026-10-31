@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Breadcrumb, { type Crumb } from "./Breadcrumb";
+import { IconSpinner, IconImage, IconVideo, IconReels, IconCarousel } from "./Icons";
 
 export function PageHeader({
   title,
@@ -45,10 +46,7 @@ export function CardFlush({ children, className = "" }: { children: ReactNode; c
 export function Spinner({ label }: { label?: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-20 text-[var(--looply-color-text-muted)]">
-      <svg className="h-6 w-6 animate-spin text-[var(--looply-color-action-primary)]" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.2" />
-        <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-      </svg>
+      <IconSpinner className="h-6 w-6 animate-spin text-[var(--looply-color-action-primary)]" />
       {label && <span className="text-sm">{label}</span>}
     </div>
   );
@@ -162,13 +160,7 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-center justify-center rounded-xl border border-[var(--looply-color-border-default)] bg-[var(--looply-color-bg-surface)] px-6 py-12 text-center">
       <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--looply-color-bg-subtle)] text-[var(--looply-color-text-muted)]">
-        {icon || (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <circle cx="9" cy="9" r="2" />
-            <path d="M21 15l-5-5L5 21" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
+        {icon || <IconImage width={24} height={24} strokeWidth={1.5} />}
       </div>
       <div className="text-[0.8125rem] font-semibold text-[var(--looply-color-text-primary)]">{title}</div>
       {description && <p className="mt-1 max-w-sm text-[0.8125rem] text-[var(--looply-color-text-muted)]">{description}</p>}
@@ -206,28 +198,13 @@ export function MediaPreview({
       >
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--looply-color-bg-surface)] shadow-sm">
           {format === "REELS" || format === "VIDEO" ? (
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="4" width="20" height="16" rx="2" />
-              <path d="M10 9l5 3-5 3V9z" fill="currentColor" stroke="none" />
-            </svg>
+            <IconVideo width={28} height={28} strokeWidth={1.5} />
           ) : format === "STORY" ? (
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="5" y="2" width="14" height="20" rx="3" />
-              <circle cx="12" cy="18" r="1" fill="currentColor" />
-            </svg>
+            <IconReels width={28} height={28} strokeWidth={1.5} />
           ) : format === "CAROUSEL" ? (
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="4" width="14" height="14" rx="2" />
-              <rect x="8" y="6" width="14" height="14" rx="2" opacity="0.5" />
-              <circle cx="9" cy="11" r="1.5" />
-              <path d="M21 17l-4-4-4 4" />
-            </svg>
+            <IconCarousel width={28} height={28} strokeWidth={1.5} />
           ) : (
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <circle cx="9" cy="9" r="2" />
-              <path d="M21 15l-5-5L5 21" />
-            </svg>
+            <IconImage width={28} height={28} strokeWidth={1.5} />
           )}
         </div>
         <div className="text-center">

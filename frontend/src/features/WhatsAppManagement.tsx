@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { IconArrowRight } from "../components/Icons";
+import { IconArrowRight, IconSpinner } from "../components/Icons";
 import {
   useWhatsAppPhoneNumbers,
   useWhatsAppTemplates,
@@ -375,25 +375,7 @@ export default function WhatsAppManagement() {
 
         {loadingPhones ? (
           <div className="flex items-center justify-center p-8 text-xs text-[var(--looply-color-text-muted)]">
-            <svg
-              className="mr-2 h-4 w-4 animate-spin text-[var(--looply-color-action-primary)]"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth={4}
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v8H4z"
-              />
-            </svg>
+            <IconSpinner className="mr-2 h-4 w-4 animate-spin text-[var(--looply-color-action-primary)]" />
             Carregando...
           </div>
         ) : phoneError ? (
@@ -463,25 +445,7 @@ export default function WhatsAppManagement() {
 
         {loadingTemplates ? (
           <div className="flex items-center justify-center p-8 text-xs text-[var(--looply-color-text-muted)]">
-            <svg
-              className="mr-2 h-4 w-4 animate-spin text-[var(--looply-color-action-primary)]"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth={4}
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v8H4z"
-              />
-            </svg>
+            <IconSpinner className="mr-2 h-4 w-4 animate-spin text-[var(--looply-color-action-primary)]" />
             Carregando...
           </div>
         ) : templateError ? (

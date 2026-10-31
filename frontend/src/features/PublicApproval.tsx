@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { useApproval, useApprovePublic, useRequestChangesPublic, ApiError } from "../lib/api";
 import { FORMAT_LABEL, formatDate, formatDateTime } from "../lib/format";
 import { MediaPreview, Spinner } from "../components/common";
-import { IconCheck, IconX } from "../components/Icons";
+import { IconCheck, IconX, IconCalendar } from "../components/Icons";
 
 export default function PublicApproval() {
   const { token = "" } = useParams();
@@ -110,10 +110,7 @@ export default function PublicApproval() {
             {/* Publication date */}
             {content.publicationTarget && (
               <div className="flex items-center gap-2 text-sm text-[var(--looply-color-text-muted)]">
-                <svg className="h-4 w-4 text-[var(--looply-color-text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="17" rx="2" />
-                  <path d="M3 9h18M8 2v4M16 2v4" />
-                </svg>
+                <IconCalendar className="h-4 w-4 text-[var(--looply-color-text-muted)]" strokeWidth={2} />
                 <span className="font-medium text-[var(--looply-color-text-primary)]">Prazo:</span>{" "}
                 {formatDate(content.publicationTarget)}
               </div>
