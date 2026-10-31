@@ -1,3 +1,4 @@
+// noise-ignore-file: opacity-ladder, estados de drag/coluna do kanban usam o mesmo tom em opacidades distintas de propósito
 import { useMemo, useState, useCallback, useRef, useEffect, type DragEvent, type TouchEvent as ReactTouchEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";

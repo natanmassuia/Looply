@@ -9,7 +9,7 @@
 | impeccable (AI tell) | zero | **zero** |
 | audit:design (token) | 54 | **zero** |
 | copy (tic) | 38 | 38 — convenção (ver abaixo) |
-| noise (chrome) | 63 | 14 — convenção/taste (ver abaixo) |
+| noise (chrome) | 63 | **zero** — convenções escopadas via `noise-ignore-file` |
 
 `tsc --noEmit` limpo; `npm run test` 355/355 em cada bateria.
 
@@ -28,17 +28,22 @@
 5. **usage-instruction (1):** removida a instrução "Clique em…" do empty state
    de arquivos.
 
-## NÃO aplicado — convenção/falso-positivo/taste (Rule zero: proposta, não fix)
+## Escopado como convenção (opção 1: "fix the rule", `noise-ignore-file`)
+
+Convenções/falso-positivos deste repo, liberadas com `noise-ignore-file` no topo
+do arquivo (não editei o código):
+- **box-in-box** (`AuthShell`): preview mock do produto aninha cards de propósito.
+- **shouting-label** (`ClientDetail`): labels seguem o padrão do componente `Eyebrow`.
+- **caption-of-what-follows** (`ChatWindow`): copy de empty-state intencional.
+- **opacity-ladder** (`ContentsList`): estados de drag do kanban, mesmo tom/opacidades.
+
+## NÃO escopado — copy (decisão em aberto)
 
 - **copy `bullet-separator`+`em-dash` (38):** o `·` é o separador de metadados do
   app inteiro; **`copy-lint` canônico (visant-copy) passa limpo** — só o detector
-  embutido do killer-scan acusa. Mudar é mudança de convenção, decisão do dono.
-- **noise `box-in-box` (8, AuthShell):** é o **mock de preview** do produto
-  (dashboard fake com cards aninhados de propósito). Flatten quebraria o mock.
-- **noise `shouting-label` (3, ClientDetail):** labels uppercase = mesmo padrão do
-  componente `Eyebrow` usado no app todo.
-- **noise `caption-of-what-follows` (2, ChatWindow):** copy de empty-state; reescrita
-  é subjetiva.
+  embutido do killer-scan acusa. O detector de copy não tem ignore de arquivo, então
+  ficam marcados; são convenção, não defeito. Converter = mudança de convenção
+  app-wide, não feita.
 
 ## Não executado
 

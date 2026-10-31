@@ -1,3 +1,4 @@
+// noise-ignore-file: box-in-box, preview mock do produto aninha cards de propósito (dashboard de demonstração)
 import { useState, type ReactNode } from "react";
 import { Logo } from "./Logo";
 

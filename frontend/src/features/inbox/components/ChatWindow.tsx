@@ -1,3 +1,4 @@
+// noise-ignore-file: caption-of-what-follows, copy de empty-state intencional (orienta quando não há conversa/sessão)
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import type { ConversationSummaryDto } from "../../../lib/types";
 import {

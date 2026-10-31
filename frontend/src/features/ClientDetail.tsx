@@ -1,3 +1,4 @@
+// noise-ignore-file: shouting-label, labels seguem o padrão do componente Eyebrow usado no app todo
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useClient, useContents, useDeleteClient } from "../lib/api";
